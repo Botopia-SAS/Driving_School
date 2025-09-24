@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { broadcastScheduleUpdate } from '../route';
+import { broadcastScheduleUpdate } from '@/lib/sse-driving-test-broadcast';
 
 export async function POST(req: NextRequest) {
   try {

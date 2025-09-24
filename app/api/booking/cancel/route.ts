@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Instructor, { ScheduleSlot } from '@/models/Instructor';
-import { broadcastScheduleUpdate } from '@/app/api/sse/driving-test-schedule/route';
+import { broadcastScheduleUpdate } from '@/lib/sse-driving-test-broadcast';
 
 export async function POST(request: Request) {
   try {

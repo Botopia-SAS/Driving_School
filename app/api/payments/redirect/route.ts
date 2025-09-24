@@ -46,7 +46,7 @@ async function getRedirectUrlFromEC2(payload) {
         lastError = await ec2Response.text();
         throw new Error(`EC2 error: ${ec2Response.status} - ${lastError}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       lastError = err instanceof Error ? err.message : String(err);
       console.error(`[API][redirect] Error en intento #${attempt}:`, err);
       attempt++;
@@ -67,7 +67,7 @@ async function waitForBackendReady(url, maxTries = 20, delayMs = 3000, fetchTime
         //console.log(`[EC2] Backend listo en intento ${i + 1}`);
         return true;
       }
-    } catch (e) {
+    } catch {
       // Ignora el error, solo espera y reintenta
     } finally {
       clearTimeout(timeoutId);
@@ -86,7 +86,6 @@ export async function GET(req: NextRequest) {
     const ec2Result = await startAndWaitEC2(process.env.EC2_INSTANCE_ID!);
     //console.log("Resultado de startAndWaitEC2:", ec2Result);
     const ok = ec2Result.success;
-    const publicIp = ec2Result.publicIp;
     if (!ok) {
       return NextResponse.json({ 
         error: "ec2", 
@@ -124,7 +123,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${BASE_URL}/login`);
     }
 
-    let items, total, payload, orderToUse;
+    let items, total, orderToUse;
     if (orderId) {
       //console.log("[API][redirect] Buscando orden existente:", orderId);
       orderToUse = await Order.findById(orderId);
@@ -325,7 +324,20 @@ export async function GET(req: NextRequest) {
           console.log("[API][redirect] Siguiente número de orden:", nextOrderNumber);
           
           // Crear appointments si es necesario
-          let appointments: any[] = [];
+          let appointments: Array<{
+            slotId?: string;
+            instructorId: string;
+            instructorName?: string;
+            date: string;
+            start: string;
+            end: string;
+            classType?: string;
+            ticketClassId?: string;
+            studentId?: string;
+            amount?: number;
+            status?: string;
+            [key: string]: unknown;
+          }> = [];
           if (hasDrivingTests || hasDrivingLessons || hasTickets) {
             appointments = [];
             
@@ -433,7 +445,7 @@ export async function GET(req: NextRequest) {
             });
           });
           
-          const orderData: any = {
+          const orderData: Record<string, unknown> = {
             userId,
             orderType: currentOrderType,
             items,
@@ -477,7 +489,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    payload = {
+    const payload = {
       amount: Number(total.toFixed(2)),
       firstName: user.firstName || "John",
       lastName: user.lastName || "Doe",
@@ -521,16 +533,6 @@ export async function GET(req: NextRequest) {
     };
     //console.log("[API][redirect] Payload para EC2:", payload);
 
-    // Construir también parámetros redundantes para cuando el EC2 necesite redirigir
-    const baseParams = new URLSearchParams({
-      userId: userId as string,
-      orderId: finalOrderId,
-      user_id: userId as string,
-      order_id: finalOrderId,
-      uid: userId as string,
-      oid: finalOrderId,
-      data: `${userId as string}:${finalOrderId}`
-    });
 
     // Usar función con reintento automático
     const redirectUrl = await getRedirectUrlFromEC2(payload);
@@ -558,7 +560,6 @@ export async function POST(req: NextRequest) {
     const ec2Result = await startAndWaitEC2(process.env.EC2_INSTANCE_ID!);
     //console.log("Resultado de startAndWaitEC2:", ec2Result);
     const ok = ec2Result.success;
-    const publicIp = ec2Result.publicIp;
     if (!ok) {
       return NextResponse.json({ 
         error: "ec2", 
@@ -604,14 +605,42 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Buscar orden existente o crear nueva
-    let orderToUse = await Order.findById(orderId);
+    const orderToUse = await Order.findById(orderId);
     let finalOrderId: string;
-    let items: any[] = [];
+    let items: Array<{
+      id: string;
+      title: string;
+      price: number;
+      quantity: number;
+      description?: string;
+      [key: string]: unknown;
+    }> = [];
     let total = 0;
 
     if (!orderToUse) {
       // Buscar en el carrito del usuario
-      let cartItems: any[] = [];
+      let cartItems: Array<{
+        id: string;
+        title: string;
+        price: number;
+        quantity?: number;
+        classType?: string;
+        instructorId?: string;
+        instructorName?: string;
+        date?: string;
+        start?: string;
+        end?: string;
+        amount?: number;
+        slotId?: string;
+        ticketClassId?: string;
+        studentId?: string;
+        packageDetails?: {
+          pickupLocation?: string;
+          dropoffLocation?: string;
+          [key: string]: unknown;
+        };
+        [key: string]: unknown;
+      }> = [];
       
       if (user.cart && user.cart.length > 0) {
         cartItems = user.cart;
@@ -636,7 +665,20 @@ export async function POST(req: NextRequest) {
       const hasDrivingLessons = cartItems.some(item => item.classType === 'driving lesson' || item.packageDetails);
       
       let orderType = 'general';
-      let appointments: any[] = [];
+      let appointments: Array<{
+        slotId?: string;
+        instructorId: string;
+        instructorName?: string;
+        date: string;
+        start: string;
+        end: string;
+        classType?: string;
+        ticketClassId?: string;
+        studentId?: string;
+        amount?: number;
+        status?: string;
+        [key: string]: unknown;
+      }> = [];
       
       // Prioridad: 1. Si hay tickets → ticket_class
       if (hasTickets) {
@@ -670,12 +712,12 @@ export async function POST(req: NextRequest) {
           
           if (item.classType === 'driving test') {
             appointments.push({
-              slotId: item.slotId || `${item.date}-${item.start}-${item.end}`, // Use real slotId from cart
-              instructorId: item.instructorId,
-              instructorName: item.instructorName,
-              date: item.date,
-              start: item.start,
-              end: item.end,
+              slotId: item.slotId || `${item.date || 'unknown'}-${item.start || 'unknown'}-${item.end || 'unknown'}`,
+              instructorId: item.instructorId || '',
+              instructorName: item.instructorName || '',
+              date: item.date || '',
+              start: item.start || '',
+              end: item.end || '',
               classType: 'driving test',
               amount: item.amount || item.price || 50,
               status: 'pending'
@@ -736,11 +778,11 @@ export async function POST(req: NextRequest) {
               ticketClassId: item.ticketClassId, // ← ID de la ticket class (para buscar en TicketClass collection)
               classId: item.id,
               studentId: userId, // ← AGREGAR studentId para payment-success
-              instructorId: item.instructorId,
-              instructorName: item.instructorName,
-              date: item.date,
-              start: item.start,
-              end: item.end,
+              instructorId: item.instructorId || '',
+              instructorName: item.instructorName || '',
+              date: item.date || '',
+              start: item.start || '',
+              end: item.end || '',
               classType: 'ticket_class',
               amount: item.price || 50,
               status: 'pending'
@@ -766,6 +808,7 @@ export async function POST(req: NextRequest) {
 
       // Procesar items del carrito para el payment gateway
       // Usar descripción basada en orderType para órdenes mixtas
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const orderDescription = orderType === 'drivings' ? 'drivings' : 
                               orderType === 'driving_test' ? 'driving test' :
                               orderType === 'driving_lesson' ? 'driving lesson' :
@@ -773,19 +816,30 @@ export async function POST(req: NextRequest) {
                               'driving services';
       
       items = cartItems.map(item => ({
-        name: item.title || item.name || (item.classType === 'driving test' ? 'Driving Test' : 'Driving Service'),
+        id: item.id || `item-${Date.now()}-${Math.random()}`,
+        title: String(item.title || item.name || (item.classType === 'driving test' ? 'Driving Test' : 'Driving Service')),
+        name: String(item.title || item.name || (item.classType === 'driving test' ? 'Driving Test' : 'Driving Service')),
         quantity: item.quantity || 1,
         price: item.price || item.amount || 0,
-        description: orderType === 'drivings' ? 'drivings' : 
+        description: String(orderType === 'drivings' ? 'drivings' : 
                     (item.description || item.packageDetails || 
-                    (item.classType === 'driving test' ? 'Driving test appointment' : 'Driving lesson package'))
+                    (item.classType === 'driving test' ? 'Driving test appointment' : 'Driving lesson package')))
       }));
 
       total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
       // Crear nueva orden con appointments si es necesario
       const nextOrderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 100)}`;
-      const orderData: any = {
+      const orderData: {
+        userId: string;
+        orderType: string;
+        items: unknown[];
+        total: number;
+        estado: string;
+        createdAt: Date;
+        orderNumber: string;
+        appointments?: unknown[];
+      } = {
         userId,
         orderType,
         items,
@@ -871,16 +925,6 @@ export async function POST(req: NextRequest) {
     };
     //console.log("[API][redirect] Payload para EC2:", payload);
 
-    // Construir también parámetros redundantes para cuando el EC2 necesite redirigir
-    const baseParams = new URLSearchParams({
-      userId: userId as string,
-      orderId: finalOrderId,
-      user_id: userId as string,
-      order_id: finalOrderId,
-      uid: userId as string,
-      oid: finalOrderId,
-      data: `${userId as string}:${finalOrderId}`
-    });
 
     // Usar función con reintento automático
     const redirectUrl = await getRedirectUrlFromEC2(payload);

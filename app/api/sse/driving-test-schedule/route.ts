@@ -11,22 +11,6 @@ const activeConnections = new Map<string, {
   instructorId: string;
 }>();
 
-// Global function to broadcast updates to all active connections for an instructor
-export function broadcastScheduleUpdate(instructorId: string) {
-  console.log(`📢 Broadcasting schedule update for instructor ${instructorId}`);
-  
-  for (const [connectionId, connection] of activeConnections.entries()) {
-    if (connection.instructorId === instructorId && connection.isActive) {
-      try {
-        sendScheduleUpdate(connection.controller, connection.encoder, instructorId, connectionId);
-      } catch (error) {
-        console.error(`❌ Failed to broadcast to connection ${connectionId}:`, error);
-        connection.isActive = false;
-      }
-    }
-  }
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const instructorId = searchParams.get('instructorId');
@@ -41,7 +25,7 @@ export async function GET(req: NextRequest) {
   const stream = new ReadableStream({
     start(controller) {
       console.log(`🔌 Starting SSE connection ${connectionId}`);
-      
+
       // Register the connection FIRST
       activeConnections.set(connectionId, {
         interval: null,
@@ -98,7 +82,7 @@ export async function GET(req: NextRequest) {
         }
       };
     },
-    
+
     cancel() {
       console.log(`❌ SSE stream cancelled by client for ${connectionId}`);
       const connection = activeConnections.get(connectionId);
@@ -133,12 +117,12 @@ async function sendInitialData(controller: ReadableStreamDefaultController, enco
     }
 
     await connectDB();
-    
+
     const instructor = await Instructor.findById(instructorId);
     if (!instructor) {
       console.log(`❌ Instructor ${instructorId} not found`);
       const errorData = `data: ${JSON.stringify({ type: 'error', message: 'Instructor not found' })}\n\n`;
-      
+
       // Safe send with double-check
       if (connection.isActive && controller.desiredSize !== null) {
         try {
@@ -154,12 +138,12 @@ async function sendInitialData(controller: ReadableStreamDefaultController, enco
     const schedule = instructor.schedule_driving_test || [];
     console.log(`📡 Sending initial driving test schedule for instructor ${instructorId} (${connectionId}):`, schedule.length, 'slots');
 
-    const data = `data: ${JSON.stringify({ 
-      type: 'initial', 
+    const data = `data: ${JSON.stringify({
+      type: 'initial',
       schedule: schedule,
-      instructorId: instructorId 
+      instructorId: instructorId
     })}\n\n`;
-    
+
     // Safe send with double-check
     if (connection.isActive && controller.desiredSize !== null) {
       try {
@@ -188,7 +172,7 @@ async function sendScheduleUpdate(controller: ReadableStreamDefaultController, e
     }
 
     await connectDB();
-    
+
     const instructor = await Instructor.findById(instructorId);
     if (!instructor) {
       console.log(`❌ Instructor ${instructorId} not found for update`);
@@ -198,12 +182,12 @@ async function sendScheduleUpdate(controller: ReadableStreamDefaultController, e
     const schedule = instructor.schedule_driving_test || [];
     console.log(`📡 Sending driving test schedule update for instructor ${instructorId} (${connectionId}):`, schedule.length, 'slots');
 
-    const data = `data: ${JSON.stringify({ 
-      type: 'update', 
+    const data = `data: ${JSON.stringify({
+      type: 'update',
       schedule: schedule,
-      instructorId: instructorId 
+      instructorId: instructorId
     })}\n\n`;
-    
+
     // Safe send with double-check
     if (connection.isActive && controller.desiredSize !== null) {
       try {
