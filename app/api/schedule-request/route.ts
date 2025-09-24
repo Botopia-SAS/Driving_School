@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import Instructor from '@/models/Instructor';
-import { broadcastScheduleUpdate } from '../driving-lessons/schedule-updates/route';
+import { broadcastScheduleUpdate } from '@/lib/sse-broadcast';
 
 export async function POST(request: NextRequest) {
   try {

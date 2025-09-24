@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import Instructor from "@/models/Instructor";
 import mongoose from "mongoose";
 import User from "@/models/User";
-import { broadcastScheduleUpdate } from '@/app/api/sse/driving-test-schedule/route';
+import { broadcastScheduleUpdate } from '@/lib/sse-driving-test-broadcast';
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Instructor from '@/models/Instructor';
-import { broadcastScheduleUpdate } from '../schedule-updates/route';
+import { broadcastScheduleUpdate } from '@/lib/sse-broadcast';
 
 export async function POST(request: NextRequest) {
   try {
