@@ -14,17 +14,20 @@ export interface Class {
   id: string;
   date: string | Date;
   hour: number;
-  status: 'scheduled' | 'cancelled' | 'available';
+  status: 'scheduled' | 'cancelled' | 'available' | 'pending' | 'booked';
   studentId?: string | MongoDBObjectId;
   instructorId?: string | MongoDBObjectId;
   slots?: TimeSlot[];
   start?: string;
   end?: string;
   day?: number;
-  classType?: string;
+  classType?: 'driving lesson' | 'driving test' | 'ticket class' | string; // Nuevos tipos específicos
   amount?: number;
   paid?: boolean;
   pickupLocation?: string;
   dropoffLocation?: string;
   ticketClassId?: string | MongoDBObjectId;
+  studentName?: string; // Agregar nombre del estudiante
+  paymentMethod?: string; // Agregar método de pago
+  reservedAt?: Date; // Agregar fecha de reserva
 } 

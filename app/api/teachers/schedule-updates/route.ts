@@ -40,7 +40,12 @@ export async function GET(req: NextRequest) {
   try {
     const instructor = await Instructor.findById(instructorId);
     if (instructor) {
-      sendEvent({ type: "initial", schedule: instructor.get('schedule', { lean: true }) || [] });
+      // Combinar schedule_driving_lesson y schedule_driving_test
+      const drivingLessons = instructor.get('schedule_driving_lesson', { lean: true }) || [];
+      const drivingTests = instructor.get('schedule_driving_test', { lean: true }) || [];
+      const combinedSchedule = [...drivingLessons, ...drivingTests];
+
+      sendEvent({ type: "initial", schedule: combinedSchedule });
     } else {
       sendEvent({ type: "error", message: "Instructor not found" });
     }
@@ -57,7 +62,12 @@ export async function GET(req: NextRequest) {
     try {
       const instructor = await Instructor.findById(instructorId);
       if (instructor) {
-        sendEvent({ type: "update", schedule: instructor.get('schedule', { lean: true }) || [] });
+        // Combinar schedule_driving_lesson y schedule_driving_test
+        const drivingLessons = instructor.get('schedule_driving_lesson', { lean: true }) || [];
+        const drivingTests = instructor.get('schedule_driving_test', { lean: true }) || [];
+        const combinedSchedule = [...drivingLessons, ...drivingTests];
+
+        sendEvent({ type: "update", schedule: combinedSchedule });
       }
     } catch(err) {
       console.error("Error fetching updated teacher schedule for broadcast:", err);

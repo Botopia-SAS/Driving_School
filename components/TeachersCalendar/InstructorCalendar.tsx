@@ -16,7 +16,7 @@ function adaptScheduleToClasses(schedule: Record<string, unknown>[]): Class[] {
     instructorId: slot.instructorId as string | undefined,
     start: typeof slot.start === 'string' ? slot.start.padStart(5, '0') : '',
     end: typeof slot.end === 'string' ? slot.end.padStart(5, '0') : '',
-    classType: slot.classType as string,
+    classType: slot.classType as string || 'driving lesson', // Default to driving lesson if not specified
     amount: typeof slot.amount === 'number' ? slot.amount : Number(slot.amount),
     paid: Boolean(slot.paid),
     pickupLocation: slot.pickupLocation as string,
@@ -24,7 +24,7 @@ function adaptScheduleToClasses(schedule: Record<string, unknown>[]): Class[] {
     ticketClassId: slot.ticketClassId as string,
     slots: undefined,
   }));
-  //console.log('Clases adaptadas para el calendario:', result);
+  console.log('Clases adaptadas para el calendario:', result); // Debug temporalmente
   return result;
 }
 
