@@ -3,6 +3,30 @@ import { connectDB } from "@/lib/mongodb";
 import Order from "@/models/Order";
 import Instructor from "@/models/Instructor";
 
+// Type definitions
+interface OrderDocument {
+  orderNumber?: string;
+  _id?: string;
+  [key: string]: unknown;
+}
+
+interface AppointmentData {
+  slotId: string;
+  instructorId?: string;
+  instructorName?: string;
+  ticketClassId?: string;
+  classId?: string;
+  studentId?: string;
+  date: string;
+  start: string;
+  end: string;
+  classType: string;
+  amount: number;
+  pickupLocation?: string;
+  dropoffLocation?: string;
+  [key: string]: unknown;
+}
+
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
@@ -31,7 +55,7 @@ export async function POST(req: NextRequest) {
     // Generate order number manually as fallback with consecutive numbering
     const lastOrder = await Order.findOne({}, { orderNumber: 1 })
       .sort({ orderNumber: -1 })
-      .lean();
+      .lean() as OrderDocument | null;
 
     let nextNumber = 1;
     if (lastOrder && lastOrder.orderNumber) {
@@ -46,8 +70,8 @@ export async function POST(req: NextRequest) {
 
     // Create the order
     console.log('📝 Creating order with appointments:', appointments);
-    const mappedAppointments = appointments.map((apt: any) => {
-      const mapped: any = {
+    const mappedAppointments = appointments.map((apt: AppointmentData) => {
+      const mapped: AppointmentData & { status: string } = {
         slotId: apt.slotId || `${apt.date}-${apt.start}-${apt.end}`,
         instructorId: apt.instructorId,
         instructorName: apt.instructorName,
@@ -99,7 +123,7 @@ export async function POST(req: NextRequest) {
     console.log("✅ Order created successfully:", savedOrder._id, savedOrder.orderNumber);
 
     // Update instructor schedules to link slots with order reference (slots are already pending from cart)
-    const updatePromises = appointments.map(async (apt: any) => {
+    const updatePromises = appointments.map(async (apt: AppointmentData) => {
       try {
         console.log(`🔄 Linking slot ${apt.slotId} to order ${savedOrder._id}`);
         
