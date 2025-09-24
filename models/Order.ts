@@ -62,13 +62,26 @@ const OrderSchema = new Schema({
 OrderSchema.pre('save', async function(next) {
   if (this.isNew && !this.orderNumber) {
     try {
-      // Use this.constructor instead of mongoose.models.Order for better compatibility
-      const count = await (this.constructor as any).countDocuments();
-      this.orderNumber = `ORD-${Date.now()}-${count + 1}`;
+      // Find the highest existing order number to ensure consecutive numbering
+      const lastOrder = await (this.constructor as any)
+        .findOne({}, { orderNumber: 1 })
+        .sort({ orderNumber: -1 })
+        .lean();
+
+      let nextNumber = 1;
+      if (lastOrder && lastOrder.orderNumber) {
+        // Parse the current highest number and increment
+        const currentNumber = parseInt(lastOrder.orderNumber);
+        if (!isNaN(currentNumber)) {
+          nextNumber = currentNumber + 1;
+        }
+      }
+
+      this.orderNumber = nextNumber.toString();
     } catch (error) {
       console.error('Error generating order number:', error);
-      // Fallback to just timestamp if count fails
-      this.orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Fallback to timestamp if all else fails
+      this.orderNumber = Date.now().toString();
     }
   }
   this.updatedAt = new Date();

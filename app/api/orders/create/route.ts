@@ -28,9 +28,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate order number manually as fallback
-    const orderCount = await Order.countDocuments();
-    const generatedOrderNumber = `ORD-${Date.now()}-${orderCount + 1}`;
+    // Generate order number manually as fallback with consecutive numbering
+    const lastOrder = await Order.findOne({}, { orderNumber: 1 })
+      .sort({ orderNumber: -1 })
+      .lean();
+
+    let nextNumber = 1;
+    if (lastOrder && lastOrder.orderNumber) {
+      // Parse the current highest number and increment
+      const currentNumber = parseInt(lastOrder.orderNumber);
+      if (!isNaN(currentNumber)) {
+        nextNumber = currentNumber + 1;
+      }
+    }
+
+    const generatedOrderNumber = nextNumber.toString();
 
     // Create the order
     console.log('📝 Creating order with appointments:', appointments);

@@ -178,16 +178,16 @@ export default function BookNowPage() {
       return;
     }
     
-    console.log('🔍 Processing SSE driving test schedule data:', {
-      selectedInstructorId,
-      sseScheduleLength: Array.isArray(sseSchedule) ? sseSchedule.length : 'not array',
-      isReady
-    });
+    // console.log('🔍 Processing SSE driving test schedule data:', {
+    //   selectedInstructorId,
+    //   sseScheduleLength: Array.isArray(sseSchedule) ? sseSchedule.length : 'not array',
+    //   isReady
+    // });
     
     // Los datos de schedule_driving_test ya son de tipo "driving test", no necesitamos filtrar
     const scheduleSlots = Array.isArray(sseSchedule) ? sseSchedule as SlotWithDate[] : [];
     
-    console.log('📋 Driving test schedule slots to display:', scheduleSlots.length, scheduleSlots);
+    // console.log('📋 Driving test schedule slots to display:', scheduleSlots.length, scheduleSlots);
     
     const groupedSchedule: Schedule[] = Object.values(
       scheduleSlots.reduce((acc, curr) => {
@@ -208,18 +208,18 @@ export default function BookNowPage() {
       }, {} as Record<string, { date: string; slots: Slot[] }>)
     );
     
-    console.log('📅 Grouped driving test schedule:', groupedSchedule);
+    // console.log('📅 Grouped driving test schedule:', groupedSchedule);
     
     // Busca el instructor base por ID
     const base = instructors.find(i => i._id === selectedInstructorId);
-    console.log('👨‍🏫 Found instructor base:', base?.name, 'with ID:', base?._id);
+    // console.log('👨‍🏫 Found instructor base:', base?.name, 'with ID:', base?._id);
     
     if (base) {
       setSelectedInstructor({ ...base, schedule: groupedSchedule });
       setIsLoadingSchedule(false);
-      console.log("✅ Instructor driving test schedule updated:", groupedSchedule.length, "days with slots");
+      // console.log("✅ Instructor driving test schedule updated:", groupedSchedule.length, "days with slots");
     } else {
-      console.log("❌ No instructor base found for ID:", selectedInstructorId);
+      // console.log("❌ No instructor base found for ID:", selectedInstructorId);
       setIsLoadingSchedule(false);
     }
   }, [sseSchedule, selectedInstructorId, instructors, isReady]);
@@ -299,7 +299,7 @@ export default function BookNowPage() {
           // Seleccionar automáticamente el primer instructor
           if (data.instructors && data.instructors.length > 0) {
             const firstInstructor = data.instructors[0];
-            console.log('🎯 Auto-selecting first instructor:', firstInstructor.name);
+            // console.log('🎯 Auto-selecting first instructor:', firstInstructor.name);
             setIsLoadingSchedule(true);
             
             // Small delay to prevent rapid connection changes
@@ -330,7 +330,7 @@ export default function BookNowPage() {
   const handleDateChange = (value: Date | Date[] | null) => {
     if (!value || Array.isArray(value)) return;
     
-    console.log('📅 Date changed to:', value.toDateString());
+    // console.log('📅 Date changed to:', value.toDateString());
     
     // When a specific date is selected, reset weekOffset to 0
     // This way getWeekDates will show the week containing the selected date
@@ -637,7 +637,7 @@ export default function BookNowPage() {
               if (paymentMethod === 'online') {
         // PAGO ONLINE: Agregar al carrito directamente y marcar slot como pending
                 try {
-          console.log('🛒 Adding driving test to cart...');
+          // console.log('🛒 Adding driving test to cart...');
           
           // Step 1: Add to cart with appointment details - this will mark slot as pending automatically
           const cartRes = await fetch('/api/cart/add-driving-test', {
@@ -661,7 +661,7 @@ export default function BookNowPage() {
           }
 
           await cartRes.json();
-          console.log('✅ Driving test added to cart successfully');
+          // console.log('✅ Driving test added to cart successfully');
 
           // Force refresh SSE to update calendar immediately
           if (forceRefresh) {
@@ -686,7 +686,7 @@ export default function BookNowPage() {
                     setSelectedSlot(null);
           
           // No need to show confirmation modal - item is added to cart silently
-          console.log('✅ Driving test added to cart successfully - no modal needed');
+          // console.log('✅ Driving test added to cart successfully - no modal needed');
             
               } catch (error) {
           console.error('❌ Error adding driving test to cart:', error);
@@ -819,7 +819,7 @@ export default function BookNowPage() {
                 minDate={new Date()}
                 onClickDay={(date) => {
                   // Use the handleDateChange function to update both date and week offset
-                  console.log('📅 Calendar click on:', date.toDateString());
+                  // console.log('📅 Calendar click on:', date.toDateString());
                   handleDateChange(date);
                 }}
               />
@@ -911,7 +911,7 @@ export default function BookNowPage() {
                 minDate={new Date()}
                 onClickDay={(date) => {
                   // Use the handleDateChange function to update both date and week offset
-                  console.log('📅 Calendar click on:', date.toDateString());
+                  // console.log('📅 Calendar click on:', date.toDateString());
                   handleDateChange(date);
                 }}
               />
