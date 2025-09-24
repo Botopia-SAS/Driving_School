@@ -181,11 +181,6 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
     allTimes.push({ start: `${pad(h)}:30`, end: `${pad(h+1)}:00` });
   }
 
-  console.log('🎯 ScheduleTable render:', {
-    instructorName: selectedInstructor?.name,
-    scheduleLength: selectedInstructor?.schedule?.length,
-    schedule: selectedInstructor?.schedule
-  });
 
   return (
     <div className="overflow-x-auto w-full mt-6">

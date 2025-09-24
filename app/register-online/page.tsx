@@ -145,7 +145,6 @@ function RegisterOnlineContent() {
       // AGREGAR AL CARRITO: Agregar al carrito y poner en studentRequests
       setIsOnlinePaymentLoading(true);
       try {
-        console.log('🛒 Adding ticket class to cart...');
         
         // Obtener información de la clase para el precio
         const classInfo = selectedTicketClass.classInfo;
@@ -184,14 +183,12 @@ function RegisterOnlineContent() {
           throw new Error(errorData.error || 'Failed to add ticket class to cart');
         }
         
-        console.log('✅ Ticket class added to cart via dedicated endpoint');
         
        // IMPORTANTE: Actualizar el contexto del carrito para sincronizar el frontend
         const responseData = await addToCartRes.json();
         if (responseData.cartItem) {
           // Usar el cartItem que viene del endpoint para actualizar el contexto
           addToCart(responseData.cartItem);
-          console.log('✅ Frontend cart context updated with ticket class');
         }
         
         setIsBookingModalOpen(false);
@@ -199,7 +196,6 @@ function RegisterOnlineContent() {
         setIsOnlinePaymentLoading(false);
         
         // No mostrar modal de confirmación - simplemente cerrar modal y agregar al carrito silenciosamente
-        console.log('✅ Ticket class added to cart successfully - modal closed');
         
       } catch (error) {
         console.error('❌ Error adding to cart:', error);
@@ -739,7 +735,6 @@ function RegisterOnlineContent() {
                 minDate={new Date()}
                 onClickDay={(date) => {
                   // ALWAYS change week when clicking on calendar
-                  console.log('📅 Calendar click on:', date.toDateString());
                   
                   // Calculate the start of the week for the clicked date (Sunday = 0)
                   const targetWeekStart = new Date(date);
@@ -755,18 +750,9 @@ function RegisterOnlineContent() {
                   // Calculate the week difference from current week
                   const weekDiff = Math.round((targetWeekStart.getTime() - currentWeekStart.getTime()) / (7 * 24 * 60 * 60 * 1000));
                   
-                  console.log('📅 Week calculation:', {
-                    clickedDate: date.toDateString(),
-                    targetWeekStart: targetWeekStart.toDateString(),
-                    currentWeekStart: currentWeekStart.toDateString(),
-                    calculatedWeekDiff: weekDiff,
-                    previousOffset: weekOffset,
-                    willUpdate: true
-                  });
                   
                   // ALWAYS update the week offset - force update
                   setWeekOffset(weekDiff);
-                  console.log('📅 Updated weekOffset to:', weekDiff);
                 }}
               />
             </div>

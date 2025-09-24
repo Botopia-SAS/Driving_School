@@ -148,28 +148,16 @@ function DrivingLessonsContent() {
     // Removed unused variables: isConnectedForInstructor, getAllSchedules
   } = useAllDrivingLessonsSSE(instructorIds.length > 0 ? instructorIds : []);
 
-  // Debug: Log SSE data
-  useEffect(() => {
-    if (schedules.size > 0) {
-      console.log("🔍 Debug - SSE data for all instructors:");
-      schedules.forEach((schedule, instructorId) => {
-        const instructor = instructors.find(i => i._id === instructorId);
-        console.log(`${instructor?.name || 'Unknown'} (${instructorId}): ${schedule.length} slots`);
-      });
-    }
-  }, [schedules, instructors]);
 
   // Function to immediately update selected slots to pending status locally
   const updateSlotsTopending = () => {
-    console.log("🔄 Updating selected slots to pending locally...");
     setInstructors(prevInstructors => {
       return prevInstructors.map(instructor => {
         if (!instructor.schedule_driving_lesson) return instructor;
-        
+
         const updatedSchedule = instructor.schedule_driving_lesson.map(entry => {
           const slotKey = `${entry.date}-${entry.start}-${entry.end}`;
           if (selectedSlots.has(slotKey)) {
-            console.log(`🟡 Updating slot ${slotKey} to pending`);
             return {
               ...entry,
               status: 'pending',
@@ -179,7 +167,7 @@ function DrivingLessonsContent() {
           }
           return entry;
         });
-        
+
         return {
           ...instructor,
           schedule_driving_lesson: updatedSchedule,
@@ -204,7 +192,6 @@ function DrivingLessonsContent() {
         if (res.ok) {
           const data = await res.json();
           setProducts(data);
-          console.log('📦 Products obtained:', data);
           
           // Check if there's a preselected package from localStorage
           const selectedPackageData = localStorage.getItem('selectedPackage');
@@ -214,7 +201,6 @@ function DrivingLessonsContent() {
               const foundProduct = data.find((p: Product) => p._id === packageInfo.id);
               if (foundProduct) {
                 setSelectedProduct(foundProduct);
-                console.log('📦 Preselected package:', foundProduct.title);
               }
               // Clear localStorage after use
               localStorage.removeItem('selectedPackage');
@@ -224,10 +210,8 @@ function DrivingLessonsContent() {
             }
           }
         } else {
-          console.error('Error getting products:', res.status);
         }
       } catch (error) {
-        console.error('Error getting products:', error);
       } finally {
         setInitialLoading(false);
       }
@@ -238,7 +222,6 @@ function DrivingLessonsContent() {
 
   // Fetch driving lesson instructors on load (basic info only, schedules come via SSE)
   const fetchInstructors = useCallback(async () => {
-    console.log("🔄 Fetching instructors...");
     try {
       const res = await fetch('/api/instructors?type=driving-lessons&includeSchedule=true', {
         method: 'GET',
@@ -247,45 +230,26 @@ function DrivingLessonsContent() {
           'Pragma': 'no-cache'
         }
       });
-      console.log("📡 Fetch response:", res.status, res.ok);
       
       if (res.ok) {
         const data = await res.json();
-        console.log('👨‍🏫 Instructors obtained:', data.length, 'instructors');
-        
-        // Debug: Log each instructor's schedule
-        data.forEach((instructor: Instructor) => {
-          const scheduleCount = instructor.schedule_driving_lesson?.length || 0;
-          console.log(`📋 ${instructor.name}: ${scheduleCount} driving lessons in schedule`);
-        });
-        
         setInstructors(data);
-        console.log('✅ Instructors updated successfully');
-        
+
         // Select a random instructor automatically if none is selected
         if (!selectedInstructorForSchedule && data.length > 0) {
           const randomIndex = Math.floor(Math.random() * data.length);
           setSelectedInstructorForSchedule(data[randomIndex]);
-          console.log('🎯 Random instructor selected:', data[randomIndex].name);
         }
       } else {
-        console.error('❌ Error getting instructors:', res.status);
       }
     } catch (error) {
-      console.error('❌ Error getting instructors:', error);
     }
   }, [selectedInstructorForSchedule]);
 
   useEffect(() => {
-    console.log("🔄 useEffect running - fetching instructors");
     fetchInstructors();
   }, [fetchInstructors]);
 
-  // useEffect to monitor changes in instructors state
-  useEffect(() => {
-    console.log("🔍 Instructors state changed:", instructors);
-    console.log("🔍 Number of instructors in state:", instructors.length);
-  }, [instructors]);
 
   const generateCalendlyURL = (product: Product, instructor: Instructor, slot?: ScheduleEntry) => {
     const baseUrl = "https://calendly.com/your-driving-school"; // Change to your real Calendly URL
@@ -396,7 +360,6 @@ function DrivingLessonsContent() {
         throw new Error(result.error || 'Failed to create schedule request');
       }
 
-      console.log("✅ Schedule request successful, updating UI...");
       
       // Immediately update selected slots to pending in the UI
       updateSlotsTopending();
@@ -404,7 +367,6 @@ function DrivingLessonsContent() {
       // If online payment, add to cart and mark slots as pending (NO create order yet)
       if (paymentMethod === 'online') {
         try {
-          console.log('🛒 Adding driving lesson package to cart...');
           
           // Step 1: Add to cart with package and slot details using specific endpoint
           const cartData = {
@@ -434,19 +396,8 @@ function DrivingLessonsContent() {
           }
 
           const cartResult = await cartResponse.json();
-          console.log('✅ Added to cart and slots marked as pending successfully');
-          console.log('🎯 Cart result slotDetails:', cartResult.slotDetails);
-          console.log('🆔 Unique package ID from server:', cartResult.cartItem?.id);
 
           // Add to local cart context with slotDetails and unique ID
-          console.log('🛒 [driving-lessons] Adding to cart context:', {
-            id: cartResult.cartItem?.id || selectedProduct._id, // Use unique ID from server
-            title: selectedProduct.title,
-            price: selectedProduct.price,
-            packageDetails: cartData.packageDetails,
-            selectedSlots: cartData.selectedSlots,
-            slotDetails: cartResult.slotDetails // Include slotDetails from the response
-          });
 
         await addToCart({
           id: cartResult.cartItem?.id || selectedProduct._id, // Use unique ID from server
@@ -459,13 +410,8 @@ function DrivingLessonsContent() {
             slotDetails: cartResult.slotDetails // Include slotDetails from the response
           });
 
-          console.log('🛒 [driving-lessons] Successfully added to cart context');
-
           // Package added to cart silently - no alert needed
-          console.log('✅ Package added to cart successfully without showing alert');
-
           // SSE will automatically update the schedule, no manual refresh needed
-          console.log("✅ Schedule will be updated automatically via SSE");
 
         } catch (error) {
           console.error('❌ Error adding to cart:', error);
@@ -485,7 +431,6 @@ function DrivingLessonsContent() {
       setSelectedHours(0);
 
       // SSE will automatically update the schedule, no manual refresh needed
-      console.log("✅ Schedule will be updated automatically via SSE");
       
     } catch (error) {
       console.error('Error creating schedule request:', error);
@@ -503,7 +448,6 @@ function DrivingLessonsContent() {
     if (!slotToCancel) return;
     
     try {
-      console.log('🗑️ Canceling pending slot:', slotToCancel);
       
       const response = await fetch('/api/driving-lessons/cancel-pending', {
         method: 'POST',
@@ -526,7 +470,6 @@ function DrivingLessonsContent() {
         throw new Error(result.error || 'Failed to cancel pending slot');
       }
 
-      console.log('✅ Pending slot canceled successfully');
       setCancellationMessage('Slot cancelled successfully. The slot is now available again.');
       setShowCancellation(true);
       
@@ -559,18 +502,6 @@ function DrivingLessonsContent() {
     return selectedDate ? getWeekDates(selectedDate) : [];
   }, [selectedDate, getWeekDates]);
   
-  // Debug: Log week dates generation
-  React.useEffect(() => {
-    if (weekDates.length > 0) {
-      console.log('🗓️ Week dates generated:');
-      weekDates.forEach((date, index) => {
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const dayName = dayNames[date.getUTCDay()];
-        const dateStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
-        console.log(`  ${index}: ${dayName} ${dateStr} (${date.toDateString()})`);
-      });
-    }
-  }, [weekDates]);
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);

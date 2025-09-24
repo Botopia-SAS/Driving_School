@@ -319,12 +319,25 @@ export async function GET(req: NextRequest) {
         } else {
           // Crear nueva orden con el tipo correcto
           console.log("[API][redirect] Creando nueva orden de tipo:", currentOrderType);
-          const lastOrder = await Order.findOne({}).sort({ orderNumber: -1 });
-          const nextOrderNumber = lastOrder ? lastOrder.orderNumber + 1 : 1;
-          console.log("[API][redirect] Siguiente número de orden:", nextOrderNumber);
           
-          // Crear appointments si es necesario
-          let appointments: Array<{
+          // Obtener el último orderNumber como número para incrementar correctamente
+          const lastOrder = await Order.findOne({}, { orderNumber: 1 })
+            .sort({ orderNumber: -1 })
+            .lean() as { orderNumber?: string | number } | null;
+          
+          let nextOrderNumber = 1;
+          if (lastOrder && lastOrder.orderNumber) {
+            const currentNumber = parseInt(lastOrder.orderNumber.toString());
+            if (!isNaN(currentNumber)) {
+              nextOrderNumber = currentNumber + 1;
+            }
+          }
+          
+          const orderNumberStr = nextOrderNumber.toString();
+          console.log("[API][redirect] Siguiente número de orden:", orderNumberStr);
+          
+          // Crear appointments - SIEMPRE para cualquier item que tenga información de cita
+          const appointments: Array<{
             slotId?: string;
             instructorId: string;
             instructorName?: string;
@@ -338,12 +351,10 @@ export async function GET(req: NextRequest) {
             status?: string;
             [key: string]: unknown;
           }> = [];
-          if (hasDrivingTests || hasDrivingLessons || hasTickets) {
-            appointments = [];
-            
-            // Procesar cada item del carrito
-            console.log(`[API][redirect] GET - Processing ${items.length} items for appointments:`);
-            items.forEach((item, index) => {
+          
+          // Procesar cada item del carrito para crear appointments
+          console.log(`[API][redirect] GET - Processing ${items.length} items for appointments:`);
+          items.forEach((item, index) => {
               console.log(`[API][redirect] GET - Processing item ${index}:`, {
                 classType: item.classType,
                 ticketClassId: item.ticketClassId,
@@ -431,9 +442,24 @@ export async function GET(req: NextRequest) {
                 console.log(`[API][redirect] GET - Created ticket appointment with slotId: ${ticketSlotId}`);
               } else {
                 console.log(`[API][redirect] GET - ⚠️ Unknown classType:`, item.classType, 'for item:', item.id);
+                
+                // Para items sin classType específico pero con datos de cita, crear appointment genérico
+                if (item.date && item.start && item.end && item.instructorId) {
+                  appointments.push({
+                    slotId: item.slotId || `${item.date}-${item.start}-${item.end}`,
+                    instructorId: item.instructorId,
+                    instructorName: item.instructorName || 'Instructor',
+                    date: item.date,
+                    start: item.start,
+                    end: item.end,
+                    classType: item.classType || 'general',
+                    amount: item.price || 50,
+                    status: 'pending'
+                  });
+                  console.log(`[API][redirect] GET - Created generic appointment for item:`, item.id);
+                }
               }
             });
-          }
           
           console.log(`[API][redirect] GET - 🎯 Final appointments created: ${appointments.length}`);
           appointments.forEach((apt, index) => {
@@ -445,19 +471,24 @@ export async function GET(req: NextRequest) {
             });
           });
           
+          // Validar que appointments no esté vacío si esperamos citas
+          if ((hasDrivingTests || hasDrivingLessons || hasTickets) && appointments.length === 0) {
+            console.warn(`[API][redirect] GET - ⚠️ Warning: Expected appointments but got none. Items:`, items.map(i => ({id: i.id, classType: i.classType})));
+          }
+          
           const orderData: Record<string, unknown> = {
             userId,
             orderType: currentOrderType,
             items,
+            appointments, // Siempre incluir appointments (puede estar vacío)
             total: Number(total.toFixed(2)),
             estado: 'pending',
+            paymentStatus: 'pending',
             createdAt: new Date(),
-            orderNumber: nextOrderNumber,
+            orderNumber: orderNumberStr,
           };
           
-          if (appointments.length > 0) {
-            orderData.appointments = appointments;
-          }
+          console.log(`[API][redirect] GET - Creating order with ${appointments.length} appointments and orderNumber: ${orderNumberStr}`);
           
           const createdOrder = await Order.create(orderData);
           console.log("[API][redirect] Orden creada:", createdOrder._id, "tipo:", currentOrderType);
@@ -828,30 +859,45 @@ export async function POST(req: NextRequest) {
 
       total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-      // Crear nueva orden con appointments si es necesario
-      const nextOrderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 100)}`;
+      // Obtener el último orderNumber como número para incrementar correctamente  
+      const lastOrder = await Order.findOne({}, { orderNumber: 1 })
+        .sort({ orderNumber: -1 })
+        .lean() as { orderNumber?: string | number } | null;
+      
+      let nextOrderNumber = 1;
+      if (lastOrder && lastOrder.orderNumber) {
+        const currentNumber = parseInt(lastOrder.orderNumber.toString());
+        if (!isNaN(currentNumber)) {
+          nextOrderNumber = currentNumber + 1;
+        }
+      }
+      
+      const orderNumberStr = nextOrderNumber.toString();
+      console.log("[API][redirect] POST - Siguiente número de orden:", orderNumberStr);
+
       const orderData: {
         userId: string;
         orderType: string;
         items: unknown[];
+        appointments: unknown[];
         total: number;
         estado: string;
+        paymentStatus: string;
         createdAt: Date;
         orderNumber: string;
-        appointments?: unknown[];
       } = {
         userId,
         orderType,
         items,
+        appointments, // Siempre incluir appointments
         total: Number(total.toFixed(2)),
         estado: 'pending',
+        paymentStatus: 'pending',
         createdAt: new Date(),
-        orderNumber: nextOrderNumber,
+        orderNumber: orderNumberStr,
       };
       
-      if (appointments.length > 0) {
-        orderData.appointments = appointments;
-      }
+      console.log(`[API][redirect] POST - Creating order with ${appointments.length} appointments and orderNumber: ${orderNumberStr}`);
       
       const createdOrder = await Order.create(orderData);
       console.log("[API][redirect] Orden creada:", createdOrder._id);
