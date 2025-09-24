@@ -29,7 +29,7 @@ export async function sendScheduleUpdate(
     const drivingTests = instructor.get('schedule_driving_test', { lean: true }) || [];
 
     const sseData = `data: ${JSON.stringify({
-      type: 'schedule-update',
+      type: 'update',
       instructorId,
       schedule: drivingTests,
       timestamp: new Date().toISOString()
