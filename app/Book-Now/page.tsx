@@ -138,13 +138,6 @@ export default function BookNowPage() {
   // Use SSE hook instead of polling
   const { schedule: sseSchedule, error: sseError, isConnected, isReady, forceRefresh } = useDrivingTestSSE(selectedInstructorId);
 
-  // Debug SSE connection
-  useEffect(() => {
-    // Debug logs (commented out for production)
-    // if (sseError) console.log("❌ SSE Error:", sseError);
-    // if (isConnected) console.log("✅ SSE Connected successfully");
-    // if (selectedInstructorId) console.log("🎯 Selected instructor ID:", selectedInstructorId);
-  }, [sseError, isConnected, selectedInstructorId]);
 
   useEffect(() => {
     async function fetchLocations() {
@@ -178,16 +171,10 @@ export default function BookNowPage() {
       return;
     }
     
-    // console.log('🔍 Processing SSE driving test schedule data:', {
-    //   selectedInstructorId,
-    //   sseScheduleLength: Array.isArray(sseSchedule) ? sseSchedule.length : 'not array',
-    //   isReady
-    // });
     
     // Los datos de schedule_driving_test ya son de tipo "driving test", no necesitamos filtrar
     const scheduleSlots = Array.isArray(sseSchedule) ? sseSchedule as SlotWithDate[] : [];
     
-    // console.log('📋 Driving test schedule slots to display:', scheduleSlots.length, scheduleSlots);
     
     const groupedSchedule: Schedule[] = Object.values(
       scheduleSlots.reduce((acc, curr) => {
@@ -208,18 +195,14 @@ export default function BookNowPage() {
       }, {} as Record<string, { date: string; slots: Slot[] }>)
     );
     
-    // console.log('📅 Grouped driving test schedule:', groupedSchedule);
     
     // Busca el instructor base por ID
     const base = instructors.find(i => i._id === selectedInstructorId);
-    // console.log('👨‍🏫 Found instructor base:', base?.name, 'with ID:', base?._id);
     
     if (base) {
       setSelectedInstructor({ ...base, schedule: groupedSchedule });
       setIsLoadingSchedule(false);
-      // console.log("✅ Instructor driving test schedule updated:", groupedSchedule.length, "days with slots");
     } else {
-      // console.log("❌ No instructor base found for ID:", selectedInstructorId);
       setIsLoadingSchedule(false);
     }
   }, [sseSchedule, selectedInstructorId, instructors, isReady]);
@@ -255,14 +238,11 @@ export default function BookNowPage() {
         const data = await response.json();
         
         if (data.success) {
-          // console.log('🔄 Updated available classes:', data.availableClasses.length);
           setAvailableClasses(data.availableClasses);
         } else {
-          // console.error('❌ Error updating available classes:', data.error);
           setAvailableClasses([]);
         }
       } catch {
-        // console.error('❌ Failed to update available classes:', error);
         setAvailableClasses([]);
       }
       setIsLoadingClasses(false);
@@ -275,7 +255,6 @@ export default function BookNowPage() {
   }, [updateAvailableClasses]);
 
   const handleSelectLocation = async (location: Location) => {
-    // console.log('🏢 Location selected:', location.zone, 'ID:', location._id);
     
     setIsLoadingClasses(true);
     setSelectedLocation(location);
@@ -292,14 +271,12 @@ export default function BookNowPage() {
         const data = await response.json();
         
         if (data.success) {
-          // console.log('✅ Available classes loaded:', data.availableClasses.length);
           setAvailableClasses(data.availableClasses);
           setInstructors(data.instructors);
           
           // Seleccionar automáticamente el primer instructor
           if (data.instructors && data.instructors.length > 0) {
             const firstInstructor = data.instructors[0];
-            // console.log('🎯 Auto-selecting first instructor:', firstInstructor.name);
             setIsLoadingSchedule(true);
             
             // Small delay to prevent rapid connection changes
@@ -310,11 +287,9 @@ export default function BookNowPage() {
             }, 100);
           }
         } else {
-          // console.error('❌ Error loading available classes:', data.error);
           setAvailableClasses([]);
         }
       } catch {
-        // console.error('❌ Failed to fetch available classes:', error);
         setAvailableClasses([]);
       }
     }
@@ -330,7 +305,6 @@ export default function BookNowPage() {
   const handleDateChange = (value: Date | Date[] | null) => {
     if (!value || Array.isArray(value)) return;
     
-    // console.log('📅 Date changed to:', value.toDateString());
     
     // When a specific date is selected, reset weekOffset to 0
     // This way getWeekDates will show the week containing the selected date
@@ -637,7 +611,6 @@ export default function BookNowPage() {
               if (paymentMethod === 'online') {
         // PAGO ONLINE: Agregar al carrito directamente y marcar slot como pending
                 try {
-          // console.log('🛒 Adding driving test to cart...');
           
           // Step 1: Add to cart with appointment details - this will mark slot as pending automatically
           const cartRes = await fetch('/api/cart/add-driving-test', {
@@ -661,7 +634,6 @@ export default function BookNowPage() {
           }
 
           await cartRes.json();
-          // console.log('✅ Driving test added to cart successfully');
 
           // Force refresh SSE to update calendar immediately
           if (forceRefresh) {
@@ -686,7 +658,6 @@ export default function BookNowPage() {
                     setSelectedSlot(null);
           
           // No need to show confirmation modal - item is added to cart silently
-          // console.log('✅ Driving test added to cart successfully - no modal needed');
             
               } catch (error) {
           console.error('❌ Error adding driving test to cart:', error);
@@ -819,7 +790,6 @@ export default function BookNowPage() {
                 minDate={new Date()}
                 onClickDay={(date) => {
                   // Use the handleDateChange function to update both date and week offset
-                  // console.log('📅 Calendar click on:', date.toDateString());
                   handleDateChange(date);
                 }}
               />
@@ -911,7 +881,6 @@ export default function BookNowPage() {
                 minDate={new Date()}
                 onClickDay={(date) => {
                   // Use the handleDateChange function to update both date and week offset
-                  // console.log('📅 Calendar click on:', date.toDateString());
                   handleDateChange(date);
                 }}
               />
@@ -1143,14 +1112,6 @@ export default function BookNowPage() {
               onClick={async () => {
                 if (slotToCancel && selectedInstructor) {
                   try {
-                    // console.log('🔥 Attempting to cancel slot:', {
-                    //   studentId: userId,
-                    //   instructorId: selectedInstructor._id,
-                    //   date: slotToCancel.dateString,
-                    //   start: slotToCancel.slot.start,
-                    //   end: slotToCancel.slot.end,
-                    //   slotId: slotToCancel.slot._id
-                    // });
                     
                     const res = await fetch('/api/booking/cancel', {
                       method: 'POST',
@@ -1171,7 +1132,6 @@ export default function BookNowPage() {
                     
                     if (res.ok) {
                       await res.json();
-                      // console.log('✅ Cancellation successful:', responseData);
                       
                       // Force refresh SSE to update calendar immediately
                       if (forceRefresh) {
@@ -1182,12 +1142,10 @@ export default function BookNowPage() {
                       setShowCancellation(true);
                     } else {
                       const errorData = await res.json();
-                      // console.error('❌ Cancellation failed:', errorData);
                       setCancellationMessage(`Could not cancel the booking: ${errorData.error || 'Please try again.'}`);
                       setShowCancellation(true);
                     }
                   } catch {
-                    // console.error('❌ Network error during cancellation:', error);
                     setCancellationMessage('Error cancelling booking. Please try again.');
                     setShowCancellation(true);
                   }
