@@ -168,14 +168,22 @@ export default function BookNowPage() {
 
     if (!isReady || !sseSchedule) {
       setIsLoadingSchedule(true);
-      return;
+
+      // Add timeout to prevent infinite loading
+      const loadingTimeout = setTimeout(() => {
+        console.log('⚠️ SSE loading timeout reached for instructor:', selectedInstructorId);
+        setIsLoadingSchedule(false);
+        // Optional: show error message to user
+      }, 10000); // 10 second timeout
+
+      return () => clearTimeout(loadingTimeout);
     }
-    
-    
+
+
     // Los datos de schedule_driving_test ya son de tipo "driving test", no necesitamos filtrar
     const scheduleSlots = Array.isArray(sseSchedule) ? sseSchedule as SlotWithDate[] : [];
-    
-    
+
+
     const groupedSchedule: Schedule[] = Object.values(
       scheduleSlots.reduce((acc, curr) => {
         if (!acc[curr.date]) acc[curr.date] = { date: curr.date, slots: [] };
@@ -194,11 +202,11 @@ export default function BookNowPage() {
         return acc;
       }, {} as Record<string, { date: string; slots: Slot[] }>)
     );
-    
-    
+
+
     // Busca el instructor base por ID
     const base = instructors.find(i => i._id === selectedInstructorId);
-    
+
     if (base) {
       setSelectedInstructor({ ...base, schedule: groupedSchedule });
       setIsLoadingSchedule(false);
