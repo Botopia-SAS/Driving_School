@@ -8,6 +8,15 @@ interface FAQItemProps {
   answer: string;
 }
 
+interface FAQSectionData {
+  label: string;
+  questions: FAQItemProps[];
+}
+
+interface FAQSections {
+  [key: string]: FAQSectionData;
+}
+
 const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
@@ -40,21 +49,24 @@ const FAQSection = ({ title, faqs }: { title: string; faqs: FAQItemProps[] }) =>
 };
 
 const FAQPage = () => {
-  const [drivingLessonsFaqs, setDrivingLessonsFaqs] = useState<FAQItemProps[]>([]);
-  const [adiFaqs, setAdiFaqs] = useState<FAQItemProps[]>([]);
+  const [faqSections, setFaqSections] = useState<FAQSections>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/faq")
       .then(res => res.json())
       .then(data => {
-        setDrivingLessonsFaqs(data?.drivingLessons || []);
-        setAdiFaqs(data?.advancedDrivingImprovementCourse || []);
+        setFaqSections(data || {});
         setLoading(false);
       });
   }, []);
 
   if (loading) return <div className="text-center py-20">Loading...</div>;
+
+  // Filter out sections with empty questions arrays
+  const sectionsWithContent = Object.entries(faqSections).filter(
+    ([, sectionData]) => sectionData.questions && sectionData.questions.length > 0
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 pt-40 pb-20">
@@ -63,9 +75,13 @@ const FAQPage = () => {
         <span className="text-black">Asked</span>{" "}
         <span className="text-green-600">Questions</span>
       </h1>
-      <FAQSection title="Driving Lessons" faqs={drivingLessonsFaqs} />
-      <div className="py-4" />
-      <FAQSection title="Advanced Driving Improvement Course" faqs={adiFaqs} />
+      
+      {sectionsWithContent.map(([sectionKey, sectionData], index) => (
+        <div key={sectionKey}>
+          <FAQSection title={sectionData.label} faqs={sectionData.questions} />
+          {index < sectionsWithContent.length - 1 && <div className="py-4" />}
+        </div>
+      ))}
     </div>
   );
 };
