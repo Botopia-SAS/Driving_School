@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback, ChangeEvent } from 'react';
+import React, { useEffect, useState } from 'react';
 import StudentList from '@/components/Students/StudentList';
 import StudentDetails from '@/components/Students/StudentDetails';
 import MailModal from '@/components/Students/MailModal';
@@ -12,7 +12,8 @@ interface Student {
   firstName: string;
   lastName: string;
   email: string;
-  dni: string;
+  licenseNumber?: string;
+  secondaryPhoneNumber: string;
 }
 
 interface ClassInfo {
@@ -79,14 +80,14 @@ function formatDateUTC(dateStr: string) {
 }
 
 // Extraer IDs de estudiantes (string u objeto)
-function extractStudentIds(studentsArr: any[]): string[] {
+function extractStudentIds(studentsArr: (string | { studentId?: string; _id?: string })[]): string[] {
   if (!Array.isArray(studentsArr)) return [];
   return studentsArr.map(s => {
     if (typeof s === 'string') return s;
     if (typeof s === 'object' && s.studentId) return s.studentId;
     if (typeof s === 'object' && s._id) return s._id;
     return null;
-  }).filter(Boolean);
+  }).filter((id): id is string => Boolean(id));
 }
 
 const StudentsPage = () => {
@@ -111,7 +112,6 @@ const StudentsPage = () => {
   const [mailBody, setMailBody] = useState('');
   const [mailSending, setMailSending] = useState(false);
   const [mailSent, setMailSent] = useState(false);
-  const [filterDate, setFilterDate] = useState<string>('');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -234,7 +234,7 @@ const StudentsPage = () => {
     (s.firstName || '').toLowerCase().includes(search.toLowerCase()) ||
     (s.lastName || '').toLowerCase().includes(search.toLowerCase()) ||
     (s.email || '').toLowerCase().includes(search.toLowerCase()) ||
-    (s.dni || '').toLowerCase().includes(search.toLowerCase()) ||
+    (s.licenseNumber || '').toLowerCase().includes(search.toLowerCase()) ||
     (s._id || '').includes(search)
   );
 
