@@ -6,7 +6,7 @@ interface Student {
   firstName: string;
   lastName: string;
   email: string;
-  dni: string;
+  secondaryPhoneNumber: string;
 }
 
 interface Props {
@@ -30,7 +30,7 @@ const StudentList: React.FC<Props> = ({ filtered, search, setSearch, handleSelec
     <aside className="w-full md:w-1/3 bg-white rounded-3xl shadow-2xl p-6 border border-[#e0e0e0]">
       <input
         type="text"
-        placeholder="Search by name, ID or DNI..."
+        placeholder="Search by name, ID or Phone..."
         className="w-full mb-4 p-2 border rounded text-black placeholder:text-gray-400"
         value={search}
         onChange={e => setSearch(e.target.value)}
@@ -41,7 +41,7 @@ const StudentList: React.FC<Props> = ({ filtered, search, setSearch, handleSelec
             <div>
               <div className="font-semibold text-[#0056b3]">{s.firstName} {s.lastName}</div>
               <div className="text-xs text-gray-500">{s.email}</div>
-              <div className="text-xs text-gray-500">DNI: {s.dni}</div>
+              <div className="text-xs text-gray-500">Phone 2: {s.secondaryPhoneNumber}</div>
             </div>
             <button
               className="ml-2 flex items-center justify-center bg-white border border-[#ea4335] text-[#ea4335] rounded-full p-2 hover:bg-[#ea4335] hover:text-white transition-all"

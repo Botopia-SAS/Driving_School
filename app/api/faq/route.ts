@@ -9,5 +9,7 @@ export async function GET() {
     await mongoose.connect(uri);
   }
   const faq = await FAQ.findOne({});
-  return NextResponse.json(faq);
+  
+  // Return the sections directly
+  return NextResponse.json(faq?.sections || {});
 } 

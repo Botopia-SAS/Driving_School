@@ -15,7 +15,8 @@ export interface IUser extends Document {
   middleName?: string;
   lastName: string;
   email: string;
-  dni: string;
+  phoneNumber: string;
+  secondaryPhoneNumber: string;
   ssnLast4?: string;
   hasLicense: boolean;
   licenseNumber?: string;
@@ -25,7 +26,6 @@ export interface IUser extends Document {
   city?: string;
   state?: string;
   zipCode?: string;
-  phoneNumber: string;
   sex: string;
   password: string;
   role: string;
@@ -43,7 +43,8 @@ const UserSchema = new Schema<IUser>({
   middleName: { type: String, required: false, default: "" },
   lastName: { type: String, required: true },
   email: { type: String, required: true },
-  dni: { type: String, required: true },
+  phoneNumber: { type: String, required: true },
+  secondaryPhoneNumber: { type: String, required: true },
   ssnLast4: { type: String, required: false, default: "0000" },
   hasLicense: { type: Boolean, required: true },
   licenseNumber: { type: String, required: false, default: "" },
@@ -53,7 +54,6 @@ const UserSchema = new Schema<IUser>({
   city: { type: String, required: false, default: "" },
   state: { type: String, required: false, default: "" },
   zipCode: { type: String, required: false, default: "" },
-  phoneNumber: { type: String, required: true },
   sex: { type: String, required: true },
   password: { type: String, required: true },
   role: { type: String, required: true },
