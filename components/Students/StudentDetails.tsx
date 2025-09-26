@@ -5,7 +5,7 @@ interface Student {
   firstName: string;
   lastName: string;
   email: string;
-  dni: string;
+  secondaryPhoneNumber: string;
 }
 
 interface ClassInfo {
@@ -34,7 +34,7 @@ const StudentDetails: React.FC<Props> = ({ selected, history, notesHistory, note
   return (
     <div className="w-full">
       <h2 className="text-2xl font-bold mb-2 text-[#0056b3]">{selected.firstName} {selected.lastName}</h2>
-      <div className="mb-4 text-gray-600">Email: {selected.email} | DNI: {selected.dni}</div>
+      <div className="mb-4 text-gray-600">Email: {selected.email} | Phone 2: {selected.secondaryPhoneNumber}</div>
       <h3 className="font-semibold text-lg mb-2 text-[#27ae60]">Class History</h3>
       <ul className="mb-4">
         {history.map(h => (

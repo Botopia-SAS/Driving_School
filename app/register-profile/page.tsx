@@ -8,7 +8,8 @@ import { useAuth } from '@/components/AuthContext';
 export default function RegisterProfilePage() {
   const [form, setForm] = useState({
     email: "",
-    dni: "",
+    phoneNumber: "",
+    secondaryPhoneNumber: "",
     password: "",
     confirmPassword: "",
     firstName: "",
@@ -19,7 +20,6 @@ export default function RegisterProfilePage() {
     licenseNumber: "",
     birthDate: "",
     sex: "M",
-    phoneNumber: "",
     role: "user"
   });
   const [loading, setLoading] = useState(false);
@@ -55,7 +55,7 @@ export default function RegisterProfilePage() {
     setLoading(true);
     setError("");
     const requiredFields = [
-      "email", "dni", "password", "confirmPassword", "firstName", "middleName", "lastName", "ssnLast4", "birthDate", "phoneNumber", "sex"
+      "email", "phoneNumber", "secondaryPhoneNumber", "password", "confirmPassword", "firstName", "middleName", "lastName", "ssnLast4", "birthDate", "sex"
     ];
     for (const field of requiredFields) {
       if (!form[field as keyof typeof form]) {
@@ -135,8 +135,9 @@ export default function RegisterProfilePage() {
           <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleSubmit}>
             {/* Email ocupa dos columnas */}
             <input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required className="col-span-1 md:col-span-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
-            {/* DNI ocupa dos columnas */}
-            <input name="dni" placeholder="DNI" value={form.dni || ''} onChange={handleChange} required className="col-span-1 md:col-span-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
+            {/* Phone Numbers ocupan dos columnas */}
+            <input name="phoneNumber" placeholder="Phone Number 1" value={form.phoneNumber || ''} onChange={handleChange} required className="rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
+            <input name="secondaryPhoneNumber" placeholder="Phone Number 2" value={form.secondaryPhoneNumber || ''} onChange={handleChange} required className="rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
             {/* Password y Confirm Password */}
             <input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required className="rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
             <input name="confirmPassword" type="password" placeholder="Confirm Password" value={form.confirmPassword} onChange={handleChange} required className="rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
@@ -146,8 +147,7 @@ export default function RegisterProfilePage() {
             {/* Last Name and SSN */}
             <input name="lastName" placeholder="Last Name" value={form.lastName} onChange={handleChange} required className="rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
             <input name="ssnLast4" placeholder="SSN Last 4" value={form.ssnLast4} onChange={handleChange} required className="rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
-            {/* Phone Number */}
-            <input name="phoneNumber" placeholder="Phone Number" value={form.phoneNumber} onChange={handleChange} className="col-span-1 md:col-span-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-900" />
+            {/* Birth Date */}
             {/* License Checkbox and License Number */}
             <div className="flex items-center gap-2 col-span-1">
               <input

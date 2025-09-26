@@ -34,7 +34,7 @@ export default function LoginModal({ open, onClose, initialMode = "login", onLog
     firstName: "",
     middleName: "",
     lastName: "",
-    dni: "",
+    secondaryPhoneNumber: "",
     birthYear: "",
     birthMonth: "",
     birthDay: "",
@@ -68,7 +68,7 @@ export default function LoginModal({ open, onClose, initialMode = "login", onLog
       firstName: "",
       middleName: "",
       lastName: "",
-      dni: "",
+      secondaryPhoneNumber: "",
       phoneNumber: "",
       birthYear: "",
       birthMonth: "",
@@ -320,7 +320,7 @@ export default function LoginModal({ open, onClose, initialMode = "login", onLog
     setRegisterError("");
     
     // Validaciones del segundo paso
-    if (!registerForm.firstName || !registerForm.lastName || !registerForm.dni || !registerForm.phoneNumber || !registerForm.birthYear || !registerForm.birthMonth || !registerForm.birthDay) {
+    if (!registerForm.firstName || !registerForm.lastName || !registerForm.secondaryPhoneNumber || !registerForm.phoneNumber || !registerForm.birthYear || !registerForm.birthMonth || !registerForm.birthDay) {
       setRegisterError("Please fill in all required fields.");
       setRegisterLoading(false);
       return;
@@ -551,19 +551,19 @@ export default function LoginModal({ open, onClose, initialMode = "login", onLog
                   className="rounded-md sm:rounded-lg border border-gray-300 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-3 text-gray-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-100 text-xs sm:text-sm md:text-base"
                 />
 
-                {/* DNI and Phone */}
+                {/* Phone Numbers */}
                 <input
-                  name="dni"
-                  placeholder="DNI or ID"
-                  value={registerForm.dni}
+                  name="phoneNumber"
+                  placeholder="Phone Number 1"
+                  value={registerForm.phoneNumber}
                   onChange={handleRegisterChange}
                   className="rounded-md sm:rounded-lg border border-gray-300 px-2 sm:px-3 py-1.5 sm:py-2 text-gray-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-100 text-xs sm:text-sm"
                   required
                 />
                 <input
-                  name="phoneNumber"
-                  placeholder="Phone Number"
-                  value={registerForm.phoneNumber}
+                  name="secondaryPhoneNumber"
+                  placeholder="Phone Number 2"
+                  value={registerForm.secondaryPhoneNumber}
                   onChange={handleRegisterChange}
                   className="rounded-md sm:rounded-lg border border-gray-300 px-2 sm:px-3 py-1.5 sm:py-2 text-gray-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-100 text-xs sm:text-sm"
                   required
