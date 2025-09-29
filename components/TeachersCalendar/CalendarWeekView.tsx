@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Class as CalendarClass } from './types';
-import { normalizeType, classTypeColors, statusDotColors, statusCardColors, statusBorderColors, blockBgColors, blockBorderColors, generateTimeSlots, generateDetailedTimeSlots } from './calendarUtils';
+import { normalizeType, classTypeColors, statusCardColors, statusBorderColors, generateDetailedTimeSlots } from './calendarUtils';
 import useIsMobile from '../hooks/useIsMobile';
 
 interface CalendarWeekViewProps {
@@ -18,12 +18,11 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   const monthLabel = selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
   const startHour = 6;
   const endHour = 20;
-  const timeLabels = generateTimeSlots(startHour, endHour);
-  const detailedTimeLabels = generateDetailedTimeSlots(startHour, endHour);
+  const timeLabels = generateDetailedTimeSlots(startHour, endHour);
 
-  // Calcular altura dinámica de celdas
-  const totalHours = endHour - startHour;
-  const baseCellHeight = isMobile ? 50 : `calc((100vh - 300px) / ${totalHours})`;
+  // Calcular altura dinámica de celdas (ahora con intervalos de 30 min)
+  const totalSlots = timeLabels.length;
+  const baseCellHeight = isMobile ? 25 : `calc((100vh - 300px) / ${totalSlots})`;
 
   const startOfWeek = new Date(selectedDate);
   startOfWeek.setDate(selectedDate.getDate() - ((startOfWeek.getDay() + 6) % 7));
@@ -64,42 +63,48 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
             </tr>
           </thead>
           <tbody>
-            {timeLabels.map((label) => (
+            {timeLabels.map((label) => {
+              const isHourLabel = label.endsWith(':00');
+              // Si es media hora, omitir la celda de tiempo ya que la hora anterior la abarca con rowSpan
+              return (
               <tr key={label}>
-                <td className="border text-center font-bold sticky left-0 z-20 relative" style={{ color: '#27ae60', border: '2px solid #e0e0e0', background: '#fff', width: isMobile ? '80px' : '70px', minWidth: isMobile ? '80px' : '70px', fontSize: isMobile ? '0.9rem' : '0.8rem', height: baseCellHeight }}>
-                  <div className="flex flex-col items-center justify-start h-full pt-1">
-                    <span className="font-bold">{label}</span>
-                    {/* Línea de separación en la parte inferior para marcar los 30 minutos */}
-                    <div className="absolute bottom-0 left-0 w-full h-px bg-gray-300"></div>
-                  </div>
-                </td>
+                {isHourLabel ? (
+                  <td rowSpan={2} className="border text-center font-bold sticky left-0 z-20 relative" style={{ color: '#27ae60', border: '2px solid #e0e0e0', background: '#fff', width: isMobile ? '80px' : '70px', minWidth: isMobile ? '80px' : '70px', fontSize: isMobile ? '0.9rem' : '0.8rem', height: baseCellHeight }}>
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <span className="font-bold">{label}</span>
+                    </div>
+                  </td>
+                ) : null}
                 {weekDays.map((d, colIdx) => {
                   const key = d.toISOString().slice(0, 10);
                   const dayClasses = (classesByDay[key] || []).slice().filter(c => c.start && c.end);
                   // Buscar si hay una clase que inicia en este slot
                   const classBlock = dayClasses.find(c => c.start === label);
                   if (classBlock) {
-                    // Calcular cuántos slots abarca la clase
+                    // Calcular cuántos slots abarca la clase (en intervalos de 30 min)
                     const [startHour, startMin] = classBlock.start!.split(':').map(Number);
                     const [endHour, endMin] = classBlock.end!.split(':').map(Number);
-                    // Calcular slots en base a intervalos de 1 hora (no 30 min)
-                    let slots = Math.ceil((endHour * 60 + endMin - startHour * 60 - startMin) / 60);
+                    // Calcular la duración en minutos
+                    const durationMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+                    // Calcular slots en base a intervalos de 30 minutos
+                    let slots = Math.ceil(durationMinutes / 30);
                     if (slots < 1) slots = 1;
 
-                    const cellHeight = isMobile ? 50 * slots : `calc(${slots} * (100vh - 300px) / ${totalHours})`;
+                    // Para clases de exactamente 30 minutos, no hacer rowSpan para que se vea mejor
+                    const shouldSpan = durationMinutes > 30;
+                    const actualRowSpan = shouldSpan ? slots : 1;
+
+                    const cellHeight = isMobile ? 25 * slots : shouldSpan ? `calc(${slots} * (100vh - 300px) / ${totalSlots})` : baseCellHeight;
                     // Normalizar el tipo de clase para buscar el color
                     const normalizedType = normalizeType(classBlock.classType ?? '');
                     const status = classBlock.status ?? 'available';
-                    const blockBg = blockBgColors[normalizedType] || '#fff';
-                    const blockBorder = blockBorderColors[normalizedType] || '#e0e0e0';
                     const typeText = classTypeColors[normalizedType] || '';
-                    const badgeColor = statusDotColors[status] || 'bg-gray-400';
                     const cardBgColor = statusCardColors[status] || 'bg-white border-gray-200';
                     const borderColor = statusBorderColors[status] || 'border-l-gray-400';
                     return (
                       <td
                         key={colIdx}
-                        rowSpan={slots}
+                        rowSpan={actualRowSpan}
                         className={`align-middle relative overflow-hidden transition-all duration-200 hover:shadow-lg cursor-pointer`}
                         style={{
                           padding: isMobile ? 4 : 2,
@@ -120,19 +125,8 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                           }}
                         >
                           <div className="flex flex-col h-full justify-center items-center text-center">
-                            <div className={`font-bold ${isMobile ? 'text-sm mb-2' : 'text-xs mb-1'} ${typeText.split(' ')[1]} leading-tight`}>
+                            <div className={`font-bold ${isMobile ? 'text-sm' : 'text-xs'} ${typeText.split(' ')[1]} leading-tight`}>
                               {classBlock.classType?.replace(/\b\w/g, l => l.toUpperCase())}
-                            </div>
-                            <div className={`${isMobile ? 'text-sm' : 'text-xs'} text-gray-600 font-medium ${isMobile ? 'mb-1' : 'mb-0'}`}>
-                              {classBlock.start} - {classBlock.end}
-                            </div>
-                            <div className={`${isMobile ? 'text-sm' : 'text-xs'} font-semibold capitalize ${
-                              status === 'scheduled' ? 'text-blue-700' :
-                              status === 'cancelled' ? 'text-red-700' :
-                              status === 'pending' ? 'text-orange-700' :
-                              'text-gray-600'
-                            }`}>
-                              {status}
                             </div>
                           </div>
                         </div>
@@ -156,14 +150,13 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                   return (
                     <td key={colIdx} className="border text-center align-middle bg-white relative" style={{ border: '2px solid #e0e0e0', height: baseCellHeight, minHeight: baseCellHeight, width: `${100/7}%` }}>
                       <div className="flex items-center justify-center w-full h-full">
-                        {/* Línea de separación en la parte inferior para marcar los 30 minutos */}
-                        <div className="absolute bottom-0 left-0 w-full h-px bg-gray-300"></div>
                       </div>
                     </td>
                   );
                 })}
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
