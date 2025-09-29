@@ -8,8 +8,8 @@ interface CalendarSidebarsProps {
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
   view: 'week' | 'month' | 'day';
-  classFilter: 'scheduled' | 'cancelled' | 'available';
-  setClassFilter: (filter: 'scheduled' | 'cancelled' | 'available') => void;
+  classFilter: 'scheduled' | 'cancelled' | 'available' | 'pending';
+  setClassFilter: (filter: 'scheduled' | 'cancelled' | 'available' | 'pending') => void;
   summaryClasses: CalendarClass[];
   sidebar: 'left' | 'right';
 }
@@ -56,16 +56,29 @@ export const CalendarSidebars: React.FC<CalendarSidebarsProps> = ({
 
   if (sidebar === 'left') {
     return (
-      <aside className="hidden md:flex flex-col w-full md:w-72 bg-gradient-to-br from-[#e3f6fc] via-[#eafaf1] to-[#d4f1f4] border-l-4 border-[#27ae60] rounded-2xl shadow-2xl p-6 h-[95%] min-h-[600px] relative overflow-hidden" style={{ height: '95vh' }}>
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-[#0056b3] mb-2">Calendars</h2>
-          <ul className="space-y-2 text-black">
-            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#0056b3]"></span> Scheduled</li>
-            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#f44336]"></span> Cancelled</li>
-            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-gray-400"></span> Available</li>
+      <aside className="hidden md:flex flex-col w-64 bg-gradient-to-br from-[#e3f6fc] via-[#eafaf1] to-[#d4f1f4] border-l-4 border-[#27ae60] rounded-2xl shadow-2xl p-4 h-full relative overflow-hidden">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-[#0056b3] mb-3">Calendars</h2>
+          <ul className="space-y-3 text-black">
+            <li className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200">
+              <span className="w-4 h-4 rounded-full bg-[#0056b3]"></span>
+              <span className="font-semibold text-[#0056b3]">Scheduled</span>
+            </li>
+            <li className="flex items-center gap-2 p-2 rounded-lg bg-red-50 border border-red-200">
+              <span className="w-4 h-4 rounded-full bg-[#f44336]"></span>
+              <span className="font-semibold text-[#f44336]">Cancelled</span>
+            </li>
+            <li className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200">
+              <span className="w-4 h-4 rounded-full bg-gray-400"></span>
+              <span className="font-semibold text-gray-600">Available</span>
+            </li>
+            <li className="flex items-center gap-2 p-2 rounded-lg bg-orange-50 border border-orange-200">
+              <span className="w-4 h-4 rounded-full bg-[#ff9800]"></span>
+              <span className="font-semibold text-[#ff9800]">Pending</span>
+            </li>
           </ul>
         </div>
-        <div>
+        <div className="flex-1 min-h-0">
           <h2 className="text-lg font-bold text-[#0056b3] mb-2">Month</h2>
           <div className="bg-white/70 rounded-lg p-2 text-center text-gray-500 border border-[#27ae60]">
             <MiniCalendar value={selectedDate} onChange={(date) => {
@@ -83,14 +96,15 @@ export const CalendarSidebars: React.FC<CalendarSidebarsProps> = ({
   }
 
   return (
-    <aside className="hidden lg:flex flex-col w-full lg:w-80 bg-gradient-to-br from-[#e3f6fc] via-[#eafaf1] to-[#d4f1f4] border-r-4 border-[#0056b3] rounded-2xl shadow-2xl p-6 h-[95%] min-h-[600px] relative overflow-hidden" style={{ height: '95vh' }}>
+    <aside className="hidden lg:flex flex-col w-72 bg-gradient-to-br from-[#e3f6fc] via-[#eafaf1] to-[#d4f1f4] border-r-4 border-[#0056b3] rounded-2xl shadow-2xl p-4 h-full relative overflow-hidden">
       <h2 className="text-lg font-bold text-[#0056b3] mb-4">Class Summary</h2>
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => setClassFilter('scheduled')} className={`px-3 py-1 rounded font-semibold border text-sm ${classFilter==='scheduled' ? 'bg-[#0056b3] text-white' : 'bg-white text-[#0056b3] border-[#0056b3]'}`}>Scheduled</button>
-        <button onClick={() => setClassFilter('cancelled')} className={`px-3 py-1 rounded font-semibold border text-sm ${classFilter==='cancelled' ? 'bg-[#f44336] text-white' : 'bg-white text-[#f44336] border-[#f44336]'}`}>Cancelled</button>
-        <button onClick={() => setClassFilter('available')} className={`px-3 py-1 rounded font-semibold border text-sm ${classFilter==='available' ? 'bg-gray-400 text-white' : 'bg-white text-gray-400 border-gray-400'}`}>Available</button>
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <button onClick={() => setClassFilter('scheduled')} className={`px-2 py-1 rounded font-semibold border text-xs ${classFilter==='scheduled' ? 'bg-[#0056b3] text-white' : 'bg-white text-[#0056b3] border-[#0056b3]'}`}>Scheduled</button>
+        <button onClick={() => setClassFilter('cancelled')} className={`px-2 py-1 rounded font-semibold border text-xs ${classFilter==='cancelled' ? 'bg-[#f44336] text-white' : 'bg-white text-[#f44336] border-[#f44336]'}`}>Cancelled</button>
+        <button onClick={() => setClassFilter('available')} className={`px-2 py-1 rounded font-semibold border text-xs ${classFilter==='available' ? 'bg-gray-400 text-white' : 'bg-white text-gray-400 border-gray-400'}`}>Available</button>
+        <button onClick={() => setClassFilter('pending')} className={`px-2 py-1 rounded font-semibold border text-xs ${classFilter==='pending' ? 'bg-[#ff9800] text-white' : 'bg-white text-[#ff9800] border-[#ff9800]'}`}>Pending</button>
       </div>
-      <div className="font-bold mb-1" style={{ color: classFilter === 'scheduled' ? '#0056b3' : classFilter === 'cancelled' ? '#f44336' : '#888' }}>
+      <div className="font-bold mb-1" style={{ color: classFilter === 'scheduled' ? '#0056b3' : classFilter === 'cancelled' ? '#f44336' : classFilter === 'pending' ? '#ff9800' : '#888' }}>
         {classFilter.charAt(0).toUpperCase() + classFilter.slice(1)}
       </div>
       {/* Panel derecho: lista agrupada de rangos por día */}
@@ -103,7 +117,14 @@ export const CalendarSidebars: React.FC<CalendarSidebarsProps> = ({
               if (String(status) === 'canceled' || String(status) === 'cancelled') status = 'cancelled';
               return status === classFilter;
             });
-            if (filtered.length === 0) return null;
+            if (filtered.length === 0) {
+              return (
+                <li className="text-center py-4 text-gray-400">
+                  <div className="text-sm">No {classFilter} classes</div>
+                  <div className="text-xs">for this period</div>
+                </li>
+              );
+            }
             // Agrupar por fecha
             const byDate: Record<string, Partial<CalendarClass>[]> = {};
             filtered.forEach(slot => {
@@ -149,6 +170,7 @@ export const CalendarSidebars: React.FC<CalendarSidebarsProps> = ({
                         ${classFilter === 'available' ? 'bg-[#eafaf1] text-[#27ae60] border border-[#27ae60]' : ''}
                         ${classFilter === 'scheduled' ? 'bg-[#0056b3] text-white' : ''}
                         ${classFilter === 'cancelled' ? 'bg-[#f44336] text-white' : ''}
+                        ${classFilter === 'pending' ? 'bg-[#ff9800] text-white' : ''}
                       `} style={{marginBottom: 4}}>
                         {r.start}-{r.end}
                       </span>

@@ -41,7 +41,7 @@ const InstructorCalendar: React.FC<{
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-[#0056b3] text-center text-lg font-semibold">
           Visualiza los espacios libres y agenda tu clase en uno de ellos.<br />No puedes editar ni cancelar reservas.
         </div>
-        <CalendarView classes={classes} onScheduleUpdate={onScheduleUpdate} onClassClick={() => {}} />
+        <CalendarView classes={classes} onScheduleUpdate={onScheduleUpdate} onClassClick={(classData) => {}} />
       </div>
     );
   }

@@ -30,7 +30,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<CalendarClass | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [classFilter, setClassFilter] = useState<'scheduled' | 'cancelled' | 'available'>('scheduled');
+  const [classFilter, setClassFilter] = useState<'scheduled' | 'cancelled' | 'available' | 'pending'>('scheduled');
   const [studentInfo, setStudentInfo] = useState<{ firstName?: string; lastName?: string; email?: string; phone?: string; address?: string; emergencyContact?: string } | null>(null);
   const [ticketClassInfo, setTicketClassInfo] = useState<unknown>(null);
   const [drivingClassInfo, setDrivingClassInfo] = useState<unknown>(null);
@@ -103,22 +103,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       onClassClick(block);
       return;
     }
-    // Por defecto, solo scheduled
-    if (block.status === 'scheduled') {
-      setSelectedBlock(block);
-      setModalOpen(true);
-      if (block.studentId) {
-        setStudentInfo(null);
-        try {
-          const res = await fetch(`/api/users?id=${block.studentId}`);
-          const data = await res.json();
-          setStudentInfo(data);
-        } catch {
-          setStudentInfo({ firstName: 'Not found', lastName: '' });
-        }
-      } else {
-        setStudentInfo(null);
+    // Por defecto, abrir modal para cualquier estado
+    setSelectedBlock(block);
+    setModalOpen(true);
+    if (block.studentId) {
+      setStudentInfo(null);
+      try {
+        const res = await fetch(`/api/users?id=${block.studentId}`);
+        const data = await res.json();
+        setStudentInfo(data);
+      } catch {
+        setStudentInfo({ firstName: 'Not found', lastName: '' });
       }
+    } else {
+      setStudentInfo(null);
     }
     onClassClick(block);
   };
@@ -206,32 +204,36 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   // El return principal del componente debe estar fuera de cualquier función
   return (
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col overflow-hidden">
       {/* Encabezado único y margen superior responsivo */}
-      <CalendarHeader
-        view={view}
-        setView={setView}
-        selectedDate={selectedDate}
-        handlePrev={handlePrev}
-        handleNext={handleNext}
-      />
+      <div className="flex-shrink-0">
+        <CalendarHeader
+          view={view}
+          setView={setView}
+          selectedDate={selectedDate}
+          handlePrev={handlePrev}
+          handleNext={handleNext}
+        />
+      </div>
 
-      <div className="flex gap-8 w-full flex-col lg:flex-row">
+      <div className="flex gap-4 w-full flex-1 min-h-0 flex-col lg:flex-row">
         {/* Sidebar izquierda */}
         {!hideSidebars && !isMobile && (
-          <CalendarSidebars
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
-            view={view}
-            classFilter={classFilter}
-            setClassFilter={setClassFilter}
-            summaryClasses={summaryClasses}
-            sidebar="left"
-          />
+          <div className="flex-shrink-0">
+            <CalendarSidebars
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              view={view}
+              classFilter={classFilter}
+              setClassFilter={setClassFilter}
+              summaryClasses={summaryClasses}
+              sidebar="left"
+            />
+          </div>
         )}
 
         {/* Calendario central */}
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 overflow-auto">
           {isMobile ? (
             <CalendarMobileViews
               view={view}
@@ -258,35 +260,43 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
         {/* Sidebar derecha */}
         {!hideSidebars && !isMobile && (
-          <CalendarSidebars
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
-            view={view}
-            classFilter={classFilter}
-            setClassFilter={setClassFilter}
-            summaryClasses={summaryClasses}
-            sidebar="right"
-          />
+          <div className="flex-shrink-0">
+            <CalendarSidebars
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              view={view}
+              classFilter={classFilter}
+              setClassFilter={setClassFilter}
+              summaryClasses={summaryClasses}
+              sidebar="right"
+            />
+          </div>
         )}
       </div>
 
       {/* Modales */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
-        <CalendarModalContent
-          selectedBlock={selectedBlock}
-          studentInfo={studentInfo}
-          ticketClassInfo={ticketClassInfo}
-          drivingClassInfo={drivingClassInfo}
-          locationInfo={locationInfo}
-          studentsInfo={studentsInfo}
-          loadingExtra={loadingExtra}
-        />
-        <button
-          className="bg-[#0056b3] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#27ae60] transition-all mt-8 w-full shadow text-base sm:text-lg"
-          onClick={() => setModalOpen(false)}
-        >
-          Close
-        </button>
+        <div className="flex flex-col h-full">
+          <div className="flex-1 overflow-y-auto">
+            <CalendarModalContent
+              selectedBlock={selectedBlock}
+              studentInfo={studentInfo}
+              ticketClassInfo={ticketClassInfo}
+              drivingClassInfo={drivingClassInfo}
+              locationInfo={locationInfo}
+              studentsInfo={studentsInfo}
+              loadingExtra={loadingExtra}
+            />
+          </div>
+          <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
+            <button
+              className="bg-[#0056b3] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#27ae60] transition-all w-full shadow text-sm"
+              onClick={() => setModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>

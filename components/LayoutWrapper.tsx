@@ -11,14 +11,15 @@ interface LayoutWrapperProps {
 export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const pathname = usePathname();
   const isPaymentSuccess = pathname?.includes("/payment-success") || false;
+  const isMyschedule = pathname?.includes("/myschedule") || false;
 
   return (
     <>
-      {!isPaymentSuccess && <Header />}
-      <main className={`relative ${isPaymentSuccess ? 'min-h-screen' : 'min-h-screen'}`}>
+      {!isPaymentSuccess && !isMyschedule && <Header />}
+      <main className={`relative ${isPaymentSuccess || isMyschedule ? 'min-h-screen' : 'min-h-screen'}`}>
         {children}
       </main>
-      {!isPaymentSuccess && <Footer />}
+      {!isPaymentSuccess && !isMyschedule && <Footer />}
     </>
   );
 }

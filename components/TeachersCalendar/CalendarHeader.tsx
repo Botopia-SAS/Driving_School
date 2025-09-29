@@ -66,11 +66,8 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   }
 
   return (
-    <div className={`flex flex-col items-center justify-center ${isMobile ? 'mt-4' : 'mt-32 md:mt-16'} pb-4 px-2 w-full`}>
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-center tracking-wide mb-2 w-full whitespace-pre-line break-words" style={{ wordBreak: 'break-word', lineHeight: 1.1 }}>
-        <span className="text-[#0056b3]">INSTRUCTOR</span> <span className="text-[#27ae60]">SCHEDULE</span>
-      </h1>
-      <div className="flex items-center gap-2 mb-4 bg-white/70 rounded-xl shadow p-2 w-fit mx-auto">
+    <div className="flex items-center justify-center pb-2 px-2 w-full">
+      <div className="flex items-center gap-2 bg-white/70 rounded-xl shadow p-2 w-fit mx-auto">
         <button onClick={handlePrev} className="p-2 rounded-full bg-[#e3f6fc] hover:bg-[#27ae60] text-[#0056b3] hover:text-white shadow transition-all">
           <HiChevronLeft size={22} />
         </button>

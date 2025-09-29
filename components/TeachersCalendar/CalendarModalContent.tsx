@@ -25,80 +25,120 @@ export const CalendarModalContent: React.FC<CalendarModalContentProps> = ({
   if (!selectedBlock) return null;
 
   return (
-    <div className="py-6 px-2 w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-[#e0e0e0] mx-auto flex flex-col items-center justify-center" style={{ minWidth: '0', width: '100%' }}>
-      <h2 className="text-2xl font-extrabold mb-6 text-[#0056b3] text-center tracking-wide">Class Details</h2>
+    <div className="py-4 px-4 w-full" style={{ minWidth: '0', width: '100%' }}>
+      <div className="text-center mb-4">
+        <h2 className="text-xl font-extrabold text-[#0056b3] tracking-wide">Session Details</h2>
+        <div className={`inline-block px-3 py-1 rounded-full text-sm font-semibold mt-2 ${
+          selectedBlock.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+          selectedBlock.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+          selectedBlock.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+          'bg-gray-100 text-gray-600'
+        }`}>
+          {selectedBlock.status?.toUpperCase()}
+        </div>
+      </div>
       <div className="space-y-3 w-full">
-        <div><span className="font-semibold text-[#27ae60]">Date:</span> <span className="text-gray-800">{selectedBlock.date ? (selectedBlock.date instanceof Date ? selectedBlock.date.toLocaleDateString() : new Date(selectedBlock.date).toLocaleDateString()) : ''}</span></div>
-        <div><span className="font-semibold text-[#27ae60]">Start Hour:</span> <span className="text-gray-800">{selectedBlock.start ? selectedBlock.start : (selectedBlock.hour !== undefined ? `${selectedBlock.hour.toString().padStart(2, '0')}:00` : '')}</span></div>
-        <div><span className="font-semibold text-[#27ae60]">End Hour:</span> <span className="text-gray-800">{selectedBlock.end ? selectedBlock.end : (selectedBlock.hour !== undefined ? `${(selectedBlock.hour + 1).toString().padStart(2, '0')}:00` : '')}</span></div>
-        <div><span className="font-semibold text-[#0056b3]">Status:</span> <span className="capitalize text-gray-800">{selectedBlock.status}</span></div>
-        {selectedBlock.classType && (
-          <div><span className="font-semibold text-[#0056b3]">Class Type:</span> <span className="capitalize text-gray-800">{selectedBlock.classType}</span></div>
-        )}
+        {/* Basic Session Info */}
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-[#27ae60]">Date:</span>
+            <span className="text-gray-800 font-medium">
+              {selectedBlock.date ? (selectedBlock.date instanceof Date ? selectedBlock.date.toLocaleDateString() : new Date(selectedBlock.date).toLocaleDateString()) : ''}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-[#27ae60]">Time:</span>
+            <span className="text-gray-800 font-medium font-mono bg-white px-2 py-1 rounded">
+              {selectedBlock.start ? selectedBlock.start : (selectedBlock.hour !== undefined ? `${selectedBlock.hour.toString().padStart(2, '0')}:00` : '')}
+              {' - '}
+              {selectedBlock.end ? selectedBlock.end : (selectedBlock.hour !== undefined ? `${(selectedBlock.hour + 1).toString().padStart(2, '0')}:00` : '')}
+            </span>
+          </div>
+          {selectedBlock.classType && (
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[#0056b3]">Class Type:</span>
+              <span className="capitalize text-gray-800 font-medium bg-blue-50 px-2 py-1 rounded">
+                {selectedBlock.classType}
+              </span>
+            </div>
+          )}
+          {selectedBlock.amount !== undefined && (
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[#27ae60]">Amount:</span>
+              <span className="text-gray-800 font-bold text-lg">${selectedBlock.amount}</span>
+            </div>
+          )}
+          {selectedBlock.paymentMethod && (
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[#0056b3]">Payment Method:</span>
+              <span className="text-gray-800 font-medium capitalize">{selectedBlock.paymentMethod}</span>
+            </div>
+          )}
+        </div>
 
         {/* DRIVING TEST: igual que antes */}
         {selectedBlock.classType === 'driving test' && (
-          <div className="rounded-xl border border-[#f39c12] bg-[#fff7e6] p-3 mt-2 space-y-2">
-            <div className="font-bold text-[#f39c12] text-lg">Driving Test Details</div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-[#0056b3]">Pickup Location:</span>
-              {selectedBlock.pickupLocation ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-800">{selectedBlock.pickupLocation}</span>
-                  <div className="flex gap-1">
+          <div className="rounded-xl border border-[#f39c12] bg-[#fff7e6] p-3 space-y-2">
+            <div className="font-bold text-[#f39c12] text-base border-b border-orange-200 pb-1">Driving Test Details</div>
+
+            {selectedBlock.pickupLocation && (
+              <div className="space-y-2">
+                <span className="font-semibold text-[#0056b3] block">Pickup Location:</span>
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-gray-800 mb-2">{selectedBlock.pickupLocation}</div>
+                  <div className="flex gap-2">
                     <button
                       onClick={() => openNavigationLink(selectedBlock.pickupLocation!, 'maps')}
-                      className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
-                      title="Open in Google Maps"
+                      className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
                     >
-                      🗺️ Maps
+                      Google Maps
                     </button>
                     <button
                       onClick={() => openNavigationLink(selectedBlock.pickupLocation!, 'waze')}
-                      className="px-2 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
-                      title="Open in Waze"
+                      className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
                     >
-                      🚗 Waze
+                      Waze
                     </button>
                   </div>
                 </div>
-              ) : (
-                <span className="italic text-gray-400">Not specified</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-[#0056b3]">Dropoff Location:</span>
-              {selectedBlock.dropoffLocation ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-800">{selectedBlock.dropoffLocation}</span>
-                  <div className="flex gap-1">
+              </div>
+            )}
+
+            {selectedBlock.dropoffLocation && (
+              <div className="space-y-2">
+                <span className="font-semibold text-[#0056b3] block">Dropoff Location:</span>
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-gray-800 mb-2">{selectedBlock.dropoffLocation}</div>
+                  <div className="flex gap-2">
                     <button
                       onClick={() => openNavigationLink(selectedBlock.dropoffLocation!, 'maps')}
-                      className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
-                      title="Open in Google Maps"
+                      className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
                     >
-                      🗺️ Maps
+                      Google Maps
                     </button>
                     <button
                       onClick={() => openNavigationLink(selectedBlock.dropoffLocation!, 'waze')}
-                      className="px-2 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
-                      title="Open in Waze"
+                      className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
                     >
-                      🚗 Waze
+                      Waze
                     </button>
                   </div>
                 </div>
-              ) : (
-                <span className="italic text-gray-400">Not specified</span>
-              )}
-            </div>
-            <div><span className="font-semibold text-[#0056b3]">Amount:</span> <span className="text-gray-800">{selectedBlock.amount !== undefined ? `$${selectedBlock.amount}` : <span className="italic text-gray-400">Not specified</span>}</span></div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-[#0056b3]">Paid:</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between p-2 bg-white rounded border">
+              <span className="font-semibold text-[#0056b3]">Payment Status:</span>
               {selectedBlock.paid ? (
-                <span className="inline-flex items-center gap-1 text-green-600 font-bold"><span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span> Paid</span>
+                <span className="inline-flex items-center gap-2 text-green-600 font-bold">
+                  <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                  Paid
+                </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-red-500 font-bold"><span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span> Not Paid</span>
+                <span className="inline-flex items-center gap-2 text-red-500 font-bold">
+                  <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                  Unpaid
+                </span>
               )}
             </div>
           </div>
@@ -137,75 +177,110 @@ export const CalendarModalContent: React.FC<CalendarModalContentProps> = ({
           </div>
         )}
 
+        {/* Student Information Section */}
         {!['ticket class', 'D.A.T.E.', 'A.D.I.', 'B.D.I.'].includes(normalizeType(selectedBlock.classType ?? '')) && (
           selectedBlock.studentId ? (
-            <div className="pt-2 border-t border-gray-200">
-              <span className="font-semibold text-[#0056b3] text-lg mb-2 block">Student Information:</span>
+            <div className="border-t border-gray-200 pt-3">
+              <h3 className="font-bold text-[#0056b3] text-base mb-2">Student Information</h3>
               {studentInfo ? (
-                <div className="bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">👤</span>
-                    <span className="text-gray-900 font-bold text-lg">{studentInfo.firstName} {studentInfo.lastName}</span>
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 p-3 rounded-lg space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                      {studentInfo.firstName?.[0]}{studentInfo.lastName?.[0]}
+                    </div>
+                    <div>
+                      <div className="font-bold text-lg text-gray-900">{studentInfo.firstName} {studentInfo.lastName}</div>
+                      <div className="text-sm text-gray-600">Student</div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-blue-600">📧</span>
-                      <span className="text-gray-700">{studentInfo.email}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-white rounded border">
+                      <span className="text-sm font-semibold text-gray-600">Email</span>
+                      <a href={`mailto:${studentInfo.email}`} className="text-blue-600 hover:underline text-sm font-medium">
+                        {studentInfo.email}
+                      </a>
                     </div>
 
                     {studentInfo.phone && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-600">📞</span>
-                        <a href={`tel:${studentInfo.phone}`} className="text-blue-600 hover:underline">
+                      <div className="flex items-center justify-between p-2 bg-white rounded border">
+                        <span className="text-sm font-semibold text-gray-600">Phone</span>
+                        <a href={`tel:${studentInfo.phone}`} className="text-green-600 hover:underline text-sm font-medium">
                           {studentInfo.phone}
                         </a>
                       </div>
                     )}
 
-                    {studentInfo.address && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-purple-600">🏠</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-700">{studentInfo.address}</span>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => openNavigationLink(studentInfo.address!, 'maps')}
-                              className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
-                              title="Navigate to student address"
-                            >
-                              🗺️
-                            </button>
-                            <button
-                              onClick={() => openNavigationLink(studentInfo.address!, 'waze')}
-                              className="px-2 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
-                              title="Navigate with Waze"
-                            >
-                              🚗
-                            </button>
-                          </div>
+                    {selectedBlock.pickupLocation && (
+                      <div className="p-2 bg-white rounded border">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-gray-600">Pickup Location</span>
+                        </div>
+                        <div className="text-sm text-gray-800 mb-2">{selectedBlock.pickupLocation}</div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openNavigationLink(selectedBlock.pickupLocation!, 'maps')}
+                            className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                          >
+                            Google Maps
+                          </button>
+                          <button
+                            onClick={() => openNavigationLink(selectedBlock.pickupLocation!, 'waze')}
+                            className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
+                          >
+                            Waze
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedBlock.dropoffLocation && (
+                      <div className="p-2 bg-white rounded border">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-gray-600">Dropoff Location</span>
+                        </div>
+                        <div className="text-sm text-gray-800 mb-2">{selectedBlock.dropoffLocation}</div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openNavigationLink(selectedBlock.dropoffLocation!, 'maps')}
+                            className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                          >
+                            Google Maps
+                          </button>
+                          <button
+                            onClick={() => openNavigationLink(selectedBlock.dropoffLocation!, 'waze')}
+                            className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
+                          >
+                            Waze
+                          </button>
                         </div>
                       </div>
                     )}
 
                     {studentInfo.emergencyContact && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-red-600">🚨</span>
-                        <span className="text-gray-700">
-                          Emergency: <a href={`tel:${studentInfo.emergencyContact}`} className="text-red-600 hover:underline font-medium">
-                            {studentInfo.emergencyContact}
-                          </a>
-                        </span>
+                      <div className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+                        <span className="text-sm font-semibold text-red-600">Emergency Contact</span>
+                        <a href={`tel:${studentInfo.emergencyContact}`} className="text-red-600 hover:underline font-medium text-sm">
+                          {studentInfo.emergencyContact}
+                        </a>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <LoadingSpinner />
+                <div className="flex items-center justify-center py-4">
+                  <LoadingSpinner />
+                  <span className="ml-2 text-gray-600">Loading student information...</span>
+                </div>
               )}
             </div>
           ) : (
-            <div className="pt-2 border-t border-gray-200 text-gray-400"><span className="font-semibold">Student:</span> Not assigned</div>
+            <div className="border-t border-gray-200 pt-4">
+              <div className="text-center py-4 text-gray-400">
+                <div className="text-lg font-semibold">No Student Assigned</div>
+                <div className="text-sm">This session is available for booking</div>
+              </div>
+            </div>
           )
         )}
       </div>

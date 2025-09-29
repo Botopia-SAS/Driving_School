@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Class as CalendarClass } from './types';
-import { normalizeType, blockBgColors, blockBorderColors, statusDotColors } from './calendarUtils';
+import { normalizeType, blockBgColors, blockBorderColors, statusDotColors, statusCardColors, statusBorderColors } from './calendarUtils';
 
 interface CalendarMobileViewsProps {
   view: 'week' | 'month' | 'day';
@@ -86,46 +86,48 @@ export const CalendarMobileViews: React.FC<CalendarMobileViewsProps> = ({
               <div className="p-3">
                 {dayClasses.length === 0 ? (
                   <div className="text-center py-4 text-gray-400">
-                    <div className="text-2xl mb-1">🏖️</div>
-                    <div className="text-sm">No classes today</div>
+                    <div className="text-lg font-semibold mb-1">No Classes</div>
+                    <div className="text-sm">Free day</div>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {dayClasses.map((event) => {
                       const normalizedType = normalizeType(event.classType ?? '');
-                      const blockBg = blockBgColors[normalizedType] || '#fff';
-                      const blockBorder = blockBorderColors[normalizedType] || '#e0e0e0';
-                      const badgeColor = statusDotColors[(event.status ?? '') as string] || 'bg-gray-400';
+                      const status = event.status ?? 'available';
+                      const cardBgColor = statusCardColors[status] || 'bg-white border-gray-200';
+                      const borderColor = statusBorderColors[status] || 'border-l-gray-400';
 
                       return (
                         <div
                           key={event.id}
-                          className="relative rounded-lg p-3 border-l-4 cursor-pointer transition-all hover:shadow-md transform hover:scale-[1.02] hover:bg-gray-50"
+                          className={`relative rounded-lg p-3 border-l-4 ${borderColor} ${cardBgColor} cursor-pointer transition-all hover:shadow-md transform hover:scale-[1.02]`}
                           style={{
-                            background: blockBg,
-                            borderLeftColor: blockBorder,
                             boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                           }}
                           onClick={() => handleTimeBlockClick(event)}
                         >
-                          {/* Status dot */}
-                          <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${badgeColor}`}></div>
-
-                          <div className="pr-6">
-                            <div className="flex items-center gap-2 mb-1">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
                               <div className="font-semibold text-sm text-gray-800">
                                 {event.classType?.replace(/\b\w/g, l => l.toUpperCase())}
+                              </div>
+                              <div className={`text-xs font-semibold capitalize px-2 py-1 rounded ${
+                                status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                                status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {status}
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                              <span className="font-mono bg-white px-2 py-1 rounded shadow-sm">
                                 {event.start} - {event.end}
                               </span>
                               {event.studentId && (
-                                <span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                  <span>👤</span>
-                                  <span>Student</span>
+                                <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">
+                                  Student Assigned
                                 </span>
                               )}
                             </div>
@@ -207,36 +209,40 @@ export const CalendarMobileViews: React.FC<CalendarMobileViewsProps> = ({
                 ) : (
                   <div className="space-y-1">
                     {slot.classes.map((event) => {
-                      const normalizedType = normalizeType(event.classType ?? '');
-                      const blockBg = blockBgColors[normalizedType] || '#fff';
-                      const blockBorder = blockBorderColors[normalizedType] || '#e0e0e0';
-                      const badgeColor = statusDotColors[(event.status ?? '') as string] || 'bg-gray-400';
+                      const status = event.status ?? 'available';
+                      const cardBgColor = statusCardColors[status] || 'bg-white border-gray-200';
+                      const borderColor = statusBorderColors[status] || 'border-l-gray-400';
 
                       return (
                         <div
                           key={event.id}
-                          className="relative rounded-lg p-3 shadow-sm border-l-4 cursor-pointer transition-all hover:shadow-md transform hover:scale-[1.02]"
+                          className={`relative rounded-lg p-3 shadow-sm border-l-4 ${borderColor} ${cardBgColor} cursor-pointer transition-all hover:shadow-md transform hover:scale-[1.02]`}
                           style={{
-                            background: blockBg,
-                            borderLeftColor: blockBorder,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                           }}
                           onClick={() => handleTimeBlockClick(event)}
                         >
-                          {/* Status indicator */}
-                          <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${badgeColor}`}></div>
-
-                          <div className="pr-4">
-                            <div className="font-semibold text-sm text-gray-800 mb-1">
-                              {event.classType?.replace(/\b\w/g, l => l.toUpperCase())}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold text-sm text-gray-800">
+                                {event.classType?.replace(/\b\w/g, l => l.toUpperCase())}
+                              </div>
+                              <div className={`text-xs font-semibold capitalize px-2 py-1 rounded ${
+                                status === 'scheduled' ? 'bg-blue-200 text-blue-800' :
+                                status === 'cancelled' ? 'bg-red-200 text-red-800' :
+                                status === 'pending' ? 'bg-orange-200 text-orange-800' :
+                                'bg-gray-200 text-gray-700'
+                              }`}>
+                                {status}
+                              </div>
                             </div>
+
                             <div className="text-xs text-gray-600 font-medium">
                               {event.start} - {event.end}
                             </div>
                             {event.studentId && (
-                              <div className="flex items-center gap-1 mt-1">
-                                <span className="text-xs">👤</span>
-                                <span className="text-xs text-gray-500">Student assigned</span>
+                              <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium inline-block">
+                                Student Assigned
                               </div>
                             )}
                           </div>
@@ -252,9 +258,8 @@ export const CalendarMobileViews: React.FC<CalendarMobileViewsProps> = ({
 
         {dayClasses.length === 0 && (
           <div className="p-8 text-center text-gray-400">
-            <div className="text-4xl mb-2">📅</div>
-            <div className="text-lg font-medium">No classes scheduled</div>
-            <div className="text-sm">Enjoy your free day!</div>
+            <div className="text-lg font-bold mb-2">No Classes Scheduled</div>
+            <div className="text-sm">Free day today!</div>
           </div>
         )}
       </div>

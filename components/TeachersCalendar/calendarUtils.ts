@@ -31,6 +31,24 @@ export const statusDotColors: Record<string, string> = {
   'booked': 'bg-[#0056b3]',
 };
 
+// Colores de fondo para las cards según el estado
+export const statusCardColors: Record<string, string> = {
+  'scheduled': 'bg-blue-50 border-blue-200',
+  'available': 'bg-gray-50 border-gray-200',
+  'cancelled': 'bg-red-50 border-red-200',
+  'pending': 'bg-orange-50 border-orange-200',
+  'booked': 'bg-blue-50 border-blue-200',
+};
+
+// Colores de borde lateral para las cards según el estado
+export const statusBorderColors: Record<string, string> = {
+  'scheduled': 'border-l-blue-500',
+  'available': 'border-l-gray-400',
+  'cancelled': 'border-l-red-500',
+  'pending': 'border-l-orange-500',
+  'booked': 'border-l-blue-500',
+};
+
 // Colores de fondo y borde para el bloque según classType
 export const classTypeBlockColors: Record<string, string> = {
   'ticket class': 'bg-[#eafaf1] border-[#27ae60]',
@@ -113,6 +131,15 @@ export function weekRangeLabel(date: Date) {
 }
 
 export function generateTimeSlots(startHour: number = 6, endHour: number = 20): string[] {
+  const timeSlots: string[] = [];
+  for (let h = startHour; h < endHour; h++) {
+    timeSlots.push(`${h.toString().padStart(2, '0')}:00`);
+  }
+  return timeSlots;
+}
+
+// Nueva función para generar slots con intervalos de 30 min (para compatibilidad con clases existentes)
+export function generateDetailedTimeSlots(startHour: number = 6, endHour: number = 20): string[] {
   const timeSlots: string[] = [];
   for (let h = startHour; h < endHour; h++) {
     timeSlots.push(`${h.toString().padStart(2, '0')}:00`);

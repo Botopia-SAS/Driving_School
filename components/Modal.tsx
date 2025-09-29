@@ -14,11 +14,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
       onClick={onClose}
     >
-      <div 
-        className="relative bg-white text-black rounded-2xl shadow-2xl border border-gray-200 max-h-[85vh] flex flex-col mx-4"
+      <div
+        className="relative bg-white text-black rounded-2xl shadow-2xl border border-gray-200 max-h-[90vh] flex flex-col mx-4"
         style={{
-          minWidth: '400px', 
-          maxWidth: '500px', 
+          minWidth: '350px',
+          maxWidth: '500px',
           width: '90vw',
           overflow: 'hidden'
         }}

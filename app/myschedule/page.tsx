@@ -8,7 +8,7 @@ import { useAuth } from "@/components/AuthContext";
 
 export default function TeachersPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [rawSchedule, setRawSchedule] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const instructorId = user && user.type === 'instructor' ? user._id : undefined;
@@ -86,13 +86,40 @@ export default function TeachersPage() {
   return (
     <>
       <AuthRedirector />
-      <div className="min-h-screen bg-gradient-to-br from-[#e8f6ef] via-[#f0f6ff] to-[#eafaf1] py-8 px-4 flex flex-col items-center justify-center">
-        <h1 className="text-4xl font-extrabold text-center mb-8 select-none">
-          <span className="text-[#0056b3]">INSTRUCTOR</span>{' '}
-          <span className="text-[#27ae60]">SCHEDULE</span>
-        </h1>
-        <div className="w-full max-w-8xl text-black flex flex-row gap-8">
-          <div className="flex-1">
+      <div className="min-h-screen max-h-screen bg-gradient-to-br from-[#e8f6ef] via-[#f0f6ff] to-[#eafaf1] p-4 flex flex-col overflow-hidden">
+        {/* Header con título y botón de logout */}
+        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+          <div className="flex-1"></div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-center select-none flex-1">
+            <span className="text-[#0056b3]">INSTRUCTOR</span>{' '}
+            <span className="text-[#27ae60]">SCHEDULE</span>
+          </h1>
+          <div className="flex-1 flex justify-end">
+            <div className="flex items-center gap-3">
+              {/* Información del usuario */}
+              <div className="text-right">
+                <div className="text-sm font-semibold text-[#0056b3]">{user?.name}</div>
+                <div className="text-xs text-gray-600">Instructor</div>
+              </div>
+              {/* Botón de logout */}
+              <button
+                onClick={() => {
+                  logout();
+                  router.push('/');
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 text-sm"
+                title="Cerrar Sesión"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 w-full text-black flex flex-row gap-4 min-h-0">
+          <div className="flex-1 min-w-0">
             <InstructorCalendar schedule={rawSchedule} onScheduleUpdate={() => {}} />
           </div>
         </div>
