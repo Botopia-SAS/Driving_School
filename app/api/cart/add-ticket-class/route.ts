@@ -167,15 +167,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Agregar al carrito del usuario
+    // Agregar al carrito del usuario usando findByIdAndUpdate
     try {
-      if (!user.cart) {
-        user.cart = [];
-      }
-
-      user.cart.push(cartItem);
       console.log('💾 Saving user cart...');
-      await user.save();
+      await User.findByIdAndUpdate(
+        userId,
+        { $push: { cart: cartItem } },
+        { runValidators: false }
+      );
       console.log('✅ Ticket class added to user cart successfully');
     } catch (userSaveError) {
       console.error('❌ Error saving user cart:', userSaveError);

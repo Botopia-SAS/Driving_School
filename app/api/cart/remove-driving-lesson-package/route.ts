@@ -84,10 +84,10 @@ export async function POST(req: NextRequest) {
       console.log('✅ All slots freed and marked as available');
     }
 
-    // Step 2: Remove from user's cart
+    // Step 2: Remove from user's cart using findByIdAndUpdate
     if (user.cart) {
-      user.cart = user.cart.filter((item: { id: string }) => item.id !== itemId);
-      await user.save();
+      const filteredCart = user.cart.filter((item: { id: string }) => item.id !== itemId);
+      await User.findByIdAndUpdate(userId, { cart: filteredCart }, { runValidators: false });
       console.log('✅ Package removed from cart successfully');
     }
 

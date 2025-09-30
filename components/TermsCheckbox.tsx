@@ -25,13 +25,22 @@ const TermsCheckbox: React.FC<TermsCheckboxProps> = ({
       />
       <label htmlFor="terms-checkbox" className="text-sm text-gray-700 cursor-pointer">
         I accept the{' '}
-        <Link 
-          href="/PrivacyPolicy" 
+        <Link
+          href="/TermsOfServices"
           className="text-blue-600 hover:text-blue-800 underline"
           target="_blank"
           rel="noopener noreferrer"
         >
           Terms and Conditions
+        </Link>
+        {' '}and{' '}
+        <Link
+          href="/PrivacyPolicy"
+          className="text-blue-600 hover:text-blue-800 underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Privacy Policy
         </Link>
       </label>
     </div>
