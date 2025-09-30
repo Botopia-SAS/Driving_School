@@ -128,8 +128,8 @@ export async function GET(req: NextRequest) {
       //console.log("[API][redirect] Buscando orden existente:", orderId);
       orderToUse = await Order.findById(orderId);
       if (!orderToUse) {
-        //console.log("[API][redirect] Orden no encontrada, redirigiendo a cart");
-        return NextResponse.redirect(`${BASE_URL}/cart?error=order-not-found`);
+        //console.log("[API][redirect] Orden no encontrada, redirigiendo a home");
+        return NextResponse.redirect(`${BASE_URL}/?error=order-not-found`);
       }
       items = orderToUse.items;
       total = orderToUse.total;
@@ -257,8 +257,8 @@ export async function GET(req: NextRequest) {
           // Si no hay órdenes pendientes, buscar en colección Cart (para otros productos)
           const cart = await Cart.findOne({ userId });
           if (!cart || !cart.items.length) {
-            console.log("[API][redirect] Carrito vacío en todas las ubicaciones, redirigiendo a cart");
-            return NextResponse.redirect(`${BASE_URL}/cart?error=empty`);
+            console.log("[API][redirect] Carrito vacío en todas las ubicaciones, redirigiendo a home");
+            return NextResponse.redirect(`${BASE_URL}/?error=cart-empty`);
           }
           items = cart.items;
           total = cart.items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
@@ -497,8 +497,7 @@ export async function GET(req: NextRequest) {
         
         // Limpiar carrito del usuario (para driving-lessons)
         if (user.cart && user.cart.length > 0) {
-          user.cart = [];
-          await user.save();
+          await User.findByIdAndUpdate(userId, { cart: [] }, { runValidators: false });
           console.log("[API][redirect] Carrito del usuario vaciado");
         } else {
           // Limpiar colección Cart (para otros productos)
@@ -905,8 +904,7 @@ export async function POST(req: NextRequest) {
       
       // Limpiar carrito del usuario (para driving-lessons)
       if (user.cart && user.cart.length > 0) {
-        user.cart = [];
-        await user.save();
+        await User.findByIdAndUpdate(userId, { cart: [] }, { runValidators: false });
         console.log("[API][redirect] Carrito del usuario vaciado");
       } else {
         // Limpiar colección Cart (para otros productos)

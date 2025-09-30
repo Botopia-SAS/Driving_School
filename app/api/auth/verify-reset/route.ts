@@ -36,7 +36,12 @@ export async function POST(req: NextRequest) {
   }
   // Hashear la nueva contraseña
   const hashed = await bcrypt.hash(password, 10);
-  user.password = hashed;
-  await user.save();
+
+  // Update password using findByIdAndUpdate or findOneAndUpdate
+  if (userType === 'instructor') {
+    await Instructor.findByIdAndUpdate(user._id, { password: hashed }, { runValidators: false });
+  } else {
+    await User.findByIdAndUpdate(user._id, { password: hashed }, { runValidators: false });
+  }
   return NextResponse.json({ success: true, userType });
 } 

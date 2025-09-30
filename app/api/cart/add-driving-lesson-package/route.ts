@@ -220,21 +220,21 @@ export async function POST(req: NextRequest) {
       addedAt: new Date()
     };
 
-    // Add to cart
-    if (!user.cart) {
-      user.cart = [];
-    }
-    user.cart.push(cartItem);
-    
+    // Add to cart using findByIdAndUpdate to avoid validation issues
     console.log('🔄 Saving cart to database...');
-    console.log('🔄 Cart items before save:', user.cart.length);
     console.log('🔄 Cart item to save:', cartItem);
-    
-    await user.save();
-    
-    // Verify the save worked
-    const savedUser = await User.findById(userId);
-    console.log('🔄 Cart items after save:', savedUser?.cart?.length || 0);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $push: { cart: cartItem } },
+      { new: true, runValidators: false } // Don't run validators to avoid secondaryPhoneNumber issue
+    );
+
+    if (!updatedUser) {
+      throw new Error('Failed to update user cart');
+    }
+
+    console.log('🔄 Cart items after save:', updatedUser.cart?.length || 0);
     console.log('✅ Package added to cart successfully');
 
     return NextResponse.json({

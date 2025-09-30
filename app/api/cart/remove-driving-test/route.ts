@@ -110,7 +110,8 @@ export async function POST(req: NextRequest) {
     const finalCartLength = user.cart?.length || 0;
     console.log(`🗑️ Removed ${initialCartLength - finalCartLength} items from cart`);
 
-    await user.save();
+    // Save cart using findByIdAndUpdate
+    await User.findByIdAndUpdate(userId, { cart: user.cart }, { runValidators: false });
 
     // Free the slot - set status back to available and remove ALL student info
     slot.status = 'available';

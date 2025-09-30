@@ -73,9 +73,8 @@ export async function POST(req: NextRequest) {
         }
       }
       
-      // Clear the user's cart
-      user.cart = [];
-      await user.save();
+      // Clear the user's cart using findByIdAndUpdate
+      await User.findByIdAndUpdate(userId, { cart: [] }, { runValidators: false });
       console.log("✅ User cart cleared and slots freed");
     } else {
       console.log("ℹ️ User cart is already empty");

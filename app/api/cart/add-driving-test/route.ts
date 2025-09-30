@@ -142,12 +142,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Agregar al carrito del usuario
-    if (!user.cart) {
-      user.cart = [];
-    }
-    user.cart.push(cartItem);
-    await user.save();
+    // Agregar al carrito del usuario usando findByIdAndUpdate
+    await User.findByIdAndUpdate(
+      userId,
+      { $push: { cart: cartItem } },
+      { runValidators: false }
+    );
 
     // Actualizar el slot a status "pending" - SOLO los campos necesarios para driving test
     slot.status = 'pending';
