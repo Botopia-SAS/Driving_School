@@ -7,6 +7,7 @@ export interface IContact extends Document {
   city?: string;
   subject: string;
   inquiry: string;
+  images?: string[];
 }
 
 const ContactSchema = new Schema<IContact>(
@@ -17,6 +18,7 @@ const ContactSchema = new Schema<IContact>(
     city: { type: String, required: false },
     subject: { type: String, required: true },
     inquiry: { type: String, required: true },
+    images: { type: [String], required: false, default: [] },
   },
   { timestamps: true }
 );

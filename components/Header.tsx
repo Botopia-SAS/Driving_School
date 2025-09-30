@@ -91,7 +91,7 @@ const Header = () => {
       <div className={`${isTeacherSection ? 'bg-gradient-to-br from-[#e8f6ef] via-[#f0f6ff] to-[#eafaf1]' : 'bg-transparent'} flex lg:justify-center gap-4 items-center py-2 text-sm font-sans relative`}>
         <Link
           href="/contact"
-          className={`hidden lg:flex ${isHome ? (isScrolled ? "text-[#0056b3]" : "text-white") : "text-[#0056b3]"} font-semibold hover:underline cursor-pointer`}
+          className={`hidden lg:flex ${isHome ? (isScrolled ? "text-[#0056b3]" : "text-white") : "text-[#0056b3]"} font-semibold underline cursor-pointer`}
         >
           Phone: <strong className="font-semibold">561 330 7007</strong>
         </Link>
