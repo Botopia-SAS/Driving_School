@@ -49,7 +49,7 @@ const ClassesPage: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* 📌 TÍTULO */}
         <h1 className="text-4xl font-extrabold text-gray-900 text-center mb-6 tracking-wide">
-          🚗 Driving Classes
+          Driving Classes
         </h1>
 
         {/* 📌 DESCRIPCIÓN */}
