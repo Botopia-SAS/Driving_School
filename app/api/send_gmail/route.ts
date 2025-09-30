@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
         <div style="max-width: 600px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); overflow: hidden;">
           <!-- Header -->
           <div style="background: linear-gradient(90deg, #0056b3 0%, #27ae60 100%); padding: 32px 0 24px 0; text-align: center;">
-            <img src="${logoUrl}" alt="Logo" width="80" style="margin-bottom: 12px;" />
+            <div style="background: white; border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 16px auto; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); overflow: hidden;">
+              <img src="${logoUrl}" alt="Logo" width="78" height="78" style="display: block; border-radius: 50%; object-fit: cover;" />
+            </div>
             <h1 style="color: #fff; font-size: 2rem; margin: 0; font-family: Arial, sans-serif; letter-spacing: 1px;">
               Driving School Notification
             </h1>
@@ -45,7 +47,9 @@ export async function POST(req: NextRequest) {
           </div>
           <!-- Footer -->
           <div style="background: linear-gradient(135deg, #0056b3, #000); color: white; padding: 32px 24px; border-radius: 0 0 36px 36px; text-align: center;">
-            <img src='${logoUrl}' alt='Logo' width='60' style='margin-bottom: 12px;' />
+            <div style="background: white; border-radius: 50%; width: 65px; height: 65px; margin: 0 auto 16px auto; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); overflow: hidden;">
+              <img src='${logoUrl}' alt='Logo' width='63' height='63' style='display: block; border-radius: 50%; object-fit: cover;' />
+            </div>
             <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 8px;">Affordable Driving<br/>Traffic School</div>
             <div style="margin-bottom: 8px; font-size: 1rem;">
               West Palm Beach, FL | <a href="mailto:info@drivingschoolpalmbeach.com" style="color: #fff; text-decoration: underline;">info@drivingschoolpalmbeach.com</a> | 561 330 7007

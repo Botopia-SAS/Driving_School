@@ -15,6 +15,19 @@ const ContactPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    return (
+      formData.name.trim() !== "" &&
+      formData.email.trim() !== "" &&
+      formData.phone.trim() !== "" &&
+      formData.subject.trim() !== ""
+    );
+  };
 
   const subjects = [
     "General Inquiry",
@@ -44,23 +57,77 @@ const ContactPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length + images.length > 5) {
+      setMessage("❌ Maximum 5 images allowed");
+      return;
+    }
+
+    setImages([...images, ...files]);
+
+    // Create previews
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
+  };
+
+  const convertImagesToBase64 = async (): Promise<string[]> => {
+    if (images.length === 0) return [];
+
+    const base64Images: string[] = [];
+
+    for (const image of images) {
+      try {
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(image);
+        });
+        base64Images.push(base64);
+      } catch (error) {
+        console.error("Error converting image to base64:", error);
+      }
+    }
+
+    return base64Images;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
     try {
+      // Convert images to base64
+      setUploadingImages(true);
+      const base64Images = await convertImagesToBase64();
+      setUploadingImages(false);
+
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          images: base64Images,
+        }),
       });
 
       if (!res.ok) {
         throw new Error("Error sending contact form");
       }
 
-      setMessage("✅ Form submitted successfully!");
+      setMessage("✅ Form submitted successfully! We'll get back to you soon.");
       setFormData({
         name: "",
         email: "",
@@ -69,6 +136,8 @@ const ContactPage = () => {
         subject: "General Inquiry",
         inquiry: "",
       });
+      setImages([]);
+      setImagePreviews([]);
     } catch (error) {
       console.error("Error submitting contact form:", error);
       setMessage("❌ Failed to submit. Try again.");
@@ -174,14 +243,79 @@ const ContactPage = () => {
               />
             </div>
 
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Attach Images (Optional - Max 5)
+              </label>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="hidden"
+                  id="image-upload"
+                  disabled={images.length >= 5}
+                />
+                <label
+                  htmlFor="image-upload"
+                  className={`flex items-center justify-center w-full px-4 py-3 border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
+                    images.length >= 5
+                      ? 'border-gray-300 bg-gray-100 cursor-not-allowed'
+                      : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400'
+                  }`}
+                >
+                  <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-blue-700 font-medium">
+                    {images.length >= 5 ? 'Maximum images reached' : 'Click to upload images'}
+                  </span>
+                </label>
+              </div>
+
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Submit Button */}
             <div className="pt-4">
               <button
                 type="submit"
                 className="w-full bg-blue-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg hover:shadow-xl hover:bg-blue-700 transform hover:-translate-y-1 transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                disabled={loading}
+                disabled={loading || uploadingImages || !isFormValid()}
               >
-                {loading ? (
+                {uploadingImages ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Uploading Images...
+                  </span>
+                ) : loading ? (
                   <span className="flex items-center justify-center">
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
