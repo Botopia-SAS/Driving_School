@@ -41,7 +41,7 @@ const OnlineCoursesPage: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* 📌 TÍTULO */}
         <h1 className="text-4xl font-extrabold text-gray-900 text-center mb-6 tracking-wide">
-          🚗 Online Driving Courses
+          Online Driving Courses
         </h1>
 
         {/* 📌 DESCRIPCIÓN */}

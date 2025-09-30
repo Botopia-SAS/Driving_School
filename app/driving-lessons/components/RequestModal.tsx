@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Modal from "@/components/Modal";
 import LocationInput from "@/components/LocationInput";
 import { useJsApiLoader } from "@react-google-maps/api";
+import TermsCheckbox from "@/components/TermsCheckbox";
 
 // Google Maps configuration
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -39,6 +40,14 @@ export default function RequestModal({
   const [pickupLocation, setPickupLocation] = useState<string>("");
   const [dropoffLocation, setDropoffLocation] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'local'>('online');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTermsAccepted(false);
+    }
+  }, [isOpen]);
   const pickupAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const dropoffAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   
@@ -81,12 +90,19 @@ export default function RequestModal({
       alert("Please fill in both pickup and dropoff locations.");
       return;
     }
+    
+    if (!termsAccepted) {
+      alert('Please accept the terms and conditions to continue.');
+      return;
+    }
+
     onRequestSchedule(pickupLocation, dropoffLocation, paymentMethod);
     onClose();
     // Reset form
     setPickupLocation("");
     setDropoffLocation("");
     setPaymentMethod('online');
+    setTermsAccepted(false);
   };
 
   return (
@@ -196,6 +212,15 @@ export default function RequestModal({
           </div>
         </div>
 
+        {/* Terms and Conditions Checkbox */}
+        <div className="mb-4 mt-4">
+          <TermsCheckbox
+            isChecked={termsAccepted}
+            onChange={setTermsAccepted}
+            className="justify-center"
+          />
+        </div>
+
         <div className="flex justify-center gap-2 mt-3">
           <button
             className="bg-gray-500 text-white px-4 py-1.5 rounded-lg hover:bg-gray-600 transition-colors font-semibold text-xs min-w-[80px]"
@@ -205,14 +230,14 @@ export default function RequestModal({
           </button>
           <button
             className={`px-4 py-1.5 rounded-lg font-semibold transition-colors text-xs min-w-[120px] ${
-              pickupLocation.trim() && dropoffLocation.trim()
+              pickupLocation.trim() && dropoffLocation.trim() && termsAccepted
                 ? paymentMethod === 'online' 
                   ? "bg-green-600 text-white hover:bg-green-700"
                   : "bg-blue-600 text-white hover:bg-blue-700"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
             onClick={handleRequestSchedule}
-            disabled={!pickupLocation.trim() || !dropoffLocation.trim()}
+            disabled={!pickupLocation.trim() || !dropoffLocation.trim() || !termsAccepted}
           >
             {paymentMethod === 'online' ? 'Add to Cart & Checkout' : 'Request Schedule'}
           </button>

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import AnimatedCounter from "./AnimatedCounter";
 
 const Hero = () => {
   return (
@@ -39,19 +40,34 @@ const Hero = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-center">
             <div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-black">
-                9,000<span className="text-[#4CAF50]">+</span>
+                <AnimatedCounter 
+                  end={9000} 
+                  duration={2500}
+                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-black"
+                />
+                <span className="text-[#4CAF50]">+</span>
               </h2>
               <p className="text-sm sm:text-base md:text-lg text-black">Students</p>
             </div>
             <div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-black">
-                5,000<span className="text-[#4CAF50]">+</span>
+                <AnimatedCounter 
+                  end={5000} 
+                  duration={2200}
+                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-black"
+                />
+                <span className="text-[#4CAF50]">+</span>
               </h2>
               <p className="text-sm sm:text-base md:text-lg text-black">Lessons</p>
             </div>
             <div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-black">
-                30<span className="text-[#4CAF50]">+</span>
+                <AnimatedCounter 
+                  end={30} 
+                  duration={1800}
+                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-black"
+                />
+                <span className="text-[#4CAF50]">+</span>
               </h2>
               <p className="text-sm sm:text-base md:text-lg text-black">Years of Experience</p>
             </div>
