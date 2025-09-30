@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "@/components/Modal";
+import TermsCheckbox from "@/components/TermsCheckbox";
 
 interface Instructor {
   _id: string;
@@ -50,7 +51,7 @@ interface BookingModalProps {
   selectedTimeSlot: SelectedTimeSlot | null;
   selectedInstructor: Instructor | null;
   onInstructorSelect: (instructor: Instructor | null) => void;
-  onBookPackage: () => void;
+  onBookPackage: (paymentMethod: 'online' | 'location') => void;
 }
 
 export default function BookingModal({
@@ -63,6 +64,17 @@ export default function BookingModal({
   onInstructorSelect,
   onBookPackage
 }: BookingModalProps) {
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'location'>('online');
+  
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTermsAccepted(false);
+      setPaymentMethod('online');
+    }
+  }, [isOpen]);
+  
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="p-6 text-black">
@@ -103,11 +115,45 @@ export default function BookingModal({
             <p className="mb-2"><strong>Description:</strong> {selectedProduct.description}</p>
           </div>
         )}
-        <div className="bg-yellow-50 p-4 rounded-lg mb-4">
-          <p className="text-sm text-yellow-800">
-            <strong>Next:</strong> You will be redirected to Calendly to schedule your lessons.
-          </p>
+        
+        {/* Payment Method Selection */}
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-2 text-center">Select Payment Method</h3>
+          <div className="space-y-2">
+            <label className="flex items-center justify-center p-2 border rounded-lg hover:bg-gray-50 cursor-pointer transition-all">
+              <input
+                type="radio"
+                name="paymentMethod"
+                value="online"
+                checked={paymentMethod === 'online'}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'location')}
+                className="mr-2"
+              />
+              <span className="text-green-600 font-medium">Add to Cart (Pay Online)</span>
+            </label>
+            <label className="flex items-center justify-center p-2 border rounded-lg hover:bg-gray-50 cursor-pointer transition-all">
+              <input
+                type="radio"
+                name="paymentMethod"
+                value="location"
+                checked={paymentMethod === 'location'}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'location')}
+                className="mr-2"
+              />
+              <span className="text-blue-600 font-medium">Pay at Location</span>
+            </label>
+          </div>
         </div>
+        
+        {/* Terms and Conditions Checkbox */}
+        <div className="mb-4">
+          <TermsCheckbox
+            isChecked={termsAccepted}
+            onChange={setTermsAccepted}
+            className="justify-center"
+          />
+        </div>
+        
         <div className="flex justify-center gap-3">
           <button
             className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
@@ -116,11 +162,17 @@ export default function BookingModal({
             Cancel
           </button>
           <button
-            className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
-            onClick={onBookPackage}
-            disabled={!!(selectedTimeSlot && selectedTimeSlot.instructors.length > 1 && !selectedInstructor)}
+            className={`px-6 py-2 rounded transition-all ${
+              !termsAccepted || !!(selectedTimeSlot && selectedTimeSlot.instructors.length > 1 && !selectedInstructor)
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : paymentMethod === 'online'
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+            onClick={() => onBookPackage(paymentMethod)}
+            disabled={!termsAccepted || !!(selectedTimeSlot && selectedTimeSlot.instructors.length > 1 && !selectedInstructor)}
           >
-            Continue to Calendly
+            {paymentMethod === 'online' ? 'Add to Cart' : 'Schedule & Pay Later'}
           </button>
         </div>
       </div>

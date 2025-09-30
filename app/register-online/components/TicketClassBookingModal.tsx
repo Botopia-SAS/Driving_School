@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "@/components/Modal";
 import { formatDateForDisplay } from "@/utils/dateFormat";
+import TermsCheckbox from "@/components/TermsCheckbox";
 
 interface TicketClassBookingModalProps {
   isOpen: boolean;
@@ -40,6 +41,15 @@ export default function TicketClassBookingModal({
   isProcessingBooking,
   onConfirm
 }: TicketClassBookingModalProps) {
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTermsAccepted(false);
+    }
+  }, [isOpen]);
+  
   if (!selectedTicketClass) return null;
 
   return (
@@ -112,6 +122,15 @@ export default function TicketClassBookingModal({
           </div>
         </div>
 
+        {/* Terms and Conditions Checkbox */}
+        <div className="mb-4">
+          <TermsCheckbox
+            isChecked={termsAccepted}
+            onChange={setTermsAccepted}
+            className="justify-center"
+          />
+        </div>
+
         <div className="mt-4 flex justify-center gap-3">
           <button
             className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
@@ -123,12 +142,14 @@ export default function TicketClassBookingModal({
           
           <button
             className={`px-6 py-2 rounded font-medium transition-all ${
-              paymentMethod === 'online'
+              !termsAccepted || isOnlinePaymentLoading || isProcessingBooking
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : paymentMethod === 'online'
                 ? 'bg-green-500 hover:bg-green-600 text-white'
                 : 'bg-blue-500 hover:bg-blue-600 text-white'
             }`}
             onClick={onConfirm}
-            disabled={isOnlinePaymentLoading || isProcessingBooking}
+            disabled={!termsAccepted || isOnlinePaymentLoading || isProcessingBooking}
           >
             {isOnlinePaymentLoading ? (
               <span className="flex items-center">

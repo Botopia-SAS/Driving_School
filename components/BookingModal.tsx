@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import TermsCheckbox from "./TermsCheckbox";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -21,6 +22,15 @@ const BookingModal: React.FC<BookingModalProps> = ({
   isProcessingBooking,
   onConfirm
 }) => {
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTermsAccepted(false);
+    }
+  }, [isOpen]);
+  
   if (!isOpen) return null;
 
   return (
@@ -110,6 +120,15 @@ const BookingModal: React.FC<BookingModalProps> = ({
              </div>
            </div>
 
+                     {/* Terms and Conditions Checkbox */}
+           <div className="mb-4">
+             <TermsCheckbox
+               isChecked={termsAccepted}
+               onChange={setTermsAccepted}
+               className="justify-center"
+             />
+           </div>
+
                      <div className="mt-4 flex justify-between gap-3">
              <button
                className="flex-1 bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-all duration-200 font-medium text-sm"
@@ -118,8 +137,12 @@ const BookingModal: React.FC<BookingModalProps> = ({
                Cancel
              </button>
              <button
-               className="flex-1 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-all duration-200 font-medium text-sm"
-               disabled={isProcessingBooking}
+               className={`flex-1 px-6 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${
+                 !termsAccepted || isProcessingBooking 
+                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                   : 'bg-blue-500 text-white hover:bg-blue-600'
+               }`}
+               disabled={!termsAccepted || isProcessingBooking}
                onClick={onConfirm}
              >
               {isProcessingBooking ? (

@@ -143,9 +143,8 @@ function DrivingLessonsContent() {
   
   // Only use SSE when we have instructors and they're not empty
   const { 
-    schedules, 
     getScheduleForInstructor 
-    // Removed unused variables: isConnectedForInstructor, getAllSchedules
+    // Removed unused variables: schedules, isConnectedForInstructor, getAllSchedules
   } = useAllDrivingLessonsSSE(instructorIds.length > 0 ? instructorIds : []);
 
 
@@ -211,7 +210,7 @@ function DrivingLessonsContent() {
           }
         } else {
         }
-      } catch (error) {
+      } catch {
       } finally {
         setInitialLoading(false);
       }
@@ -242,7 +241,7 @@ function DrivingLessonsContent() {
         }
       } else {
       }
-    } catch (error) {
+    } catch {
     }
   }, [selectedInstructorForSchedule]);
 
@@ -277,7 +276,7 @@ function DrivingLessonsContent() {
     return `${baseUrl}?${params.toString()}`;
   };
 
-  const handleBookPackage = async () => {
+  const handleBookPackage = async (paymentMethod: 'online' | 'location') => {
     if (!selectedProduct || !selectedInstructor || !selectedSlot || !userId) {
       if (!userId) {
         setShowAuthWarning(true);
@@ -287,15 +286,45 @@ function DrivingLessonsContent() {
     }
 
     try {
-      const calendlyUrl = generateCalendlyURL(selectedProduct, selectedInstructor, selectedSlot);
-      
-      setIsBookingModalOpen(false);
-      setConfirmationMessage(`Redirecting to schedule your ${selectedProduct.title} with ${selectedInstructor.name} on ${selectedSlot.date} at ${selectedSlot.start}...`);
-      setShowConfirmation(true);
-      
-      setTimeout(() => {
-        window.location.href = calendlyUrl;
-      }, 2000);
+      if (paymentMethod === 'online') {
+        // Add to cart for online payment
+        const cartItemId = `${selectedSlot.date}-${selectedSlot.start}-${selectedSlot.end}-${selectedInstructor._id}`;
+        const cartItem = {
+          _id: cartItemId,
+          id: cartItemId,
+          title: selectedProduct.title,
+          price: selectedProduct.price,
+          quantity: 1,
+          image: selectedProduct.media?.[0] || '/default-lesson.jpg',
+          category: 'driving_lesson',
+          date: selectedSlot.date,
+          start: selectedSlot.start,
+          end: selectedSlot.end,
+          instructorId: selectedInstructor._id,
+          instructorName: selectedInstructor.name,
+          classType: 'driving_lesson',
+          duration: selectedProduct.duration || 1,
+          description: selectedProduct.description
+        };
+        
+        addToCart(cartItem);
+        
+        setIsBookingModalOpen(false);
+        setConfirmationMessage(`${selectedProduct.title} has been added to your cart. You can complete the payment process and then schedule your lesson.`);
+        setShowConfirmation(true);
+        
+      } else {
+        // Schedule directly with Calendly for pay at location
+        const calendlyUrl = generateCalendlyURL(selectedProduct, selectedInstructor, selectedSlot);
+        
+        setIsBookingModalOpen(false);
+        setConfirmationMessage(`Redirecting to schedule your ${selectedProduct.title} with ${selectedInstructor.name} on ${selectedSlot.date} at ${selectedSlot.start}...`);
+        setShowConfirmation(true);
+        
+        setTimeout(() => {
+          window.location.href = calendlyUrl;
+        }, 2000);
+      }
 
     } catch (error) {
       console.error('Error processing reservation:', error);

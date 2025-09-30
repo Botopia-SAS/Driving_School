@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Modal from "@/components/Modal";
+import TermsCheckbox from "@/components/TermsCheckbox";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -44,6 +45,14 @@ export default function BookingModal({
     registeredCount?: number;
   }>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  // Reset terms state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTermsAccepted(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || !selectedSlot?.ticketClassId || isDataLoading) {
@@ -133,6 +142,15 @@ export default function BookingModal({
           </div>
         </div>
 
+        {/* Terms and Conditions Checkbox */}
+        <div className="mb-4">
+          <TermsCheckbox
+            isChecked={termsAccepted}
+            onChange={setTermsAccepted}
+            className="justify-center"
+          />
+        </div>
+
         <div className="mt-4 flex justify-center gap-3">
           <button
             className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
@@ -143,8 +161,13 @@ export default function BookingModal({
           
           {userId && (
             <button
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+              className={`px-6 py-2 rounded transition-all ${
+                !termsAccepted 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
               onClick={onRegister}
+              disabled={!termsAccepted}
             >
               Register for Class
             </button>
@@ -152,11 +175,18 @@ export default function BookingModal({
           
           {!userId && (
             <button
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+              className={`px-6 py-2 rounded transition-all ${
+                !termsAccepted 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
               onClick={() => {
-                handleClose();
-                onShowLogin();
+                if (termsAccepted) {
+                  handleClose();
+                  onShowLogin();
+                }
               }}
+              disabled={!termsAccepted}
             >
               Login to Register
             </button>
