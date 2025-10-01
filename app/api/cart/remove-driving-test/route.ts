@@ -52,15 +52,24 @@ export async function POST(req: NextRequest) {
     }
 
     // Find the specific slot in schedule_driving_test
-    const slot = instructor.schedule_driving_test?.find((s: {
+    // Priorizar slots que NO están cancelados
+    const matchingSlots = instructor.schedule_driving_test?.filter((s: {
       date: string;
       start: string;
       end: string;
       status: string;
       studentId?: string;
-    }) => 
+    }) =>
       s.date === date && s.start === start && s.end === end
-    );
+    ) || [];
+
+    console.log(`🔍 Found ${matchingSlots.length} matching slots for ${date} ${start}-${end}`);
+    matchingSlots.forEach((s, i) => {
+      console.log(`  Slot ${i + 1}: status=${s.status}, studentId=${s.studentId}`);
+    });
+
+    // Priorizar slots NO cancelados (pending o cualquier otro status)
+    const slot = matchingSlots.find(s => s.status !== 'cancelled') || matchingSlots[0];
 
     if (!slot) {
       return NextResponse.json(

@@ -48,12 +48,16 @@ export async function POST(req: NextRequest) {
             // Find the instructor and free the slot
             const instructor = await Instructor.findById(item.instructorId);
             if (instructor && instructor.schedule_driving_test) {
-              const slot = instructor.schedule_driving_test.find((s: any) => 
-                s.date === item.date && 
-                s.start === item.start && 
+              // Priorizar slots que NO están cancelados
+              const matchingSlots = instructor.schedule_driving_test.filter((s: any) =>
+                s.date === item.date &&
+                s.start === item.start &&
                 s.end === item.end
               );
-              
+
+              // Priorizar slots NO cancelados
+              const slot = matchingSlots.find(s => s.status !== 'cancelled') || matchingSlots[0];
+
               if (slot) {
                 slot.status = 'available';
                 slot.studentId = undefined;
