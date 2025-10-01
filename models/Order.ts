@@ -1,4 +1,4 @@
-import mongoose, { Schema, models, model } from 'mongoose';
+import { Schema, models, model } from 'mongoose';
 
 // Schema for individual slots/appointments in the order
 const OrderSlotSchema = new Schema({
@@ -63,15 +63,15 @@ OrderSchema.pre('save', async function(next) {
   if (this.isNew && !this.orderNumber) {
     try {
       // Find the highest existing order number to ensure consecutive numbering
-      const lastOrder = await (this.constructor as any)
+      const lastOrder = await (this.constructor as typeof models.Order)
         .findOne({}, { orderNumber: 1 })
-        .sort({ orderNumber: -1 })
-        .lean();
+        .sort({ createdAt: -1 })
+        .lean() as { orderNumber?: string | number } | null;
 
       let nextNumber = 1;
       if (lastOrder && lastOrder.orderNumber) {
         // Parse the current highest number and increment
-        const currentNumber = parseInt(lastOrder.orderNumber);
+        const currentNumber = parseInt(lastOrder.orderNumber.toString());
         if (!isNaN(currentNumber)) {
           nextNumber = currentNumber + 1;
         }
