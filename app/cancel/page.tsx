@@ -1,8 +1,12 @@
+"use client";
+import React, { Suspense } from "react";
+import { CancelContent } from "./components/CancelContent";
+import { CancelFallback } from "./components/CancelFallback";
+
 export default function CancelPage() {
   return (
-    <div className="container">
-      <h1>❌ Pago cancelado</h1>
-      <p>Tu pago no fue procesado. Puedes intentarlo nuevamente.</p>
-    </div>
+    <Suspense fallback={<CancelFallback />}>
+      <CancelContent />
+    </Suspense>
   );
 }
