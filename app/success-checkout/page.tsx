@@ -14,75 +14,64 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import CheckoutSuccessOverlay from "./components/CheckoutSuccessOverlay";
 import { useCart } from "../context/CartContext";
+import { useForceCartClear } from "../../hooks/useForceCartClear";
 
 export default function SuccessCheckoutPage() {
   const router = useRouter();
   const [open, setOpen] = useState(true);
   const { clearCart } = useCart();
-
-  // Coordenadas para el efecto de expansión de la animación (centrado)
-  const [triggerPosition, setTriggerPosition] = useState({ x: 0, y: 0 });
-  const [isClient, setIsClient] = useState(false);
+  const { forceCartClear } = useForceCartClear();
 
   /**
    * Handles overlay closure and redirection to home page
    * - Smoothly closes the animation
-   * - Cleans the shopping cart
+   * - Cleans the shopping cart completely
    * - Redirects user to the home page
    */
-  const handleClose = () => {
+  const handleClose = async () => {
     setOpen(false);
 
     // Small delay before redirecting to allow closing animation to finish
-    setTimeout(() => {
-      // Clean cart after successful completion using centralized hook
-      clearCart();
+    setTimeout(async () => {
+      try {
+        // Method 1: Use context clearCart (improved version)
+        await clearCart();
+        console.log("✅ Cart cleared using context method");
 
-      // Also clean other purchase-related data
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("applied-discount");
-        localStorage.removeItem("current-order");
+        // Method 2: Use force cart clear as backup to ensure everything is cleaned
+        const forceResult = await forceCartClear();
+        if (forceResult.success) {
+          console.log("✅ Force cart clear completed successfully");
+        } else {
+          console.warn("⚠️ Force cart clear had issues:", forceResult.message);
+        }
+
+      } catch (error) {
+        console.warn("⚠️ Error during cart cleanup:", error);
+        
+        // Last resort: try force clear even if context method failed
+        try {
+          await forceCartClear();
+          console.log("✅ Backup force cart clear completed");
+        } catch (backupError) {
+          console.error("❌ Backup cart clear also failed:", backupError);
+        }
+      } finally {
+        // Redirect to home page regardless of cleanup success
+        router.push("/");
       }
-
-      // Redirect to home page
-      router.push("/");
     }, 300);
   };
 
-  // Inicializar posición solo en el cliente para evitar problemas de hidratación
-  useEffect(() => {
-    setIsClient(true);
-    setTriggerPosition({
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    });
-  }, []);
-
-  // Ajustar posición al cambiar el tamaño de la ventana
-  useEffect(() => {
-    if (!isClient) return;
-    
-    const handleResize = () => {
-      setTriggerPosition({
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-      });
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [isClient]);
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
+    <div className="min-h-screen flex items-center justify-center bg-[#009047] overflow-hidden">
       <CheckoutSuccessOverlay
         open={open}
         onClose={handleClose}
         locale="en"
-        triggerPosition={triggerPosition}
       />
     </div>
   );

@@ -76,14 +76,35 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
   // Load cart from localStorage on initial load
   useEffect(() => {
+    // Check if cart was recently cleared intentionally
+    const cartCleared = localStorage.getItem("cart-cleared");
+    if (cartCleared) {
+      const clearedTime = parseInt(cartCleared);
+      const timeSinceCleared = Date.now() - clearedTime;
+      // If cleared in the last 10 minutes, don't load from localStorage
+      if (timeSinceCleared < 10 * 60 * 1000) { // 10 minutes
+        console.log('🔄 [CartContext] Cart was recently cleared, not loading from localStorage');
+        setCart([]);
+        return;
+      } else {
+        // Remove old cleared marker
+        localStorage.removeItem("cart-cleared");
+      }
+    }
+    
     const storedCart = localStorage.getItem("cart");
     if (storedCart) {
       try {
-        setCart(JSON.parse(storedCart));
+        const parsedCart = JSON.parse(storedCart);
+        console.log('🔄 [CartContext] Loading cart from localStorage:', parsedCart);
+        setCart(parsedCart);
       } catch (e) {
         console.error("Error parsing cart from localStorage", e);
         localStorage.removeItem("cart");
+        setCart([]);
       }
+    } else {
+      setCart([]);
     }
   }, []);
 
@@ -91,6 +112,24 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     if (user?._id) {
       console.log('🔄 [CartContext] Syncing cart with database for user:', user._id);
+      
+      // Check if cart was recently cleared intentionally
+      const cartCleared = localStorage.getItem("cart-cleared");
+      const now = Date.now();
+      if (cartCleared) {
+        const clearedTime = parseInt(cartCleared);
+        const timeSinceCleared = now - clearedTime;
+        // If cleared in the last 10 minutes, don't sync from database
+        if (timeSinceCleared < 10 * 60 * 1000) { // 10 minutes
+          console.log('🔄 [CartContext] Cart was recently cleared, skipping sync from database');
+          setCart([]);
+          return;
+        } else {
+          // Remove old cleared marker
+          localStorage.removeItem("cart-cleared");
+        }
+      }
+      
       // Check cart status from database
       fetch(`/api/cart/status?userId=${user._id}`)
         .then(res => res.json())
@@ -468,8 +507,17 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       }
     }
     
+    // Clear local state first
     setCart([]);
+    
+    // Clear all cart-related localStorage items
     localStorage.removeItem("cart");
+    localStorage.removeItem("applied-discount");
+    localStorage.removeItem("current-order");
+    localStorage.removeItem("checkout-data");
+    
+    // Mark that cart was intentionally cleared (to prevent auto-restore)
+    localStorage.setItem("cart-cleared", Date.now().toString());
     
     // Clear both regular cart and user cart (for driving tests)
     if (user?._id) {
@@ -490,10 +538,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
         });
         console.log('✅ [CartContext] User cart cleared and slots freed');
         
+        // Also use force-clean as backup
+        await fetch("/api/cart/force-clean", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user._id }),
+        });
+        console.log('✅ [CartContext] Cart force cleaned as backup');
+        
       } catch (err) {
         console.warn('[CartContext] Failed to clear cart from database:', err);
       }
     }
+    
+    console.log('✅ [CartContext] Cart completely cleared');
   };
   
   const reloadCartFromDB = () => {

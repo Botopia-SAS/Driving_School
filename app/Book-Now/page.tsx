@@ -1130,7 +1130,7 @@ export default function BookNowPage() {
                       <span className="text-blue-700">
                         {selectedInstructor ? selectedInstructor.name : 'Loading...'}&apos;s 
                       </span>
-                  <span className="text-[#10B981]">Driving Test Schedule</span>
+                      <span className="text-[#10B981]"> Driving Test Schedule</span>
                 </h2>
                 <p className="text-center text-gray-600 mb-6 text-sm">
                   Showing only driving test appointments. Green slots are available for booking.
