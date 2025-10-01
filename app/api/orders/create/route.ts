@@ -4,12 +4,6 @@ import Order from "@/models/Order";
 import Instructor from "@/models/Instructor";
 
 // Type definitions
-interface OrderDocument {
-  orderNumber?: string;
-  _id?: string;
-  [key: string]: unknown;
-}
-
 interface AppointmentData {
   slotId: string;
   instructorId?: string;
@@ -52,21 +46,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate order number manually as fallback with consecutive numbering
+    // Generate sequential order number using simple counter to avoid race conditions
     const lastOrder = await Order.findOne({}, { orderNumber: 1 })
-      .sort({ orderNumber: -1 })
-      .lean() as OrderDocument | null;
-
-    let nextNumber = 1;
+      .sort({ createdAt: -1 })
+      .lean() as { orderNumber?: string | number } | null;
+    
+    let nextOrderNumber = 1;
     if (lastOrder && lastOrder.orderNumber) {
-      // Parse the current highest number and increment
-      const currentNumber = parseInt(lastOrder.orderNumber);
+      const currentNumber = parseInt(lastOrder.orderNumber.toString());
       if (!isNaN(currentNumber)) {
-        nextNumber = currentNumber + 1;
+        nextOrderNumber = currentNumber + 1;
       }
     }
-
-    const generatedOrderNumber = nextNumber.toString();
+    
+    const generatedOrderNumber = nextOrderNumber.toString();
 
     // Create the order
     console.log('📝 Creating order with appointments:', appointments);

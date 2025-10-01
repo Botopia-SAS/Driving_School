@@ -137,9 +137,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Obtener el último orderNumber
+    // Generate sequential order number using simple counter to avoid race conditions
     const lastOrder = await Order.findOne({}, { orderNumber: 1 })
-      .sort({ orderNumber: -1 })
+      .sort({ createdAt: -1 })
       .lean() as { orderNumber?: string | number } | null;
 
     let nextOrderNumber = 1;

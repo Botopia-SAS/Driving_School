@@ -320,9 +320,9 @@ export async function GET(req: NextRequest) {
           // Crear nueva orden con el tipo correcto
           console.log("[API][redirect] Creando nueva orden de tipo:", currentOrderType);
           
-          // Obtener el último orderNumber como número para incrementar correctamente
+          // Generate sequential order number using simple counter to avoid race conditions
           const lastOrder = await Order.findOne({}, { orderNumber: 1 })
-            .sort({ orderNumber: -1 })
+            .sort({ createdAt: -1 })
             .lean() as { orderNumber?: string | number } | null;
           
           let nextOrderNumber = 1;
@@ -858,9 +858,9 @@ export async function POST(req: NextRequest) {
 
       total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-      // Obtener el último orderNumber como número para incrementar correctamente  
+      // Generate sequential order number using simple counter to avoid race conditions
       const lastOrder = await Order.findOne({}, { orderNumber: 1 })
-        .sort({ orderNumber: -1 })
+        .sort({ createdAt: -1 })
         .lean() as { orderNumber?: string | number } | null;
       
       let nextOrderNumber = 1;

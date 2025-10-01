@@ -70,7 +70,7 @@ export async function GET(
       return acc;
     }, {});
 
-    console.log(`✅ [CANCELLED SLOTS] User ${userId} cancelled slots:`, slotsByDuration);
+    // console.log(`✅ [CANCELLED SLOTS] User ${userId} cancelled slots:`, slotsByDuration);
 
     return NextResponse.json({
       success: true,

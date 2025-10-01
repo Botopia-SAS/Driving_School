@@ -187,7 +187,7 @@ export default function BookNowPage() {
         }
         const data = await res.json();
         setCancelledSlots(data.cancelledSlots || []);
-        console.log('✅ Fetched cancelled slots:', data.cancelledSlots?.length || 0);
+        // console.log('✅ Fetched cancelled slots:', data.cancelledSlots?.length || 0);
       } catch (error) {
         console.error('❌ Error fetching cancelled slots:', error);
       }
@@ -208,7 +208,7 @@ export default function BookNowPage() {
 
       // Add timeout to prevent infinite loading
       const loadingTimeout = setTimeout(() => {
-        console.log('⚠️ SSE loading timeout reached for instructor:', selectedInstructorId);
+        // console.log('⚠️ SSE loading timeout reached for instructor:', selectedInstructorId);
         setIsLoadingSchedule(false);
         // Optional: show error message to user
       }, 10000); // 10 second timeout
@@ -866,7 +866,7 @@ export default function BookNowPage() {
 
                   // Force refresh SSE to update calendar from server
                   if (forceRefresh) {
-                    console.log("🔄 Forcing SSE refresh after local payment reservation");
+                    // console.log("🔄 Forcing SSE refresh after local payment reservation");
                     forceRefresh();
                   }
 
@@ -1396,7 +1396,7 @@ export default function BookNowPage() {
               }
 
               // Force refresh SSE to update calendar from server
-              console.log("🔄 Forcing SSE refresh after cancellation");
+              // console.log("🔄 Forcing SSE refresh after cancellation");
               if (forceRefresh) {
                 forceRefresh();
               }
