@@ -33,13 +33,13 @@ export async function POST(request: Request) {
 
     const { userId, instructorId, date, start, end } = await request.json();
 
-    console.log('🎁 [REDEEM SLOT] Request received:', {
-      userId,
-      instructorId,
-      date,
-      start,
-      end
-    });
+    // console.log('🎁 [REDEEM SLOT] Request received:', {
+    //   userId,
+    //   instructorId,
+    //   date,
+    //   start,
+    //   end
+    // });
 
     // Validate required fields
     if (!userId || !instructorId || !date || !start || !end) {
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     const endMinutes = endHour * 60 + endMin;
     const durationHours = (endMinutes - startMinutes) / 60;
 
-    console.log('🕐 [REDEEM SLOT] New slot duration:', durationHours, 'hours');
+    // console.log('🕐 [REDEEM SLOT] New slot duration:', durationHours, 'hours');
 
     // Find the user
     const user = await User.findById(userId);
@@ -79,26 +79,26 @@ export async function POST(request: Request) {
     });
 
     if (!cancelledMatchingSlots || cancelledMatchingSlots.length === 0) {
-      console.log('❌ [REDEEM SLOT] User has no cancelled slots with matching duration:', durationHours, 'hours');
+      // console.log('❌ [REDEEM SLOT] User has no cancelled slots with matching duration:', durationHours, 'hours');
       return NextResponse.json(
         { error: `You do not have any ${durationHours}-hour cancelled slots available to redeem` },
         { status: 403 }
       );
     }
 
-    console.log(`✅ [REDEEM SLOT] User has ${cancelledMatchingSlots.length} cancelled ${durationHours}-hour slot(s) available`);
+    // console.log(`✅ [REDEEM SLOT] User has ${cancelledMatchingSlots.length} cancelled ${durationHours}-hour slot(s) available`);
 
     // Find the instructor
     const instructor = await Instructor.findById(instructorId);
     if (!instructor) {
-      console.log('❌ [REDEEM SLOT] Instructor not found:', instructorId);
+      // console.log('❌ [REDEEM SLOT] Instructor not found:', instructorId);
       return NextResponse.json(
         { error: 'Instructor not found' },
         { status: 404 }
       );
     }
 
-    console.log('✅ [REDEEM SLOT] Found instructor:', instructor.name);
+    // console.log('✅ [REDEEM SLOT] Found instructor:', instructor.name);
 
     // Find the slot in the instructor's schedule (ONLY status='available')
     let foundSlot: any = null;
@@ -127,22 +127,22 @@ export async function POST(request: Request) {
     }
 
     if (!foundSlot) {
-      console.log('❌ [REDEEM SLOT] Slot not found in instructor schedules');
+      // console.log('❌ [REDEEM SLOT] Slot not found in instructor schedules');
       return NextResponse.json(
         { error: 'Slot not found' },
         { status: 404 }
       );
     }
 
-    console.log('✅ [REDEEM SLOT] Found slot:', {
-      slotId: foundSlot._id,
-      status: foundSlot.status,
-      scheduleType
-    });
+    // console.log('✅ [REDEEM SLOT] Found slot:', {
+    //   slotId: foundSlot._id,
+    //   status: foundSlot.status,
+    //   scheduleType
+    // });
 
     // Validate slot is available
     if (foundSlot.status !== 'available') {
-      console.log('❌ [REDEEM SLOT] Slot is not available:', foundSlot.status);
+      // console.log('❌ [REDEEM SLOT] Slot is not available:', foundSlot.status);
       return NextResponse.json(
         { error: `Slot is not available (current status: ${foundSlot.status})` },
         { status: 409 }
@@ -151,7 +151,7 @@ export async function POST(request: Request) {
 
     // Check if slot is already booked by someone
     if (foundSlot.booked || (foundSlot.studentId && foundSlot.studentId !== 'null')) {
-      console.log('❌ [REDEEM SLOT] Slot is already booked');
+      // console.log('❌ [REDEEM SLOT] Slot is already booked');
       return NextResponse.json(
         { error: 'Slot is already booked by another student' },
         { status: 409 }
@@ -174,16 +174,16 @@ export async function POST(request: Request) {
     }
     await instructor.save();
 
-    console.log('✅ [REDEEM SLOT] Slot booked successfully');
+    // console.log('✅ [REDEEM SLOT] Slot booked successfully');
 
     // Remove one cancelled slot from user (FIFO - first in, first out)
     const slotToRemove = cancelledMatchingSlots[0];
 
-    console.log('🎫 [REDEEM SLOT] Redeeming slot:', {
-      removing: slotToRemove.slotId,
-      date: slotToRemove.date,
-      time: `${slotToRemove.start}-${slotToRemove.end}`
-    });
+    // console.log('🎫 [REDEEM SLOT] Redeeming slot:', {
+    //   removing: slotToRemove.slotId,
+    //   date: slotToRemove.date,
+    //   time: `${slotToRemove.start}-${slotToRemove.end}`
+    // });
 
     // Add new booking to user's driving_test_bookings with redeemed flag
     const newBooking = {
@@ -216,19 +216,19 @@ export async function POST(request: Request) {
       { new: true }
     );
 
-    console.log('✅ [REDEEM SLOT] Updated user bookings:', {
-      removedCancelledSlot: slotToRemove.slotId,
-      addedNewBooking: foundSlot._id,
-      redeemed: true,
-      redeemedFrom: slotToRemove.slotId,
-      remainingBookings: updatedUser?.driving_test_bookings?.length || 0,
-      remainingCancelled: updatedUser?.driving_test_cancelled?.length || 0
-    });
+    // console.log('✅ [REDEEM SLOT] Updated user bookings:', {
+    //   removedCancelledSlot: slotToRemove.slotId,
+    //   addedNewBooking: foundSlot._id,
+    //   redeemed: true,
+    //   redeemedFrom: slotToRemove.slotId,
+    //   remainingBookings: updatedUser?.driving_test_bookings?.length || 0,
+    //   remainingCancelled: updatedUser?.driving_test_cancelled?.length || 0
+    // });
 
     // Broadcast real-time update via SSE
     try {
       broadcastScheduleUpdate(instructorId);
-      console.log('✅ [REDEEM SLOT] Schedule update broadcasted via SSE');
+      // console.log('✅ [REDEEM SLOT] Schedule update broadcasted via SSE');
     } catch (broadcastError) {
       console.error('❌ [REDEEM SLOT] Failed to broadcast schedule update:', broadcastError);
       // Don't fail the request if broadcast fails
