@@ -10,7 +10,6 @@ export type CheckoutSuccessOverlayProps = {
   className?: string;
   testId?: string;
   locale?: string;
-  triggerPosition?: { x: number; y: number };
 };
 
 interface ContentType {
@@ -51,7 +50,6 @@ function CheckoutSuccessOverlay({
   className = "",
   testId = "checkout-success-overlay",
   locale = "en",
-  triggerPosition,
 }: CheckoutSuccessOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -114,32 +112,24 @@ function CheckoutSuccessOverlay({
       aria-modal="true"
       aria-labelledby={headingId}
       tabIndex={-1}
-      className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-auto transition-all duration-1000 ${
-        expand ? "bg-[#009047]/90 backdrop-blur-sm" : "bg-[#009047]/0"
-      } ${className}`}
+      className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-auto transition-all duration-1000 bg-[#009047] ${className}`}
       data-testid={testId}
       style={{
         transitionProperty: "background-color,backdrop-filter",
         transitionTimingFunction: "cubic-bezier(0.77,0,0.175,1)",
       }}
     >
-      {/* Expansión radial premium desde el botón de finalizar pago */}
+      {/* Efecto de ondas concentricas desde el centro */}
       <div
-        className={`absolute w-24 h-12 rounded-full bg-[#009047] shadow-2xl ${
-          expand
-            ? "scale-[120] opacity-100 blur-lg"
-            : "scale-0 opacity-60 blur-none"
-        } transition-all duration-[2000ms] ease-[cubic-bezier(0.77,0,0.175,1)] z-0 animate-bgPop`}
-        style={{
-          left: triggerPosition ? `${triggerPosition.x}px` : "50%",
-          top: triggerPosition ? `${triggerPosition.y}px` : "auto",
-          bottom: triggerPosition ? "auto" : "6rem",
-          transformOrigin: triggerPosition ? "center center" : "center bottom",
-          transitionProperty: "transform,opacity,filter",
-          boxShadow: "0 8px 64px #00904799",
-        }}
+        className={`absolute inset-0 ${
+          expand ? "animate-rippleEffect" : ""
+        }`}
         aria-hidden="true"
-      />
+      >
+        {/* Ondas múltiples para mejor efecto visual */}
+        <div className="absolute inset-0 bg-[#009047] animate-pulse opacity-10"></div>
+        <div className="absolute inset-0 bg-gradient-radial from-[#00a852] to-transparent opacity-20"></div>
+      </div>
       {/* Contenido central animado */}
       {showContent && (
         <div className="relative z-10 flex flex-col items-center gap-8 w-full max-w-md px-6 py-12 animate-fadeInContent">
@@ -289,30 +279,22 @@ function CheckoutSuccessOverlay({
         .animate-sheen {
           animation: sheen 1.2s ease-in-out infinite;
         }
-        @keyframes bgPop {
+        @keyframes rippleEffect {
           0% {
-            opacity: 0.6;
-            filter: blur(0px);
-            transform: scale(0);
-          }
-          40% {
+            background: radial-gradient(circle at center, #00a852 0%, #009047 30%, transparent 70%);
             opacity: 0.8;
-            filter: blur(2px);
-            transform: scale(0.7);
           }
-          70% {
-            opacity: 1;
-            filter: blur(8px);
-            transform: scale(1.1);
+          50% {
+            background: radial-gradient(circle at center, #00c55a 0%, #00a852 20%, #009047 40%, transparent 80%);
+            opacity: 0.6;
           }
           100% {
-            opacity: 1;
-            filter: blur(16px);
-            transform: scale(1.2);
+            background: radial-gradient(circle at center, transparent 0%, transparent 100%);
+            opacity: 0.2;
           }
         }
-        .animate-bgPop {
-          animation: bgPop 2s cubic-bezier(0.77, 0, 0.175, 1);
+        .animate-rippleEffect {
+          animation: rippleEffect 1.5s cubic-bezier(0.77, 0, 0.175, 1) forwards;
         }
         @keyframes sheenSVG {
           0% {
@@ -340,6 +322,9 @@ function CheckoutSuccessOverlay({
         }
         .animate-sheenSVG {
           animation: sheenSVG 1.2s ease-in-out infinite;
+        }
+        .bg-gradient-radial {
+          background: radial-gradient(circle at center, var(--tw-gradient-stops));
         }
       `}</style>
     </div>
