@@ -6,6 +6,7 @@ import "react-calendar/dist/Calendar.css";
 import "@/globals.css";
 import Modal from "@/components/Modal";
 import BookingModal from "@/components/BookingModal";
+import CancellationModal from "@/components/CancellationModal";
 import Image from "next/image";
 import { useAuth } from "@/components/AuthContext";
 import { useCart } from "@/app/context/CartContext";
@@ -121,6 +122,7 @@ export default function BookNowPage() {
     slot: Slot;
   } | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Función para manejar el login exitoso
   const handleLoginSuccess = (user: { _id: string; name: string; email: string; photo?: string | null; type?: 'student' | 'instructor' }) => {
@@ -454,24 +456,28 @@ export default function BookNowPage() {
                     let slot: Slot | null = null;
                     
                     if (sched && Array.isArray(sched.slots)) {
-                      slot = sched.slots.find(s => {
+                      // Buscar slots que coincidan con este bloque de tiempo
+                      const matchingSlots = sched.slots.filter(s => {
                         const toMinutes = (time: string) => {
                           const [hours, minutes] = time.split(':').map(Number);
                           return hours * 60 + minutes;
                         };
-                        
+
                         const slotStartMin = toMinutes(s.start);
                         const slotEndMin = toMinutes(s.end);
                         const blockStartMin = toMinutes(block.start);
-                        
+
                         return blockStartMin >= slotStartMin && blockStartMin < slotEndMin;
-                      }) ?? null;
+                      });
+
+                      // Priorizar slots que NO están cancelados
+                      slot = matchingSlots.find(s => s.status !== 'cancelled') || matchingSlots[0] || null;
                     }
                     
                     // Filter out slots that should be hidden (cancelled, other students' bookings)
                     if (slot && (
-                      slot.status === 'cancelled' || 
-                      (slot.studentId && 
+                      slot.status === 'cancelled' ||
+                      (slot.studentId &&
                        (slot.status === 'booked' || slot.status === 'scheduled' || slot.status === 'pending' || slot.booked) &&
                        (!userId || slot.studentId.toString() !== userId))
                     )) {
@@ -553,10 +559,14 @@ export default function BookNowPage() {
                       // Slot reservado/booked del usuario actual
                       if ((slot.status === 'scheduled' || slot.status === 'booked' || slot.booked) && slot.studentId && userId && slot.studentId.toString() === userId) {
                         return (
-                          <td key={date.toDateString()} 
+                          <td key={date.toDateString()}
                               rowSpan={rowSpan}
-                              className="border border-gray-300 py-1 bg-blue-500 text-white font-bold cursor-not-allowed min-w-[80px] w-[80px]"
-                              title="This is your booking - already reserved"
+                              className="border border-gray-300 py-1 bg-blue-500 text-white font-bold cursor-pointer hover:bg-blue-600 min-w-[80px] w-[80px]"
+                              title="Click to cancel this booking"
+                              onClick={() => {
+                                setSlotToCancel({ dateString, slot });
+                                setShowCancelConfirm(true);
+                              }}
                           >
                             <div className="text-xs">Your Booking</div>
                             <div className="text-xs font-bold">${slot.amount || 50}</div>
@@ -711,7 +721,35 @@ export default function BookNowPage() {
                     }
                   }
 
-                  // Force refresh SSE to update calendar FIRST
+                  // Actualizar el estado local inmediatamente para mostrar como pending
+                  if (selectedInstructor?.schedule) {
+                    const updatedSchedule = selectedInstructor.schedule.map(day => {
+                      if (day.date === selectedSlot.date) {
+                        return {
+                          ...day,
+                          slots: day.slots.map(slot => {
+                            if (slot.start === selectedSlot.start && slot.end === selectedSlot.end) {
+                              return {
+                                ...slot,
+                                status: 'pending' as const,
+                                studentId: userId,
+                                booked: true
+                              };
+                            }
+                            return slot;
+                          })
+                        };
+                      }
+                      return day;
+                    });
+
+                    setSelectedInstructor({
+                      ...selectedInstructor,
+                      schedule: updatedSchedule
+                    });
+                  }
+
+                  // Force refresh SSE to update calendar from server
                   if (forceRefresh) {
                     console.log("🔄 Forcing SSE refresh after local payment reservation");
                     forceRefresh();
@@ -720,11 +758,7 @@ export default function BookNowPage() {
                   setIsBookingModalOpen(false);
                   setSelectedSlot(null);
                   setIsProcessingBooking(false);
-
-                  // Show modal after a brief delay to allow SSE to update
-                  setTimeout(() => {
-                    setShowContactModal(true);
-                  }, 500);
+                  setShowContactModal(true);
                 } else {
                   setIsProcessingBooking(false);
                   const errorData = await res.json();
@@ -1105,92 +1139,175 @@ export default function BookNowPage() {
         </div>
       </Modal>
       
-      {/* Modal de confirmación de cancelación */}
-      <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)}>
-        <div className="p-6 text-center">
-          <div className="mb-4">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold mb-4 text-red-600">Cancel Booking</h2>
-            <p className="text-gray-700 mb-4">
-              Are you sure you want to cancel this booking?
-            </p>
-            {slotToCancel && (
-              <div className="bg-gray-50 p-4 rounded-lg mb-4 text-left">
-                <p><strong>Date:</strong> {slotToCancel.dateString}</p>
-                <p><strong>Time:</strong> {slotToCancel.slot.start} - {slotToCancel.slot.end}</p>
-                <p><strong>Amount:</strong> ${slotToCancel.slot.amount || 100}</p>
-              </div>
-            )}
-            <p className="text-sm text-gray-500">The slot will become available for other students.</p>
-          </div>
-          <div className="flex justify-center gap-3">
-            <button
-              className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
-              onClick={() => {
+      {/* Cancellation Modal */}
+      <CancellationModal
+        isOpen={showCancelConfirm}
+        onClose={() => {
+          setShowCancelConfirm(false);
+          setSlotToCancel(null);
+        }}
+        slotDetails={slotToCancel ? {
+          date: slotToCancel.dateString,
+          start: slotToCancel.slot.start,
+          end: slotToCancel.slot.end,
+          amount: slotToCancel.slot.amount || 50,
+          instructorName: selectedInstructor?.name || 'Unknown Instructor',
+          status: slotToCancel.slot.status,
+          slotId: slotToCancel.slot._id,
+          instructorId: selectedInstructor?._id || ''
+        } : null}
+        onConfirmCancel={async (paymentMethod?: 'online' | 'call') => {
+          if (!slotToCancel || !selectedInstructor) return;
+
+          setIsCancelling(true);
+          try {
+            // Si se proporciona paymentMethod, es una cancelación con cargo
+            if (paymentMethod) {
+              if (paymentMethod === 'online') {
+                // PAID CANCELLATION - Pay Online: Create order and redirect to Stripe
+                const orderRes = await fetch('/api/booking/create-cancellation-order', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId,
+                    instructorId: selectedInstructor._id,
+                    slotId: slotToCancel.slot._id,
+                    date: slotToCancel.dateString,
+                    start: slotToCancel.slot.start,
+                    end: slotToCancel.slot.end,
+                    amount: 90,
+                    classType: 'cancel_driving_test'
+                  }),
+                });
+
+                if (!orderRes.ok) {
+                  const errorData = await orderRes.json();
+                  throw new Error(errorData.error || 'Failed to create cancellation order');
+                }
+
+                const { checkoutUrl } = await orderRes.json();
+
+                // Redirect to Stripe checkout
+                window.location.href = checkoutUrl;
+                return;
+              } else {
+                // PAID CANCELLATION - Call to Pay: Show phone number modal
+                setIsCancelling(false);
                 setShowCancelConfirm(false);
                 setSlotToCancel(null);
-              }}
-            >
-              Keep Booking
-            </button>
-            <button
-              className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
-              onClick={async () => {
-                if (slotToCancel && selectedInstructor) {
-                  try {
-                    
-                    const res = await fetch('/api/booking/cancel', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        studentId: userId,
-                        instructorId: selectedInstructor._id,
-                        date: slotToCancel.dateString,
+                setCancellationMessage('Please call 561-330-7007 to complete your cancellation payment of $90.00 USD. Once payment is processed, your slot will be cancelled.');
+                setShowCancellation(true);
+                return;
+              }
+            }
+
+            // FREE CANCELLATION - Process immediately
+            const res = await fetch('/api/booking/cancel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                studentId: userId,
+                instructorId: selectedInstructor._id,
+                date: slotToCancel.dateString,
+                start: slotToCancel.slot.start,
+                end: slotToCancel.slot.end,
+                slotId: slotToCancel.slot._id,
+                classType: 'driving test'
+              }),
+            });
+
+            if (res.ok) {
+              await res.json();
+
+              // Actualizar el estado local inmediatamente
+              if (selectedInstructor?.schedule) {
+                const updatedSchedule = selectedInstructor.schedule.map(day => {
+                  if (day.date === slotToCancel.dateString) {
+                    // Si el slot es "pending", solo cambiarlo a available
+                    if (slotToCancel.slot.status === 'pending') {
+                      return {
+                        ...day,
+                        slots: day.slots.map(slot => {
+                          if (slot.start === slotToCancel.slot.start && slot.end === slotToCancel.slot.end) {
+                            return {
+                              ...slot,
+                              status: 'available' as const,
+                              studentId: undefined,
+                              booked: false
+                            };
+                          }
+                          return slot;
+                        })
+                      };
+                    }
+                    // Si el slot es "booked" o "scheduled", marcarlo como cancelled y agregar nuevo slot disponible
+                    else if (slotToCancel.slot.status === 'booked' || slotToCancel.slot.status === 'scheduled') {
+                      const slotsWithCancelled = day.slots.map(slot => {
+                        if (slot.start === slotToCancel.slot.start && slot.end === slotToCancel.slot.end) {
+                          return {
+                            ...slot,
+                            status: 'cancelled' as const
+                          };
+                        }
+                        return slot;
+                      });
+
+                      // Agregar nuevo slot disponible
+                      const newAvailableSlot: Slot = {
+                        _id: `temp_${Date.now()}`,
                         start: slotToCancel.slot.start,
                         end: slotToCancel.slot.end,
-                        slotId: slotToCancel.slot._id,
-                        classType: 'driving test'
-                      }),
-                    });
-                    
-                    setShowCancelConfirm(false);
-                    setSlotToCancel(null);
-                    
-                    if (res.ok) {
-                      await res.json();
+                        status: 'available' as const,
+                        classType: slotToCancel.slot.classType || 'driving test',
+                        amount: slotToCancel.slot.amount || 50,
+                        studentId: undefined,
+                        booked: false
+                      };
 
-                      // Force refresh SSE to update calendar immediately
-                      console.log("🔄 Forcing SSE refresh after cancellation");
-                      if (forceRefresh) {
-                        forceRefresh();
-                      }
-
-                      // Wait a bit for SSE to update before showing message
-                      setTimeout(() => {
-                        setCancellationMessage('Booking cancelled successfully. The slot is now available again.');
-                        setShowCancellation(true);
-                      }, 500);
-                    } else {
-                      const errorData = await res.json();
-                      setCancellationMessage(`Could not cancel the booking: ${errorData.error || 'Please try again.'}`);
-                      setShowCancellation(true);
+                      return {
+                        ...day,
+                        slots: [...slotsWithCancelled, newAvailableSlot]
+                      };
                     }
-                  } catch {
-                    setCancellationMessage('Error cancelling booking. Please try again.');
-                    setShowCancellation(true);
                   }
-                }
-              }}
-            >
-              Yes, Cancel Booking
-            </button>
-          </div>
-        </div>
-      </Modal>
+                  return day;
+                });
+
+                setSelectedInstructor({
+                  ...selectedInstructor,
+                  schedule: updatedSchedule
+                });
+              }
+
+              // Force refresh SSE to update calendar from server
+              console.log("🔄 Forcing SSE refresh after cancellation");
+              if (forceRefresh) {
+                forceRefresh();
+              }
+
+              setShowCancelConfirm(false);
+              setSlotToCancel(null);
+              setIsCancelling(false);
+              setCancellationMessage('Booking cancelled successfully. The slot is now available again.');
+              setShowCancellation(true);
+            } else {
+              const errorData = await res.json();
+              setIsCancelling(false);
+              setShowCancelConfirm(false);
+              setSlotToCancel(null);
+              setCancellationMessage(`Could not cancel the booking: ${errorData.error || 'Please try again.'}`);
+              setShowCancellation(true);
+            }
+          } catch {
+            setIsCancelling(false);
+            setShowCancelConfirm(false);
+            setSlotToCancel(null);
+            setCancellationMessage('Error cancelling booking. Please try again.');
+            setShowCancellation(true);
+          }
+        }}
+        isProcessing={isCancelling}
+      />
       
       <LoginModal
         open={showLogin}

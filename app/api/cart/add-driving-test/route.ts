@@ -61,16 +61,25 @@ export async function POST(req: NextRequest) {
     console.log(`🔍 Instructor has ${instructor.schedule_driving_test?.length || 0} driving test slots`);
 
     // Buscar el slot específico en schedule_driving_test
-    const slot = instructor.schedule_driving_test?.find((s: {
+    // Priorizar slots que NO están cancelados
+    const matchingSlots = instructor.schedule_driving_test?.filter((s: {
       date: string;
       start: string;
       end: string;
       status: string;
       booked?: boolean;
       studentId?: string;
-    }) => 
+    }) =>
       s.date === date && s.start === start && s.end === end
-    );
+    ) || [];
+
+    console.log(`🔍 Found ${matchingSlots.length} matching slots for ${date} ${start}-${end}`);
+    matchingSlots.forEach((s, i) => {
+      console.log(`  Slot ${i + 1}: status=${s.status}, studentId=${s.studentId}`);
+    });
+
+    // Priorizar slots disponibles sobre los cancelados
+    const slot = matchingSlots.find(s => s.status !== 'cancelled') || matchingSlots[0];
 
     if (!slot) {
       console.error(`❌ Slot not found for ${date} ${start}-${end}`);
@@ -82,17 +91,26 @@ export async function POST(req: NextRequest) {
     }
     
     console.log(`✅ Slot found: ${date} ${start}-${end} (status: ${slot.status})`);
+    console.log('🔍 Slot details:', {
+      status: slot.status,
+      booked: slot.booked,
+      studentId: slot.studentId,
+      studentIdType: typeof slot.studentId,
+      paymentMethod: slot.paymentMethod
+    });
 
     // Verificar que el slot esté disponible
     if (slot.status !== 'available' && slot.status !== 'free') {
+      console.log('❌ Slot status is not available:', slot.status);
       return NextResponse.json(
         { error: "Slot is not available" },
         { status: 400 }
       );
     }
 
-    // Verificar que el slot no esté ya reservado
-    if (slot.booked || slot.studentId) {
+    // Verificar que el slot no esté ya reservado (considerar null, undefined, y string "null")
+    if (slot.booked || (slot.studentId && slot.studentId !== 'null' && slot.studentId !== null)) {
+      console.log('❌ Slot is already booked:', { booked: slot.booked, studentId: slot.studentId });
       return NextResponse.json(
         { error: "Slot is already booked" },
         { status: 400 }

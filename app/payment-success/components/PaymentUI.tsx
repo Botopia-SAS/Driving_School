@@ -17,16 +17,26 @@ export const PaymentUI: React.FC<PaymentUIProps> = ({ state }) => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse"></div>
       </div>
 
-      {/* Logo without circle - clean and simple */}
+      {/* Logo with white circle background and school name */}
       <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl border border-white/40">
-          <Image 
-            src="/favicon.ico" 
-            alt="Driving School Logo" 
-            width={80} 
-            height={80}
-            className="rounded-lg"
-          />
+        <div className="text-center">
+          <div className="bg-white rounded-full p-4 shadow-2xl border border-white/40 mb-4 inline-block">
+            <Image 
+              src="/favicon.ico" 
+              alt="Driving School Logo" 
+              width={80} 
+              height={80}
+              className="rounded-full"
+            />
+          </div>
+          <div className="bg-white/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-white/40">
+            <h1 className="text-blue-600 font-bold text-lg leading-tight">
+              Affordable Driving
+            </h1>
+            <h2 className="text-blue-600 font-bold text-lg leading-tight">
+              Traffic School
+            </h2>
+          </div>
         </div>
       </div>
 

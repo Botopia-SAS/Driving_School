@@ -160,12 +160,52 @@ export async function forceUpdateLegacySlots(order: OrderDataShape, orderId: str
   return allSlotsUpdated;
 }
 
+export async function processCancellationOrder(appointments: Appointment[], orderId: string): Promise<boolean> {
+  try {
+    console.log('🔥 Processing cancellation order with appointments:', appointments);
+
+    if (!appointments || appointments.length === 0) {
+      console.error('❌ No appointments found in cancellation order');
+      return false;
+    }
+
+    const appointment = appointments[0]; // Should only have one appointment for cancellation
+
+    // Call a dedicated cancellation processing endpoint
+    const response = await fetch('/api/booking/process-cancellation-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instructorId: appointment.instructorId,
+        date: appointment.date,
+        start: appointment.start,
+        end: appointment.end,
+        slotId: appointment.slotId,
+        orderId
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`❌ Failed to process cancellation:`, errorData);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log(`✅ Successfully processed cancellation:`, result);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error processing cancellation:`, error);
+    return false;
+  }
+}
+
 export async function revertAppointmentsOnFailure(order: OrderDataShape, userId?: string | null): Promise<void> {
   for (const appointment of order.appointments || []) {
     try {
       if (appointment.classType === 'ticket_class' || appointment.ticketClassId) {
         const studentIdToRevert = userId || order.userId;
-        
+
         // Use the new specific route for ticket classes
         await fetch('/api/ticketclasses/update-status', {
           method: 'POST',
@@ -176,19 +216,19 @@ export async function revertAppointmentsOnFailure(order: OrderDataShape, userId?
             status: 'cancelled'
           })
         });
-        
+
         console.log(`🔄 Reverted ticket class ${appointment.ticketClassId} for student ${studentIdToRevert}`);
-        
+
       } else if ((appointment.classType === 'driving_lesson' || appointment.classType === 'driving_test' || appointment.classType === 'driving test' || appointment.classType === 'driving lesson') && appointment.slotId) {
         const isDrivingTest = appointment.classType === 'driving_test' || appointment.classType === 'driving test';
         const isDrivingLesson = appointment.classType === 'driving_lesson' || appointment.classType === 'driving lesson';
-        const endpoint = isDrivingTest ? '/api/instructors/update-driving-test-status' : 
-                        isDrivingLesson ? '/api/instructors/update-driving-lesson-status' : 
+        const endpoint = isDrivingTest ? '/api/instructors/update-driving-test-status' :
+                        isDrivingLesson ? '/api/instructors/update-driving-lesson-status' :
                         '/api/instructors/update-driving-lesson-status'; // default fallback
-        
+
         const routeType = isDrivingTest ? 'driving test' : isDrivingLesson ? 'driving lesson' : 'unknown';
         console.log(`🔍 [REVERT DEBUG] classType: "${appointment.classType}", isDrivingTest: ${isDrivingTest}, isDrivingLesson: ${isDrivingLesson}, using ${routeType} route`);
-        
+
         await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -200,7 +240,7 @@ export async function revertAppointmentsOnFailure(order: OrderDataShape, userId?
             paymentId: null
           })
         });
-        
+
         console.log(`🔄 Reverted ${isDrivingTest ? 'driving test' : 'driving lesson'} slot ${appointment.slotId}`);
       }
     } catch (error) {
