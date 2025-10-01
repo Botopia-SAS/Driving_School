@@ -169,6 +169,39 @@ export function useAllDrivingLessonsSSE(instructorIds: string[]) {
     }));
   };
 
+  // Force refresh function for all instructors or specific instructor
+  const forceRefresh = useCallback(async (specificInstructorId?: string) => {
+    const targetIds = specificInstructorId ? [specificInstructorId] : instructorIds;
+    
+    if (targetIds.length === 0) return;
+    
+    try {
+      console.log('🔄 Forcing schedule refresh for driving lessons instructors:', targetIds);
+      
+      // Trigger manual update for each instructor
+      const promises = targetIds.map(async (instructorId) => {
+        try {
+          const response = await fetch(`/api/sse/driving-lessons-schedule/force-update?instructorId=${instructorId}`, {
+            method: 'POST'
+          });
+          
+          if (response.ok) {
+            console.log(`✅ Force refresh triggered successfully for instructor: ${instructorId}`);
+          } else {
+            console.warn(`⚠️ Force refresh failed for instructor: ${instructorId}`);
+          }
+        } catch (error) {
+          console.error(`❌ Failed to force refresh for instructor ${instructorId}:`, error);
+        }
+      });
+      
+      await Promise.all(promises);
+      console.log('✅ All force refresh requests completed');
+    } catch (error) {
+      console.error('❌ Failed to force refresh:', error);
+    }
+  }, [instructorIds]);
+
   return {
     schedules,
     errors,
@@ -177,6 +210,7 @@ export function useAllDrivingLessonsSSE(instructorIds: string[]) {
     getErrorForInstructor,
     isConnectedForInstructor,
     getAllSchedules,
-    disconnect
+    disconnect,
+    forceRefresh
   };
 }
