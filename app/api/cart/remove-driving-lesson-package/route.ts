@@ -63,14 +63,18 @@ export async function POST(req: NextRequest) {
           },
           {
             $set: {
-              'schedule_driving_lesson.$.status': 'available'
-            },
-            $unset: {
-              'schedule_driving_lesson.$.studentId': "",
-              'schedule_driving_lesson.$.studentName': "",
-              'schedule_driving_lesson.$.reservedAt': "",
-              'schedule_driving_lesson.$.pickupLocation': "",
-              'schedule_driving_lesson.$.dropoffLocation': ""
+              'schedule_driving_lesson.$.status': 'available',
+              'schedule_driving_lesson.$.studentId': null,
+              'schedule_driving_lesson.$.studentName': null,
+              'schedule_driving_lesson.$.reservedAt': null,
+              'schedule_driving_lesson.$.pickupLocation': null,
+              'schedule_driving_lesson.$.dropoffLocation': null,
+              'schedule_driving_lesson.$.paymentMethod': null,
+              'schedule_driving_lesson.$.paid': false,
+              'schedule_driving_lesson.$.booked': false,
+              'schedule_driving_lesson.$.orderId': null,
+              'schedule_driving_lesson.$.orderNumber': null,
+              'schedule_driving_lesson.$.selectedProduct': null
             }
           }
         );

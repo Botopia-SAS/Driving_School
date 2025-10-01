@@ -338,7 +338,7 @@ export const usePaymentSuccess = () => {
                   // Procesar Cancellations FIRST (before other appointments)
                   if (cancellations.length > 0) {
                     console.log('🔥 Procesando cancellations...');
-                    const cancellationOk = await processCancellationOrder(cancellations, orderId);
+                    const cancellationOk = await processCancellationOrder(cancellations, orderId, userId);
                     if (!cancellationOk) allProcessed = false;
                   }
 
@@ -353,7 +353,7 @@ export const usePaymentSuccess = () => {
                   if (drivingLessons.length > 0) {
                     console.log('🚗 Procesando driving lessons...');
                     const lessonsByInstructor = groupDrivingLessonsByInstructor(drivingLessons);
-                    const lessonsOk = await updateInstructorSlotsBatch(lessonsByInstructor, orderId);
+                    const lessonsOk = await updateInstructorSlotsBatch(lessonsByInstructor, orderId, userId);
                     if (!lessonsOk) allProcessed = false;
                   }
 
@@ -361,7 +361,7 @@ export const usePaymentSuccess = () => {
                   if (drivingTests.length > 0) {
                     console.log('🚙 Procesando driving tests...');
                     const testsByInstructor = groupDrivingLessonsByInstructor(drivingTests);
-                    const testsOk = await updateInstructorSlotsBatch(testsByInstructor, orderId);
+                    const testsOk = await updateInstructorSlotsBatch(testsByInstructor, orderId, userId);
                     if (!testsOk) allProcessed = false;
                   }
 
@@ -599,7 +599,7 @@ export const usePaymentSuccess = () => {
                   // Process CANCELLATIONS FIRST (before other appointments)
                   if (cancellations.length > 0) {
                     console.log('🔥 [PAYMENT-SUCCESS] Processing cancellations...');
-                    const cancellationOk = await processCancellationOrder(cancellations, orderId);
+                    const cancellationOk = await processCancellationOrder(cancellations, orderId, userId!);
                     if (!cancellationOk) {
                       console.error('❌ [PAYMENT-SUCCESS] Cancellations processing failed');
                       allProcessed = false;
@@ -623,9 +623,9 @@ export const usePaymentSuccess = () => {
                   // Process DRIVING LESSONS - UPDATE THEM TO BOOKED STATUS
                   if (Object.keys(drivingLessonsByInstructor).length > 0) {
                     console.log('🚗 [PAYMENT-SUCCESS] Processing driving lessons with batch update...');
-                    
+
                     try {
-                      const batchUpdateSuccess = await updateInstructorSlotsBatch(drivingLessonsByInstructor, orderId);
+                      const batchUpdateSuccess = await updateInstructorSlotsBatch(drivingLessonsByInstructor, orderId, userId!);
                       if (batchUpdateSuccess) {
                         console.log('✅ [PAYMENT-SUCCESS] Driving lessons batch update completed successfully');
                       } else {
@@ -637,13 +637,13 @@ export const usePaymentSuccess = () => {
                       allProcessed = false;
                     }
                   }
-                  
+
                   // Process DRIVING TESTS - UPDATE THEM TO BOOKED STATUS (same logic as driving lessons)
                   if (Object.keys(drivingTestsByInstructor).length > 0) {
                     console.log('🚙 [PAYMENT-SUCCESS] Processing driving tests with batch update...');
-                    
+
                     try {
-                      const batchUpdateSuccess = await updateInstructorSlotsBatch(drivingTestsByInstructor, orderId);
+                      const batchUpdateSuccess = await updateInstructorSlotsBatch(drivingTestsByInstructor, orderId, userId!);
                       if (batchUpdateSuccess) {
                         console.log('✅ [PAYMENT-SUCCESS] Driving tests batch update completed successfully');
                       } else {

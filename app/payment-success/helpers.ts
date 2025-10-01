@@ -75,7 +75,7 @@ export function groupDrivingLessonsByInstructor(drivingLessons: Appointment[]): 
   }, {});
 }
 
-export async function updateInstructorSlotsBatch(grouped: Record<string, DrivingLessonGroup>, orderId: string): Promise<boolean> {
+export async function updateInstructorSlotsBatch(grouped: Record<string, DrivingLessonGroup>, orderId: string, userId?: string): Promise<boolean> {
   let allProcessed = true;
   for (const [instructorId, data] of Object.entries(grouped)) {
     try {
@@ -84,26 +84,27 @@ export async function updateInstructorSlotsBatch(grouped: Record<string, Driving
         status: 'booked',
         paid: true,
         paymentId: orderId,
-        slotIds: data.slotIds
+        slotIds: data.slotIds,
+        userId: userId // Include userId for saving bookings in User model
       };
 
       // Use specific route based on class type
       const isDrivingTest = data.classType === 'driving_test' || data.classType === 'driving test';
       const isDrivingLesson = data.classType === 'driving_lesson' || data.classType === 'driving lesson';
-      const endpoint = isDrivingTest ? '/api/instructors/update-driving-test-status' : 
-                      isDrivingLesson ? '/api/instructors/update-driving-lesson-status' : 
+      const endpoint = isDrivingTest ? '/api/instructors/update-driving-test-status' :
+                      isDrivingLesson ? '/api/instructors/update-driving-lesson-status' :
                       '/api/instructors/update-driving-lesson-status'; // default fallback
-      
+
       const routeType = isDrivingTest ? 'driving test' : isDrivingLesson ? 'driving lesson' : 'unknown';
       console.log(`🎯 Using ${routeType} specific route: ${endpoint}`);
       console.log(`🔍 [DEBUG] classType: "${data.classType}", isDrivingTest: ${isDrivingTest}, isDrivingLesson: ${isDrivingLesson}`);
-      
+
       const slotUpdateResponse = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      
+
       if (!slotUpdateResponse.ok) {
         console.error(`❌ Failed to update ${isDrivingTest ? 'driving test' : 'driving lesson'} slots for instructor ${instructorId}`);
         allProcessed = false;
@@ -160,7 +161,7 @@ export async function forceUpdateLegacySlots(order: OrderDataShape, orderId: str
   return allSlotsUpdated;
 }
 
-export async function processCancellationOrder(appointments: Appointment[], orderId: string): Promise<boolean> {
+export async function processCancellationOrder(appointments: Appointment[], orderId: string, userId?: string): Promise<boolean> {
   try {
     console.log('🔥 Processing cancellation order with appointments:', appointments);
 
@@ -181,7 +182,8 @@ export async function processCancellationOrder(appointments: Appointment[], orde
         start: appointment.start,
         end: appointment.end,
         slotId: appointment.slotId,
-        orderId
+        orderId,
+        userId // Pass userId to update user bookings
       })
     });
 

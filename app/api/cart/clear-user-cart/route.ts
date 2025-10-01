@@ -49,24 +49,31 @@ export async function POST(req: NextRequest) {
             const instructor = await Instructor.findById(item.instructorId);
             if (instructor && instructor.schedule_driving_test) {
               // Priorizar slots que NO están cancelados
-              const matchingSlots = instructor.schedule_driving_test.filter((s: any) =>
+              const matchingSlots = instructor.schedule_driving_test.filter((s: { date?: string; start?: string; end?: string; status?: string }) =>
                 s.date === item.date &&
                 s.start === item.start &&
                 s.end === item.end
               );
 
               // Priorizar slots NO cancelados
-              const slot = matchingSlots.find(s => s.status !== 'cancelled') || matchingSlots[0];
+              const slot = matchingSlots.find((s: { status?: string }) => s.status !== 'cancelled') || matchingSlots[0];
 
               if (slot) {
-                slot.status = 'available';
-                slot.studentId = undefined;
-                slot.booked = false;
-                slot.orderId = undefined;
-                slot.orderNumber = undefined;
-                slot.pickupLocation = undefined;
-                slot.dropoffLocation = undefined;
-                slot.selectedProduct = undefined;
+                // For driving test, only keep essential fields
+                (slot as Record<string, unknown>).status = 'available';
+                (slot as Record<string, unknown>).studentId = null;
+                (slot as Record<string, unknown>).studentName = null;
+                (slot as Record<string, unknown>).paid = false;
+
+                // DELETE fields that don't belong to driving test slots
+                delete (slot as Record<string, unknown>).booked;
+                delete (slot as Record<string, unknown>).reservedAt;
+                delete (slot as Record<string, unknown>).paymentMethod;
+                delete (slot as Record<string, unknown>).orderId;
+                delete (slot as Record<string, unknown>).orderNumber;
+                delete (slot as Record<string, unknown>).pickupLocation;
+                delete (slot as Record<string, unknown>).dropoffLocation;
+                delete (slot as Record<string, unknown>).selectedProduct;
                 console.log(`✅ Freed slot: ${item.date} ${item.start}-${item.end}`);
               }
             }
@@ -93,7 +100,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("❌ Error clearing user cart:", error);
     return NextResponse.json(
-      { error: "Failed to clear user cart", details: error.message },
+      { error: "Failed to clear user cart", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
