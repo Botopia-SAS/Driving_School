@@ -143,7 +143,8 @@ function DrivingLessonsContent() {
   
   // Only use SSE when we have instructors and they're not empty
   const { 
-    getScheduleForInstructor 
+    getScheduleForInstructor,
+    forceRefresh
     // Removed unused variables: schedules, isConnectedForInstructor, getAllSchedules
   } = useAllDrivingLessonsSSE(instructorIds.length > 0 ? instructorIds : []);
 
@@ -174,6 +175,13 @@ function DrivingLessonsContent() {
         };
       });
     });
+    
+    // Force refresh SSE to sync with server after local update
+    if (forceRefresh) {
+      setTimeout(() => {
+        forceRefresh(); // Refresh all instructors
+      }, 100); // Small delay to allow state to update first
+    }
   };
 
   // Helper functions - removed unused pad function
@@ -309,6 +317,11 @@ function DrivingLessonsContent() {
         
         addToCart(cartItem);
         
+        // Force refresh SSE to update calendar immediately
+        if (forceRefresh && selectedInstructor) {
+          forceRefresh(selectedInstructor._id);
+        }
+        
         setIsBookingModalOpen(false);
         setConfirmationMessage(`${selectedProduct.title} has been added to your cart. You can complete the payment process and then schedule your lesson.`);
         setShowConfirmation(true);
@@ -439,8 +452,12 @@ function DrivingLessonsContent() {
             slotDetails: cartResult.slotDetails // Include slotDetails from the response
           });
 
+          // Force refresh SSE to update calendar immediately
+          if (forceRefresh) {
+            forceRefresh(); // Refresh all instructors since package can involve multiple instructors
+          }
+          
           // Package added to cart silently - no alert needed
-          // SSE will automatically update the schedule, no manual refresh needed
 
         } catch (error) {
           console.error('❌ Error adding to cart:', error);

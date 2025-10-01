@@ -70,7 +70,8 @@ export const usePaymentSuccess = () => {
     setState(prev => ({ ...prev, ...updates }));
   };
 
-  const debugSlot = async (slotId: string, instructorId: string) => {
+  // debugSlot function - DISABLED since we're now redirecting directly to success-checkout
+  /* const debugSlot = async (slotId: string, instructorId: string) => {
     try {
       console.log(`🔍 [DEBUG] Debugging slot ${slotId} for instructor ${instructorId}`);
       const debugResponse = await fetch('/api/instructors/debug-slot', {
@@ -88,9 +89,10 @@ export const usePaymentSuccess = () => {
       console.error(`❌ [DEBUG] Error debugging slot:`, error);
     }
     return null;
-  };
+  }; */
 
-  const verifyAllSlotsUpdated = async (orderId: string) => {
+  // verifyAllSlotsUpdated function - DISABLED since we're now redirecting directly to success-checkout
+  /* const verifyAllSlotsUpdated = async (orderId: string) => {
     try {
       console.log("🔍 INTERNAL VERIFICATION: Checking if all slots are properly updated...");
       
@@ -165,9 +167,10 @@ export const usePaymentSuccess = () => {
       console.error("❌ Error during internal verification:", error);
       return false;
     }
-  };
+  }; */
 
-  const startCountdown = useCallback(async (orderId?: string) => {
+  // startCountdown function - DISABLED since we're now redirecting directly to success-checkout
+  /* const startCountdown = useCallback(async (orderId?: string) => {
     // Internal verification before starting countdown
     if (orderId) {
       const verified = await verifyAllSlotsUpdated(orderId);
@@ -192,7 +195,7 @@ export const usePaymentSuccess = () => {
     
     return () => clearInterval(countdownTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); // Removemos verifyAllSlotsUpdated para evitar ciclos
+  }, [router]); // Removemos verifyAllSlotsUpdated para evitar ciclos */
 
   const clearCartCompletely = useCallback(async () => {
     try {
@@ -378,6 +381,10 @@ export const usePaymentSuccess = () => {
                       clearCart();
                       await clearCartCompletely();
 
+                      // 🎉 Redirect to success-checkout page immediately after successful Converge processing
+                      console.log('🎉 REDIRECTING TO SUCCESS-CHECKOUT PAGE (CONVERGE PROCESSING) NOW...');
+                      router.push('/success-checkout');
+
                     } else {
                       console.error("❌ Error actualizando orden");
                       updateState({ slotsUpdated: false });
@@ -407,6 +414,10 @@ export const usePaymentSuccess = () => {
                       slotsUpdated: true
                     });
                     await clearCartCompletely();
+
+                    // 🎉 Redirect to success-checkout page immediately after successful Converge processing (no appointments)
+                    console.log('🎉 REDIRECTING TO SUCCESS-CHECKOUT PAGE (CONVERGE NO APPOINTMENTS) NOW...');
+                    router.push('/success-checkout');
                   }
                 }
               }
@@ -629,11 +640,9 @@ export const usePaymentSuccess = () => {
                     
                     updateState({ slotsUpdated: true });
                     
-                    // 🎉 Redirect to success-checkout page after successful completion
-                    console.log('🎉 Redirecting to success-checkout page...');
-                    setTimeout(() => {
-                      router.push('/success-checkout');
-                    }, 1500);
+                    // 🎉 Redirect to success-checkout page immediately after successful completion
+                    console.log('🎉 REDIRECTING TO SUCCESS-CHECKOUT PAGE NOW...');
+                    router.push('/success-checkout');
                   } else {
                     console.error(`❌ SOME APPOINTMENTS FAILED TO PROCESS - NOT starting countdown`);
                     updateState({ slotsUpdated: false });
@@ -664,11 +673,9 @@ export const usePaymentSuccess = () => {
                     console.log('🧹 Clearing cart after successful slot updates (legacy flow)...');
                     clearCartCompletely();
                     
-                    // 🎉 Redirect to success-checkout page after successful completion (legacy flow)
-                    console.log('🎉 Redirecting to success-checkout page (legacy flow)...');
-                    setTimeout(() => {
-                      router.push('/success-checkout');
-                    }, 1500);
+                    // 🎉 Redirect to success-checkout page immediately after successful completion (legacy flow)
+                    console.log('🎉 REDIRECTING TO SUCCESS-CHECKOUT PAGE (LEGACY FLOW) NOW...');
+                    router.push('/success-checkout');
                   } else {
                     console.error(`❌ SOME ${orderTypeDisplay.toUpperCase()} SLOTS FAILED TO UPDATE - NOT starting countdown`);
                     updateState({ slotsUpdated: false });
@@ -684,11 +691,9 @@ export const usePaymentSuccess = () => {
                   console.log('🧹 Clearing cart for non-driving order type (legacy flow)...');
                   clearCartCompletely();
                   
-                  // 🎉 Redirect to success-checkout page after successful completion (other order types)
-                  console.log('🎉 Redirecting to success-checkout page (other order types)...');
-                  setTimeout(() => {
-                    router.push('/success-checkout');
-                  }, 1500);
+                  // 🎉 Redirect to success-checkout page immediately after successful completion (other order types)
+                  console.log('🎉 REDIRECTING TO SUCCESS-CHECKOUT PAGE (OTHER ORDER TYPES) NOW...');
+                  router.push('/success-checkout');
                 }
               } else {
                 console.error("Failed to fetch order details");
@@ -718,38 +723,30 @@ export const usePaymentSuccess = () => {
             }
             
             // 🚨 Redirect to error-checkout page for rejected payments
-            console.log('🚨 Payment was rejected, redirecting to error-checkout page...');
-            setTimeout(() => {
-              router.push('/error-checkout');
-            }, 2000);
+            console.log('🚨 PAYMENT WAS REJECTED, REDIRECTING TO ERROR-CHECKOUT PAGE NOW...');
+            router.push('/error-checkout');
           }
         } else {
           updateState({ transactionStatus: "error" });
           
           // 🚨 Redirect to error-checkout page for payment errors
-          console.log('🚨 Payment error detected, redirecting to error-checkout page...');
-          setTimeout(() => {
-            router.push('/error-checkout');
-          }, 2000);
+          console.log('🚨 PAYMENT ERROR DETECTED, REDIRECTING TO ERROR-CHECKOUT PAGE NOW...');
+          router.push('/error-checkout');
         }
       } catch (error) {
         console.error("Error checking transaction status:", error);
         updateState({ transactionStatus: "error" });
         
         // 🚨 Redirect to error-checkout page for transaction check errors
-        console.log('🚨 Transaction check error, redirecting to error-checkout page...');
-        setTimeout(() => {
-          router.push('/error-checkout');
-        }, 2000);
+        console.log('🚨 TRANSACTION CHECK ERROR, REDIRECTING TO ERROR-CHECKOUT PAGE NOW...');
+        router.push('/error-checkout');
       }
     } else {
       updateState({ transactionStatus: "error" });
       
       // 🚨 Redirect to error-checkout page for missing userId/orderId
-      console.log('🚨 Missing userId or orderId, redirecting to error-checkout page...');
-      setTimeout(() => {
-        router.push('/error-checkout');
-      }, 2000);
+      console.log('🚨 MISSING USERID OR ORDERID, REDIRECTING TO ERROR-CHECKOUT PAGE NOW...');
+      router.push('/error-checkout');
     }
 
     // Después de obtener el resultado, esperar 1 segundo y voltear la carta
@@ -769,8 +766,8 @@ export const usePaymentSuccess = () => {
     checkTransactionAndUpdateOrder();
   }, [checkTransactionAndUpdateOrder]);
 
-  // Countdown effect
-  useEffect(() => {
+  // Countdown effect - DISABLED since we're now redirecting directly to success-checkout
+  /* useEffect(() => {
     // Solo iniciar countdown si:
     // 1. La carta ya está volteada
     // 2. El pago está aprobado
@@ -795,7 +792,7 @@ export const usePaymentSuccess = () => {
         }, 1000);
       }
     }
-  }, [state.isCardFlipped, state.transactionStatus, state.slotsUpdated, state.showCountdown, state.currentOrderId, startCountdown]);
+  }, [state.isCardFlipped, state.transactionStatus, state.slotsUpdated, state.showCountdown, state.currentOrderId, startCountdown]); */
 
   return {
     state,
