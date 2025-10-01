@@ -136,7 +136,7 @@ export default function BookNowPage() {
   };
 
   // Use SSE hook instead of polling
-  const { schedule: sseSchedule, error: sseError, isConnected, isReady, forceRefresh } = useDrivingTestSSE(selectedInstructorId);
+  const { schedule: sseSchedule, isReady, forceRefresh } = useDrivingTestSSE(selectedInstructorId);
 
 
   useEffect(() => {
@@ -691,18 +691,40 @@ export default function BookNowPage() {
                     paymentMethod: 'local' // Para pago local
                   }),
                 });
-                
+
                 if (res.ok) {
+                  // Enviar evento de Facebook Pixel - InitiateCheckout
+                  if (typeof window !== 'undefined') {
+                    const fbq = (window as typeof window & { fbq?: (type: string, event: string, data: Record<string, unknown>) => void }).fbq;
+                    if (fbq) {
+                      fbq('track', 'InitiateCheckout', {
+                        content_name: 'Driving Test - Pay at Location',
+                        content_category: 'driving_test',
+                        value: selectedSlot.amount || 50,
+                        currency: 'USD',
+                        content_ids: [selectedSlot.instructorId],
+                        contents: [{
+                          id: `driving_test_${selectedSlot.instructorId}_${selectedSlot.date}_${selectedSlot.start}`,
+                          quantity: 1
+                        }]
+                      });
+                    }
+                  }
+
+                  // Force refresh SSE to update calendar FIRST
+                  if (forceRefresh) {
+                    console.log("🔄 Forcing SSE refresh after local payment reservation");
+                    forceRefresh();
+                  }
+
                   setIsBookingModalOpen(false);
                   setSelectedSlot(null);
                   setIsProcessingBooking(false);
-                  
-                  // Force refresh SSE to update calendar immediately
-                  if (forceRefresh) {
-                    forceRefresh();
-                  }
-                  
-                  setShowContactModal(true);
+
+                  // Show modal after a brief delay to allow SSE to update
+                  setTimeout(() => {
+                    setShowContactModal(true);
+                  }, 500);
                 } else {
                   setIsProcessingBooking(false);
                   const errorData = await res.json();
@@ -1140,14 +1162,18 @@ export default function BookNowPage() {
                     
                     if (res.ok) {
                       await res.json();
-                      
+
                       // Force refresh SSE to update calendar immediately
+                      console.log("🔄 Forcing SSE refresh after cancellation");
                       if (forceRefresh) {
                         forceRefresh();
                       }
-                      
-                      setCancellationMessage('Booking cancelled successfully. The slot is now available again.');
-                      setShowCancellation(true);
+
+                      // Wait a bit for SSE to update before showing message
+                      setTimeout(() => {
+                        setCancellationMessage('Booking cancelled successfully. The slot is now available again.');
+                        setShowCancellation(true);
+                      }, 500);
                     } else {
                       const errorData = await res.json();
                       setCancellationMessage(`Could not cancel the booking: ${errorData.error || 'Please try again.'}`);
