@@ -101,8 +101,8 @@ export async function POST(request: Request) {
     console.log('✅ [REDEEM SLOT] Found instructor:', instructor.name);
 
     // Find the slot in the instructor's schedule (ONLY status='available')
-    let foundSlot = null;
-    let scheduleType = null;
+    let foundSlot: any = null;
+    let scheduleType: string | null = null;
 
     // Check in driving test schedule first
     if (instructor.schedule_driving_test) {

@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
           // Fetch updated instructor to get slot details
           const updatedInstructor = await Instructor.findById(instructorId);
           if (updatedInstructor && updatedInstructor.schedule_driving_test) {
-            const bookingsToAdd = [];
+            const bookingsToAdd: any[] = [];
 
             for (const slotIdToFind of slotsToUpdate) {
               const slot = updatedInstructor.schedule_driving_test.find((s: any) =>
