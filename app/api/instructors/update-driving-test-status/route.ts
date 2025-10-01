@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Instructor from "@/models/Instructor";
+import User from "@/models/User";
 import mongoose from "mongoose";
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    const { slotId, instructorId, status, paid, paymentId, slotIds } = await req.json();
+    const { slotId, instructorId, status, paid, paymentId, slotIds, userId } = await req.json();
 
     console.log('🔄 [DRIVING TEST UPDATE] Updating driving test status:', {
       slotId,
@@ -148,6 +149,53 @@ export async function POST(req: NextRequest) {
 
     if (totalModified > 0) {
       console.log(`✅ [DRIVING TEST UPDATE] Updated ${totalModified} driving test slots successfully`);
+
+      // If status is 'booked' and userId is provided, save to User's driving_test_bookings
+      if (status === 'booked' && userId) {
+        try {
+          console.log('💾 [DRIVING TEST UPDATE] Saving bookings to User:', userId);
+
+          // Fetch updated instructor to get slot details
+          const updatedInstructor = await Instructor.findById(instructorId);
+          if (updatedInstructor && updatedInstructor.schedule_driving_test) {
+            const bookingsToAdd = [];
+
+            for (const slotIdToFind of slotsToUpdate) {
+              const slot = updatedInstructor.schedule_driving_test.find((s: any) =>
+                s._id?.toString() === slotIdToFind || s._id === slotIdToFind
+              );
+
+              if (slot) {
+                bookingsToAdd.push({
+                  slotId: slot._id,
+                  instructorId: instructorId,
+                  instructorName: updatedInstructor.name,
+                  date: slot.date,
+                  start: slot.start,
+                  end: slot.end,
+                  amount: slot.amount || 50,
+                  bookedAt: new Date(),
+                  orderId: paymentId,
+                  status: 'booked'
+                });
+              }
+            }
+
+            if (bookingsToAdd.length > 0) {
+              await User.findByIdAndUpdate(
+                userId,
+                { $push: { driving_test_bookings: { $each: bookingsToAdd } } },
+                { new: true }
+              );
+              console.log(`✅ [DRIVING TEST UPDATE] Saved ${bookingsToAdd.length} bookings to User`);
+            }
+          }
+        } catch (userError) {
+          console.error('❌ [DRIVING TEST UPDATE] Error saving to User bookings:', userError);
+          // Don't fail the whole request if User update fails
+        }
+      }
+
       return NextResponse.json({
         success: true,
         message: `${totalModified} driving test slot(s) updated successfully`,

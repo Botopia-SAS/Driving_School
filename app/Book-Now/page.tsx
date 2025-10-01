@@ -91,9 +91,19 @@ export default function BookNowPage() {
   const { addToCart, cart } = useCart();
   const userId = user?._id || "";
 
+  // State for cancelled slots available for redemption
+  const [cancelledSlots, setCancelledSlots] = useState<{
+    slotId: string;
+    date: string;
+    start: string;
+    end: string;
+    amount: number;
+    instructorName: string;
+  }[]>([]);
+
   // Function to check if a slot is already in the cart
   const isSlotInCart = (instructorId: string, date: string, start: string, end: string) => {
-    return cart.some(item => 
+    return cart.some(item =>
       item.classType === 'driving test' &&
       item.instructorId === instructorId &&
       item.date === date &&
@@ -160,6 +170,31 @@ export default function BookNowPage() {
     }
     fetchLocations();
   }, []);
+
+  // Fetch user's cancelled slots for redemption
+  useEffect(() => {
+    async function fetchCancelledSlots() {
+      if (!userId) {
+        setCancelledSlots([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/users/${userId}/cancelled-slots`);
+        if (!res.ok) {
+          console.error('Failed to fetch cancelled slots');
+          return;
+        }
+        const data = await res.json();
+        setCancelledSlots(data.cancelledSlots || []);
+        console.log('✅ Fetched cancelled slots:', data.cancelledSlots?.length || 0);
+      } catch (error) {
+        console.error('❌ Error fetching cancelled slots:', error);
+      }
+    }
+
+    fetchCancelledSlots();
+  }, [userId]);
 
   // Process SSE schedule data
   useEffect(() => {
@@ -610,7 +645,7 @@ export default function BookNowPage() {
     instructorName?: string,
     instructorId?: string
   } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor'>('online');
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor' | 'redeem'>('online');
   
   // Estados para el flujo de pago local
   const [showContactModal, setShowContactModal] = useState(false);
@@ -625,7 +660,87 @@ export default function BookNowPage() {
                 return;
               }
               if (!selectedSlot?.instructorId || !selectedSlot) return;
-              
+
+              // REDEEM: Use cancelled slot to book new slot
+              if (paymentMethod === 'redeem') {
+                setIsProcessingBooking(true);
+                try {
+                  const res = await fetch('/api/booking/redeem-cancelled-slot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      userId,
+                      instructorId: selectedSlot.instructorId,
+                      date: selectedSlot.date,
+                      start: selectedSlot.start,
+                      end: selectedSlot.end,
+                    }),
+                  });
+
+                  if (res.ok) {
+                    const data = await res.json();
+
+                    // Update local state immediately
+                    if (selectedInstructor?.schedule) {
+                      const updatedSchedule = selectedInstructor.schedule.map(day => {
+                        if (day.date === selectedSlot.date) {
+                          return {
+                            ...day,
+                            slots: day.slots.map(slot => {
+                              if (slot.start === selectedSlot.start && slot.end === selectedSlot.end) {
+                                return {
+                                  ...slot,
+                                  status: 'booked' as const,
+                                  studentId: userId,
+                                  booked: true,
+                                  paid: true
+                                };
+                              }
+                              return slot;
+                            })
+                          };
+                        }
+                        return day;
+                      });
+
+                      setSelectedInstructor({
+                        ...selectedInstructor,
+                        schedule: updatedSchedule
+                      });
+                    }
+
+                    // Refresh cancelled slots
+                    const slotsRes = await fetch(`/api/users/${userId}/cancelled-slots`);
+                    if (slotsRes.ok) {
+                      const slotsData = await slotsRes.json();
+                      setCancelledSlots(slotsData.cancelledSlots || []);
+                    }
+
+                    // Force refresh SSE
+                    if (forceRefresh) {
+                      forceRefresh();
+                    }
+
+                    setIsBookingModalOpen(false);
+                    setSelectedSlot(null);
+                    setIsProcessingBooking(false);
+
+                    // Show success message
+                    setCancellationMessage(`Successfully redeemed cancelled slot! Your driving test is now booked for ${selectedSlot.date} at ${selectedSlot.start}-${selectedSlot.end}. Remaining cancelled slots: ${data.remainingCancelledSlots}`);
+                    setShowCancellation(true);
+                  } else {
+                    const errorData = await res.json();
+                    setIsProcessingBooking(false);
+                    alert(`Could not redeem slot: ${errorData.error || 'Please try again.'}`);
+                  }
+                } catch (error) {
+                  console.error('❌ Error redeeming cancelled slot:', error);
+                  setIsProcessingBooking(false);
+                  alert('Error redeeming slot. Please try again.');
+                }
+                return;
+              }
+
               if (paymentMethod === 'online') {
         // PAGO ONLINE: Agregar al carrito directamente y marcar slot como pending
                 try {
@@ -780,6 +895,7 @@ export default function BookNowPage() {
         setPaymentMethod={setPaymentMethod}
         isProcessingBooking={isProcessingBooking}
         onConfirm={handleConfirm}
+        cancelledSlots={cancelledSlots}
       />
     );
   };

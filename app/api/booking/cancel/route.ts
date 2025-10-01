@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Instructor, { ScheduleSlot } from '@/models/Instructor';
+import User from '@/models/User';
 import { broadcastScheduleUpdate } from '@/lib/sse-driving-test-broadcast';
 import mongoose from 'mongoose';
 
@@ -131,6 +132,80 @@ export async function POST(request: Request) {
       const scheduleArray = scheduleType === 'schedule_driving_test' ? updatedInstructor?.schedule_driving_test : updatedInstructor?.schedule;
       console.log('📊 Total slots after save:', scheduleArray?.length);
       console.log('📊 New slot found in DB:', scheduleArray?.some((s: ScheduleSlot) => s._id === newAvailableSlot._id));
+
+      // Move booking from driving_test_bookings to driving_test_cancelled in User
+      try {
+        const user = await User.findById(studentId);
+        console.log('🔍 User found for moving booking:', {
+          userId: user?._id,
+          bookingsCount: user?.driving_test_bookings?.length || 0,
+          cancelledCount: user?.driving_test_cancelled?.length || 0
+        });
+
+        if (user && user.driving_test_bookings) {
+          console.log('🔍 All bookings:', user.driving_test_bookings.map((b: any) => ({
+            slotId: b.slotId?.toString(),
+            date: b.date,
+            start: b.start,
+            end: b.end
+          })));
+
+          console.log('🔍 Looking for slot:', {
+            slotId: foundSlot._id?.toString(),
+            date: date,
+            start: start,
+            end: end
+          });
+
+          // Find the booking to move by matching date, start, end (more reliable than just slotId)
+          const bookingIndex = user.driving_test_bookings.findIndex(
+            (b: any) =>
+              b.date === date &&
+              b.start === start &&
+              b.end === end
+          );
+
+          console.log('🔍 Booking found at index:', bookingIndex);
+
+          if (bookingIndex !== -1) {
+            const booking = user.driving_test_bookings[bookingIndex];
+
+            // Add to cancelled array with cancelledAt date
+            const cancelledBooking = {
+              ...booking.toObject(),
+              status: 'cancelled' as const,
+              cancelledAt: new Date()
+            };
+
+            const updatedUser = await User.findByIdAndUpdate(
+              studentId,
+              {
+                $pull: {
+                  driving_test_bookings: {
+                    date: date,
+                    start: start,
+                    end: end
+                  }
+                },
+                $push: { driving_test_cancelled: cancelledBooking }
+              },
+              { new: true }
+            );
+
+            console.log('✅ Moved booking to cancelled array in User:', {
+              remainingBookings: updatedUser?.driving_test_bookings?.length || 0,
+              totalCancelled: updatedUser?.driving_test_cancelled?.length || 0
+            });
+          } else {
+            console.log('⚠️ Booking not found in user.driving_test_bookings');
+          }
+        } else {
+          console.log('⚠️ User or driving_test_bookings not found');
+        }
+      } catch (userError) {
+        console.error('❌ Error updating User bookings:', userError);
+        // Don't fail the whole request if User update fails
+      }
     }
 
     // console.log('✅ Slot cancelled and set to available');

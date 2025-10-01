@@ -81,7 +81,6 @@ export async function POST(req: NextRequest) {
     // Verify that the slot belongs to this user (more flexible check)
     // Allow removal if slot is pending for this user OR if it's available (in case of sync issues)
     const isSlotOwnedByUser = slot.studentId && slot.studentId.toString() === userId;
-    const isSlotPending = slot.status === 'pending';
     const isSlotAvailable = slot.status === 'available' || slot.status === 'free';
     
     if (!isSlotOwnedByUser && !isSlotAvailable) {
@@ -103,9 +102,9 @@ export async function POST(req: NextRequest) {
     // Remove the item from user's cart
     const initialCartLength = user.cart?.length || 0;
     if (user.cart) {
-      user.cart = user.cart.filter((item: any) => {
+      user.cart = user.cart.filter((item: { classType?: string; instructorId?: string; date?: string; start?: string; end?: string }) => {
         // Remove driving test items that match this appointment
-        if (item.classType === 'driving test' && 
+        if (item.classType === 'driving test' &&
             item.instructorId?.toString() === instructorId &&
             item.date === date &&
             item.start === start &&
@@ -122,22 +121,23 @@ export async function POST(req: NextRequest) {
     // Save cart using findByIdAndUpdate
     await User.findByIdAndUpdate(userId, { cart: user.cart }, { runValidators: false });
 
-    // Free the slot - set status back to available and remove ALL student info
-    slot.status = 'available';
-    slot.studentId = undefined;
-    slot.studentName = undefined;
-    slot.reservedAt = undefined;
-    slot.paymentMethod = undefined;
-    
-    // Eliminar campos innecesarios
-    delete slot.booked;
-    delete slot.orderId;
-    delete slot.orderNumber;
-    
-    // Remove any driving lesson specific fields that shouldn't be here
-    delete slot.pickupLocation;
-    delete slot.dropoffLocation;
-    delete slot.selectedProduct;
+    // Free the slot - set status back to available and clean student info
+    // For driving test, only keep essential fields
+    const slotRecord = slot as Record<string, unknown>;
+    slotRecord.status = 'available';
+    slotRecord.studentId = null;
+    slotRecord.studentName = null;
+    slotRecord.paid = false;
+
+    // DELETE fields that don't belong to driving test slots
+    delete slotRecord.booked;
+    delete slotRecord.reservedAt;
+    delete slotRecord.paymentMethod;
+    delete slotRecord.orderId;
+    delete slotRecord.orderNumber;
+    delete slotRecord.pickupLocation;
+    delete slotRecord.dropoffLocation;
+    delete slotRecord.selectedProduct;
     
     await instructor.save();
 

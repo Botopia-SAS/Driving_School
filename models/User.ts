@@ -10,6 +10,22 @@ interface ICartItem {
   [key: string]: unknown; // For additional properties
 }
 
+// Interface for driving test bookings
+interface IDrivingTestBooking {
+  slotId: string;
+  instructorId: string;
+  instructorName?: string;
+  date: string;
+  start: string;
+  end: string;
+  amount: number;
+  bookedAt: Date;
+  orderId?: string;
+  status: 'booked' | 'cancelled';
+  redeemed?: boolean; // Indicates if this booking was created by redeeming a cancelled slot
+  redeemedFrom?: string; // SlotId of the cancelled slot that was redeemed
+}
+
 export interface IUser extends Document {
   firstName: string;
   middleName?: string;
@@ -36,6 +52,8 @@ export interface IUser extends Document {
   classReminder?: boolean;
   drivingTestReminder?: boolean;
   cart?: ICartItem[]; // Cart items for driving lessons
+  driving_test_bookings?: IDrivingTestBooking[]; // Active booked driving tests
+  driving_test_cancelled?: IDrivingTestBooking[]; // Cancelled driving tests (redeemable)
 }
 
 const UserSchema = new Schema<IUser>({
@@ -64,7 +82,40 @@ const UserSchema = new Schema<IUser>({
   classReminder: { type: Boolean, default: false },
   drivingTestReminder: { type: Boolean, default: false },
   cart: { type: [Schema.Types.Mixed], default: [] }, // Cart items for driving lessons
-}, { 
+  driving_test_bookings: {
+    type: [{
+      slotId: String,
+      instructorId: String,
+      instructorName: String,
+      date: String,
+      start: String,
+      end: String,
+      amount: Number,
+      bookedAt: Date,
+      orderId: String,
+      status: { type: String, enum: ['booked', 'cancelled'], default: 'booked' },
+      redeemed: { type: Boolean, default: false },
+      redeemedFrom: String
+    }],
+    default: []
+  },
+  driving_test_cancelled: {
+    type: [{
+      slotId: String,
+      instructorId: String,
+      instructorName: String,
+      date: String,
+      start: String,
+      end: String,
+      amount: Number,
+      bookedAt: Date,
+      cancelledAt: Date,
+      orderId: String,
+      status: { type: String, enum: ['booked', 'cancelled'], default: 'cancelled' }
+    }],
+    default: []
+  },
+}, {
   timestamps: true,
   strict: false // Allow additional fields without validation errors
 });
