@@ -1152,13 +1152,56 @@ export default function BookNowPage() {
           end: slotToCancel.slot.end,
           amount: slotToCancel.slot.amount || 50,
           instructorName: selectedInstructor?.name || 'Unknown Instructor',
-          status: slotToCancel.slot.status
+          status: slotToCancel.slot.status,
+          slotId: slotToCancel.slot._id,
+          instructorId: selectedInstructor?._id || ''
         } : null}
-        onConfirmCancel={async () => {
+        onConfirmCancel={async (paymentMethod?: 'online' | 'call') => {
           if (!slotToCancel || !selectedInstructor) return;
 
           setIsCancelling(true);
           try {
+            // Si se proporciona paymentMethod, es una cancelación con cargo
+            if (paymentMethod) {
+              if (paymentMethod === 'online') {
+                // PAID CANCELLATION - Pay Online: Create order and redirect to Stripe
+                const orderRes = await fetch('/api/booking/create-cancellation-order', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId,
+                    instructorId: selectedInstructor._id,
+                    slotId: slotToCancel.slot._id,
+                    date: slotToCancel.dateString,
+                    start: slotToCancel.slot.start,
+                    end: slotToCancel.slot.end,
+                    amount: 90,
+                    classType: 'cancel_driving_test'
+                  }),
+                });
+
+                if (!orderRes.ok) {
+                  const errorData = await orderRes.json();
+                  throw new Error(errorData.error || 'Failed to create cancellation order');
+                }
+
+                const { checkoutUrl } = await orderRes.json();
+
+                // Redirect to Stripe checkout
+                window.location.href = checkoutUrl;
+                return;
+              } else {
+                // PAID CANCELLATION - Call to Pay: Show phone number modal
+                setIsCancelling(false);
+                setShowCancelConfirm(false);
+                setSlotToCancel(null);
+                setCancellationMessage('Please call 561-330-7007 to complete your cancellation payment of $90.00 USD. Once payment is processed, your slot will be cancelled.');
+                setShowCancellation(true);
+                return;
+              }
+            }
+
+            // FREE CANCELLATION - Process immediately
             const res = await fetch('/api/booking/cancel', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

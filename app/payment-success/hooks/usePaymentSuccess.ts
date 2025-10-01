@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "../../context/CartContext";
-import { 
+import {
   processTicketClasses,
   groupDrivingLessonsByInstructor,
   updateInstructorSlotsBatch,
   forceUpdateLegacySlots,
-  revertAppointmentsOnFailure
+  revertAppointmentsOnFailure,
+  processCancellationOrder
 } from "../helpers";
 
 interface AppointmentDetail {
@@ -330,6 +331,16 @@ export const usePaymentSuccess = () => {
                   const drivingTests = orderData.order.appointments.filter((apt: OrderAppointment) =>
                     (apt.classType === 'driving_test' || apt.classType === 'driving test') && apt.slotId
                   );
+                  const cancellations = orderData.order.appointments.filter((apt: OrderAppointment) =>
+                    apt.classType === 'cancel_driving_test'
+                  );
+
+                  // Procesar Cancellations FIRST (before other appointments)
+                  if (cancellations.length > 0) {
+                    console.log('🔥 Procesando cancellations...');
+                    const cancellationOk = await processCancellationOrder(cancellations, orderId);
+                    if (!cancellationOk) allProcessed = false;
+                  }
 
                   // Procesar Ticket Classes
                   if (ticketClasses.length > 0) {
@@ -530,18 +541,22 @@ export const usePaymentSuccess = () => {
                   
                   // Group appointments by type for batch processing
                   const ticketClasses = orderData.order.appointments.filter(apt => apt.classType === 'ticket_class' || apt.ticketClassId);
-                  const drivingLessons = orderData.order.appointments.filter(apt => 
+                  const drivingLessons = orderData.order.appointments.filter(apt =>
                     (apt.classType === 'driving_lesson' || apt.classType === 'driving lesson') && apt.slotId
                   );
-                  const drivingTests = orderData.order.appointments.filter(apt => 
+                  const drivingTests = orderData.order.appointments.filter(apt =>
                     (apt.classType === 'driving_test' || apt.classType === 'driving test') && apt.slotId
                   );
-                  
+                  const cancellations = orderData.order.appointments.filter(apt =>
+                    apt.classType === 'cancel_driving_test'
+                  );
+
                   console.log('🎯 [PAYMENT-SUCCESS] Modular processing - Appointments summary:', {
                     total: orderData.order.appointments.length,
                     drivingLessons: drivingLessons.length,
                     drivingTests: drivingTests.length,
                     ticketClasses: ticketClasses.length,
+                    cancellations: cancellations.length,
                     orderType: orderData.order.orderType
                   });
                   
@@ -580,7 +595,19 @@ export const usePaymentSuccess = () => {
                   // Group driving lessons by instructor
                   const drivingLessonsByInstructor = groupDrivingLessonsByInstructor(drivingLessons);
                   const drivingTestsByInstructor = groupDrivingLessonsByInstructor(drivingTests); // Same grouping logic
-                  
+
+                  // Process CANCELLATIONS FIRST (before other appointments)
+                  if (cancellations.length > 0) {
+                    console.log('🔥 [PAYMENT-SUCCESS] Processing cancellations...');
+                    const cancellationOk = await processCancellationOrder(cancellations, orderId);
+                    if (!cancellationOk) {
+                      console.error('❌ [PAYMENT-SUCCESS] Cancellations processing failed');
+                      allProcessed = false;
+                    } else {
+                      console.log('✅ [PAYMENT-SUCCESS] Cancellations processed successfully');
+                    }
+                  }
+
                   // Process TICKET CLASSES using specific route
                   if (ticketClasses.length > 0) {
                     console.log('🎫 [PAYMENT-SUCCESS] Processing ticket classes with specific route...');

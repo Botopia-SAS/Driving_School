@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 interface CancellationModalProps {
   isOpen: boolean;
@@ -10,8 +10,10 @@ interface CancellationModalProps {
     amount: number;
     instructorName: string;
     status: string;
+    slotId: string;
+    instructorId: string;
   } | null;
-  onConfirmCancel: () => void;
+  onConfirmCancel: (paymentMethod?: 'online' | 'call') => void;
   isProcessing: boolean;
 }
 
@@ -22,6 +24,8 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
   onConfirmCancel,
   isProcessing
 }) => {
+  const [cancelPaymentMethod, setCancelPaymentMethod] = useState<'online' | 'call'>('online');
+
   if (!isOpen || !slotDetails) return null;
 
   // For "pending" slots (Pay at Location), always free cancellation
@@ -38,6 +42,7 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
 
   // Free cancellation if: pending slot OR booked slot with more than 48 hours
   const isFreeCancellation = isPendingSlot || isMoreThan48Hours;
+  const CANCELLATION_FEE = 90;
 
   return (
     <div
@@ -50,7 +55,7 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
           minWidth: '420px',
           maxWidth: '420px',
           width: '420px',
-          minHeight: '300px'
+          minHeight: '350px'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -84,7 +89,7 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
             <p className="text-sm mb-2"><strong>Instructor:</strong> {slotDetails.instructorName}</p>
             <p className="text-sm mb-2"><strong>Date:</strong> {slotDetails.date}</p>
             <p className="text-sm mb-2"><strong>Time:</strong> {slotDetails.start} - {slotDetails.end}</p>
-            <p className="text-sm"><strong>Amount:</strong> ${slotDetails.amount}</p>
+            <p className="text-sm"><strong>Original Amount:</strong> ${slotDetails.amount}</p>
           </div>
 
           {/* Cancellation Policy Information */}
@@ -106,23 +111,53 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
               <div className="flex items-start">
-                <svg className="h-6 w-6 text-red-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6 text-orange-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.732-1.333-2.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <div>
-                  <h3 className="text-red-800 font-semibold mb-1">Cancellation with Fee</h3>
-                  <p className="text-red-700 text-sm">
-                    Your booking is less than 48 hours away. Cancellation will incur a fee.
+                <div className="w-full">
+                  <h3 className="text-orange-800 font-semibold mb-1">Cancellation Fee Required</h3>
+                  <p className="text-orange-700 text-sm mb-3">
+                    Your booking is less than 48 hours away. A cancellation fee of <strong className="text-orange-900">${CANCELLATION_FEE}.00 USD</strong> applies.
                   </p>
+                  <div className="bg-white border border-orange-300 rounded-md p-3">
+                    <p className="text-orange-800 font-semibold text-sm mb-2">Choose payment method:</p>
+                    <div className="space-y-2">
+                      <label className="flex items-center p-2 border rounded hover:bg-orange-50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="cancelPayment"
+                          value="online"
+                          checked={cancelPaymentMethod === 'online'}
+                          onChange={() => setCancelPaymentMethod('online')}
+                          className="mr-2"
+                        />
+                        <span className="text-sm font-medium">Pay Online (${CANCELLATION_FEE}.00)</span>
+                      </label>
+                      <label className="flex items-center p-2 border rounded hover:bg-orange-50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="cancelPayment"
+                          value="call"
+                          checked={cancelPaymentMethod === 'call'}
+                          onChange={() => setCancelPaymentMethod('call')}
+                          className="mr-2"
+                        />
+                        <span className="text-sm font-medium">Call to Pay (561-330-7007)</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           <p className="text-gray-600 text-sm text-center mb-4">
-            Are you sure you want to cancel this booking?
+            {isFreeCancellation
+              ? 'Are you sure you want to cancel this booking?'
+              : `You will be charged $${CANCELLATION_FEE}.00 to cancel this booking.`
+            }
           </p>
 
           {/* Action Buttons */}
@@ -138,18 +173,22 @@ const CancellationModal: React.FC<CancellationModalProps> = ({
               className={`flex-1 px-6 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${
                 isProcessing
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-red-500 text-white hover:bg-red-600'
+                  : isFreeCancellation
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-orange-500 text-white hover:bg-orange-600'
               }`}
               disabled={isProcessing}
-              onClick={onConfirmCancel}
+              onClick={() => onConfirmCancel(isFreeCancellation ? undefined : cancelPaymentMethod)}
             >
               {isProcessing ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-red-500 rounded-full"></span>
-                  Cancelling...
+                  Processing...
                 </span>
-              ) : (
+              ) : isFreeCancellation ? (
                 'Yes, Cancel Booking'
+              ) : (
+                cancelPaymentMethod === 'online' ? 'Proceed to Payment' : 'Confirm & Call'
               )}
             </button>
           </div>
