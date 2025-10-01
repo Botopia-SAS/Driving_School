@@ -1,32 +1,49 @@
 import React, { useEffect, useRef, useState } from "react";
 
 /**
- * Overlay de error de compra con animaciones premium, accesibilidad y microinteracciones.
+ * Purchase error overlay with premium animations, accessibility and microinteractions.
  * @see https://tailwindcss.com/docs/animation
  */
 export type CheckoutErrorOverlayProps = {
   open: boolean;
   onClose?: () => void;
-  message?: string;
-  // reloadSrc and autoCloseMs removed (unused)
   className?: string;
   testId?: string;
   locale?: string;
   triggerPosition?: { x: number; y: number };
 };
 
-const DEFAULT_ERROR_MESSAGE: Record<string, string> = {
-  es: "Ocurrió un error al procesar el pago",
-  en: "There was an error processing your payment",
+interface ErrorContentType {
+  title: string;
+  subtitle: string;
+  description: string;
+  retryBtn: string;
+  contactSupport: string;
+}
+
+const ERROR_CONTENT: Record<string, ErrorContentType> = {
+  es: {
+    title: "Error en el Pago",
+    subtitle: "Hubo un problema al procesar tu pago",
+    description: "Por favor, verifica tu información de pago e inténtalo de nuevo.",
+    retryBtn: "Intentar de Nuevo",
+    contactSupport: "Si el problema persiste, contacta con soporte.",
+  },
+  en: {
+    title: "Payment Error",
+    subtitle: "There was a problem processing your payment",
+    description: "Please verify your payment information and try again.",
+    retryBtn: "Try Again",
+    contactSupport: "If the problem persists, please contact support.",
+  },
 };
 
 function CheckoutErrorOverlay({
   open,
   onClose,
-  message,
   className = "",
   testId = "checkout-error-overlay",
-  locale = "es",
+  locale = "en",
   triggerPosition,
 }: CheckoutErrorOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -34,10 +51,7 @@ function CheckoutErrorOverlay({
   const headingId = "checkout-error-heading";
   const [expand, setExpand] = useState(false);
   const [showContent, setShowContent] = useState(false);
-  const msg =
-    typeof message === "string"
-      ? message
-      : DEFAULT_ERROR_MESSAGE[locale ?? "es"];
+  const content = ERROR_CONTENT[locale ?? "en"];
 
   useEffect(() => {
     if (open) {
@@ -117,25 +131,48 @@ function CheckoutErrorOverlay({
               <circle cx="40" cy="54" r="3.5" fill="#d32f2f" />
             </svg>
           </div>
-          {/* Mensaje de error */}
-          <h2
-            id={headingId}
-            tabIndex={-1}
-            className="text-white text-3xl md:text-4xl font-extrabold text-center outline-none animate-riseFade drop-shadow-lg"
-            style={{ letterSpacing: "-1px" }}
-          >
-            {msg}
-          </h2>
-          {/* Botón continuar */}
+          {/* Error message */}
+          <div className="text-center mb-4">
+            <h2
+              id={headingId}
+              tabIndex={-1}
+              className="text-white text-3xl md:text-4xl font-extrabold outline-none animate-riseFade drop-shadow-lg mb-2"
+              style={{ letterSpacing: "-1px" }}
+            >
+              {content.title}
+            </h2>
+            <p className="text-white/90 text-lg font-medium animate-riseFade">
+              {content.subtitle}
+            </p>
+          </div>
+
+          {/* Error details */}
+          <div className="w-full max-w-sm bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 animate-fadeInContent">
+            <div className="text-center mb-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-full mb-3">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <p className="text-white/90 text-sm mb-4">
+                {content.description}
+              </p>
+              <p className="text-white/70 text-xs">
+                {content.contactSupport}
+              </p>
+            </div>
+          </div>
+
+          {/* Try again button */}
           <button
             ref={closeBtnRef}
             type="button"
             onClick={onClose}
-            className="mt-8 px-8 py-3 rounded-xl bg-white text-[#d32f2f] text-lg font-bold shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d32f2f] transition-all hover:bg-[#ffe6e6]"
+            className="mt-6 px-8 py-4 rounded-xl bg-white text-[#d32f2f] text-lg font-bold shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d32f2f] transition-all hover:bg-[#ffe6e6] hover:scale-105 transform"
             data-testid="checkout-error-continue"
-            style={{ boxShadow: "0 2px 16px #d32f2f33" }}
+            style={{ boxShadow: "0 4px 24px #d32f2f33" }}
           >
-            Continuar
+            {content.retryBtn}
           </button>
         </div>
       )}

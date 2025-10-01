@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Página de confirmación de compra exitosa
- * Muestra overlay de éxito con animación y mensaje de confirmación
- * Siempre redirige al usuario a la página principal al hacer clic en "Continuar"
+ * Successful Purchase Confirmation Page
+ * Shows success overlay with animation and confirmation message
+ * Always redirects user to the home page when clicking "Continue"
  *
- * Características:
- * - Animación premium con video de confirmación
- * - Mensaje claro y directo
- * - Limpieza automática del carrito
- * - Redirección a la página principal para continuar comprando
- * - Diseño responsive y accesible
+ * Features:
+ * - Premium animation with confirmation video
+ * - Clear and direct message
+ * - Automatic cart cleanup
+ * - Redirect to home page to continue browsing
+ * - Responsive and accessible design
  */
 
 import { useRouter } from "next/navigation";
@@ -28,27 +28,27 @@ export default function SuccessCheckoutPage() {
   const [isClient, setIsClient] = useState(false);
 
   /**
-   * Maneja el cierre del overlay y la redirección al tracking service
-   * - Cierra suavemente la animación
-   * - Limpia el carrito de compras
-   * - Redirecciona al usuario al tracking service
+   * Handles overlay closure and redirection to home page
+   * - Smoothly closes the animation
+   * - Cleans the shopping cart
+   * - Redirects user to the home page
    */
   const handleClose = () => {
     setOpen(false);
 
-    // Pequeño retraso antes de redirigir para permitir que la animación de cierre termine
+    // Small delay before redirecting to allow closing animation to finish
     setTimeout(() => {
-      // Limpiar carrito al finalizar exitosamente usando el hook centralizado
+      // Clean cart after successful completion using centralized hook
       clearCart();
 
-      // También limpiar otros datos relacionados con la compra
+      // Also clean other purchase-related data
       if (typeof window !== "undefined") {
         localStorage.removeItem("applied-discount");
         localStorage.removeItem("current-order");
       }
 
-      // Redirigir al tracking service
-      router.push("/tracking-service");
+      // Redirect to home page
+      router.push("/");
     }, 300);
   };
 
@@ -81,7 +81,7 @@ export default function SuccessCheckoutPage() {
       <CheckoutSuccessOverlay
         open={open}
         onClose={handleClose}
-        message="¡Tu compra ha sido exitosa!"
+        locale="en"
         triggerPosition={triggerPosition}
       />
     </div>

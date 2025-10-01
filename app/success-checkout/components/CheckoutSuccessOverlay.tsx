@@ -1,50 +1,65 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 /**
- * Overlay de éxito de compra con animaciones premium, accesibilidad y microinteracciones.
+ * Purchase success overlay with premium animations, accessibility and microinteractions.
  * @see https://tailwindcss.com/docs/animation
  */
 export type CheckoutSuccessOverlayProps = {
   open: boolean;
   onClose?: () => void;
-  message?: string;
   className?: string;
   testId?: string;
   locale?: string;
   triggerPosition?: { x: number; y: number };
 };
 
-const DEFAULT_MESSAGE: Record<string, string> = {
-  es: "Tu compra ha sido exitosa",
-  en: "Your purchase was successful",
+interface ContentType {
+  title: string;
+  subtitle: string;
+  continueBtn: string;
+  thankYou: string;
+  processing: string;
+}
+
+const CONTENT: Record<string, ContentType> = {
+  es: {
+    title: "¡Compra Exitosa!",
+    subtitle: "Tu orden ha sido procesada correctamente",
+    continueBtn: "Continuar",
+    thankYou: "Gracias por tu compra",
+    processing: "Procesando tu orden...",
+  },
+  en: {
+    title: "Purchase Successful!",
+    subtitle: "Your order has been processed successfully",
+    continueBtn: "Continue to Home",
+    thankYou: "Thank you for your purchase!",
+    processing: "Processing your order...",
+  },
 };
 
 /**
- * Animación de éxito de compra premium.
- * - Fondo verde se expande desde el botón hasta cubrir la pantalla.
- * - Ícono animado (video MP4) centrado arriba del texto.
- * - Mensaje de éxito centrado.
- * - Accesibilidad y microinteracciones.
+ * Premium purchase success animation.
+ * - Green background expands from button to cover the screen.
+ * - Animated icon (MP4 video) centered above text.
+ * - Centered success message with purchase summary.
+ * - Accessibility and microinteractions.
  */
 function CheckoutSuccessOverlay({
   open,
   onClose,
-  message,
   className = "",
   testId = "checkout-success-overlay",
-  locale = "es",
+  locale = "en",
   triggerPosition,
 }: CheckoutSuccessOverlayProps) {
-  const router = useRouter();
   const overlayRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const headingId = "checkout-success-heading";
   const [expand, setExpand] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const msg =
-    typeof message === "string" ? message : DEFAULT_MESSAGE[locale ?? "es"];
+  const content = CONTENT[locale ?? "en"];
 
   // Animación: expansión radial premium y fade-in del contenido
   useEffect(() => {
@@ -145,29 +160,66 @@ function CheckoutSuccessOverlay({
               Tu navegador no soporta el video.
             </video>
           </div>
-          {/* Mensaje de éxito */}
-          <h2
-            id={headingId}
-            tabIndex={-1}
-            className="text-white text-3xl md:text-4xl font-extrabold text-center outline-none animate-riseFade drop-shadow-lg"
-            style={{ letterSpacing: "-1px" }}
-          >
-            {msg}
-          </h2>
+          {/* Success message */}
+          <div className="text-center mb-4">
+            <h2
+              id={headingId}
+              tabIndex={-1}
+              className="text-white text-3xl md:text-4xl font-extrabold outline-none animate-riseFade drop-shadow-lg mb-2"
+              style={{ letterSpacing: "-1px" }}
+            >
+              {content.title}
+            </h2>
+            <p className="text-white/90 text-lg font-medium animate-riseFade">
+              {content.subtitle}
+            </p>
+          </div>
 
-          {/* Botón continuar */}
+          {/* Purchase summary */}
+          <div className="w-full max-w-sm bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 animate-fadeInContent">
+            <div className="text-center mb-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-full mb-3">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-white text-xl font-bold mb-1">{content.thankYou}</h3>
+              <p className="text-white/80 text-sm">
+                {locale === "en" 
+                  ? "Your booking has been confirmed and you will receive a confirmation email shortly."
+                  : "Tu reserva ha sido confirmada y recibirás un email de confirmación en breve."
+                }
+              </p>
+            </div>
+            
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between items-center text-white/90">
+                <span>{locale === "en" ? "Status:" : "Estado:"}</span>
+                <span className="font-semibold text-white">
+                  {locale === "en" ? "Confirmed" : "Confirmado"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-white/90">
+                <span>{locale === "en" ? "Next step:" : "Siguiente paso:"}</span>
+                <span className="font-semibold text-white">
+                  {locale === "en" ? "Check your email" : "Revisa tu email"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Continue button */}
           <button
             ref={closeBtnRef}
             type="button"
             onClick={() => {
               if (onClose) onClose();
-              router.push("/tracking-service");
             }}
-            className="mt-8 px-8 py-3 rounded-xl bg-white text-[#009047] text-lg font-bold shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#009047] transition-all hover:bg-[#e6ffe6]"
+            className="mt-6 px-8 py-4 rounded-xl bg-white text-[#009047] text-lg font-bold shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#009047] transition-all hover:bg-[#e6ffe6] hover:scale-105 transform"
             data-testid="checkout-success-continue"
-            style={{ boxShadow: "0 2px 16px #00904733" }}
+            style={{ boxShadow: "0 4px 24px #00904733" }}
           >
-            Continuar
+            {content.continueBtn}
           </button>
         </div>
       )}

@@ -19,6 +19,22 @@ interface AppointmentDetail {
   end?: string;
 }
 
+interface OrderAppointment {
+  ticketClassId?: string;
+  classType?: string;
+  slotId?: string;
+  instructorId?: string;
+  date?: string;
+  start?: string;
+  end?: string;
+  _id?: string;
+  orderId?: string;
+  studentId?: string;
+  instructorName?: string;
+  amount?: number;
+  status?: string;
+}
+
 export interface PaymentSuccessState {
   countdown: number;
   transactionStatus: string;
@@ -36,6 +52,7 @@ export const usePaymentSuccess = () => {
   const searchParams = useSearchParams();
   const { clearCart } = useCart();
   const hasInitialized = useRef(false);
+  const hasProcessedConvergeData = useRef(false); // 🔥 Flag para evitar procesar dos veces
 
   const [state, setState] = useState<PaymentSuccessState>({
     countdown: 5,
@@ -203,12 +220,220 @@ export const usePaymentSuccess = () => {
   }, [searchParams]);
 
   const checkTransactionAndUpdateOrder = useCallback(async () => {
-    const userId = searchParams ? searchParams.get("userId") : null;
-    const orderId = searchParams ? searchParams.get("orderId") : null;
-    
+    let userId = searchParams ? searchParams.get("userId") : null;
+    let orderId = searchParams ? searchParams.get("orderId") : null;
+
+    // 🔥 NUEVO: Extraer TODOS los parámetros que vienen de Converge
+    const convergeParams = {
+      ssl_result: searchParams?.get("ssl_result"),
+      ssl_result_message: searchParams?.get("ssl_result_message"),
+      ssl_txn_id: searchParams?.get("ssl_txn_id"),
+      ssl_amount: searchParams?.get("ssl_amount"),
+      ssl_transaction_type: searchParams?.get("ssl_transaction_type"),
+      ssl_card_number: searchParams?.get("ssl_card_number"),
+      ssl_exp_date: searchParams?.get("ssl_exp_date"),
+      ssl_customer_code: searchParams?.get("ssl_customer_code"),
+      ssl_invoice_number: searchParams?.get("ssl_invoice_number"),
+      ssl_approval_code: searchParams?.get("ssl_approval_code"),
+      ssl_txn_time: searchParams?.get("ssl_txn_time"),
+      ssl_first_name: searchParams?.get("ssl_first_name"),
+      ssl_last_name: searchParams?.get("ssl_last_name"),
+      ssl_email: searchParams?.get("ssl_email"),
+      ssl_phone: searchParams?.get("ssl_phone"),
+      ssl_company: searchParams?.get("ssl_company"),
+      ssl_description: searchParams?.get("ssl_description"),
+      ssl_token: searchParams?.get("ssl_token"),
+      ssl_card_short_description: searchParams?.get("ssl_card_short_description"),
+    };
+
+    // 🔥 Si vienen parámetros de Converge, enviarlos al backend para procesar
+    if (convergeParams.ssl_txn_id && !hasProcessedConvergeData.current) {
+      hasProcessedConvergeData.current = true; // Marcar como procesado
+      console.log("🌐 Datos de Converge detectados en URL - enviando al backend para procesamiento...");
+      console.log("📊 Datos de Converge:", convergeParams);
+      console.log("👤 userId de URL:", userId);
+      console.log("📦 orderId de URL:", orderId);
+
+      try {
+        const backendResponse = await fetch("https://botopiapagosatldriving.xyz/api/frontend-webhook/process-payment", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...convergeParams,
+            userId,
+            orderId
+          }),
+        });
+
+        if (backendResponse.ok) {
+          const backendData = await backendResponse.json();
+          console.log("✅ Backend procesó los datos de Converge:", backendData);
+
+          // 🔥 OBTENER userId y orderId del backend si no vienen en la URL
+          if (!userId && backendData.userId) {
+            userId = backendData.userId;
+            console.log("✅ userId obtenido del backend:", userId);
+          }
+
+          if (!orderId && backendData.orderId) {
+            orderId = backendData.orderId;
+            console.log("✅ orderId obtenido del backend:", orderId);
+          }
+
+          // 🔥 Si el pago fue APPROVED, procesar la orden COMPLETA
+          if (backendData.status === 'APPROVED') {
+            console.log("🎉 PAGO APPROVED");
+            console.log("👤 userId final:", userId);
+            console.log("📦 orderId final:", orderId);
+
+            if (!userId || !orderId) {
+              console.error("❌ ERROR: No se pudieron obtener userId u orderId");
+              console.error("👤 userId:", userId);
+              console.error("📦 orderId:", orderId);
+              console.error("📊 backendData:", backendData);
+
+              updateState({
+                transactionStatus: "error",
+                error: "Unable to retrieve order information. Please contact support with your transaction ID: " + convergeParams.ssl_txn_id
+              });
+              return;
+            }
+
+            console.log("🎉 Procesando orden completa...");
+
+            try {
+              // 1. Obtener detalles de la orden
+              const orderResponse = await fetch(`/api/orders/details?orderId=${orderId}`);
+              if (orderResponse.ok) {
+                const orderData = await orderResponse.json();
+                updateState({ orderDetails: orderData.order });
+
+                console.log("📦 Orden obtenida:", orderData.order);
+
+                // 2. Procesar appointments según el tipo
+                if (orderData.order.appointments && orderData.order.appointments.length > 0) {
+                  console.log(`🎯 Procesando ${orderData.order.appointments.length} appointments`);
+                  updateState({ isProcessingSlots: true });
+
+                  let allProcessed = true;
+
+                  // Separar por tipo
+                  const ticketClasses = orderData.order.appointments.filter((apt: OrderAppointment) => apt.classType === 'ticket_class' || apt.ticketClassId);
+                  const drivingLessons = orderData.order.appointments.filter((apt: OrderAppointment) =>
+                    (apt.classType === 'driving_lesson' || apt.classType === 'driving lesson') && apt.slotId
+                  );
+                  const drivingTests = orderData.order.appointments.filter((apt: OrderAppointment) =>
+                    (apt.classType === 'driving_test' || apt.classType === 'driving test') && apt.slotId
+                  );
+
+                  // Procesar Ticket Classes
+                  if (ticketClasses.length > 0) {
+                    console.log('🎫 Procesando ticket classes...');
+                    const ticketOk = await processTicketClasses(ticketClasses, userId, orderId, orderData.order.orderNumber);
+                    if (!ticketOk) allProcessed = false;
+                  }
+
+                  // Procesar Driving Lessons
+                  if (drivingLessons.length > 0) {
+                    console.log('🚗 Procesando driving lessons...');
+                    const lessonsByInstructor = groupDrivingLessonsByInstructor(drivingLessons);
+                    const lessonsOk = await updateInstructorSlotsBatch(lessonsByInstructor, orderId);
+                    if (!lessonsOk) allProcessed = false;
+                  }
+
+                  // Procesar Driving Tests
+                  if (drivingTests.length > 0) {
+                    console.log('🚙 Procesando driving tests...');
+                    const testsByInstructor = groupDrivingLessonsByInstructor(drivingTests);
+                    const testsOk = await updateInstructorSlotsBatch(testsByInstructor, orderId);
+                    if (!testsOk) allProcessed = false;
+                  }
+
+                  updateState({ isProcessingSlots: false });
+
+                  if (allProcessed) {
+                    console.log("✅ TODOS LOS APPOINTMENTS PROCESADOS");
+
+                    // 3. Actualizar orden a completed
+                    const updateOrderResponse = await fetch(`/api/orders/update-status`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        orderId: orderId,
+                        status: "completed",
+                        paymentStatus: "completed"
+                      }),
+                    });
+
+                    if (updateOrderResponse.ok) {
+                      console.log("✅ Orden actualizada a completed");
+                      updateState({
+                        transactionStatus: "approved",
+                        slotsUpdated: true
+                      });
+
+                      // Limpiar carrito
+                      clearCart();
+                      await clearCartCompletely();
+
+                    } else {
+                      console.error("❌ Error actualizando orden");
+                      updateState({ slotsUpdated: false });
+                    }
+                  } else {
+                    console.error("❌ Algunos appointments fallaron");
+                    updateState({ slotsUpdated: false });
+                  }
+                } else {
+                  // Sin appointments, solo actualizar orden
+                  console.log("📝 Sin appointments, solo actualizando orden");
+
+                  const updateOrderResponse = await fetch(`/api/orders/update-status`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      orderId: orderId,
+                      status: "completed",
+                      paymentStatus: "completed"
+                    }),
+                  });
+
+                  if (updateOrderResponse.ok) {
+                    console.log("✅ Orden actualizada a completed");
+                    updateState({
+                      transactionStatus: "approved",
+                      slotsUpdated: true
+                    });
+                    await clearCartCompletely();
+                  }
+                }
+              }
+
+              // 🔥 RETORNAR PARA NO EJECUTAR checkTransactionAndUpdateOrder
+              return;
+
+            } catch (processError) {
+              console.error("❌ Error procesando orden:", processError);
+              updateState({
+                transactionStatus: "error",
+                error: "Failed to process order. Please contact support."
+              });
+              return; // 🔥 Salir si hay error
+            }
+          }
+        } else {
+          console.error("❌ Error al procesar datos en backend:", await backendResponse.text());
+        }
+      } catch (error) {
+        console.error("❌ Error enviando datos al backend:", error);
+      }
+    }
+
     if (userId && orderId) {
       updateState({ currentOrderId: orderId });
-      
+
       try {
         const transactionResponse = await fetch(`/api/transactions/check-status`, {
           method: "POST",
@@ -220,8 +445,61 @@ export const usePaymentSuccess = () => {
         
         if (transactionResponse.ok) {
           const transactionData = await transactionResponse.json();
-          
+
           if (transactionData.success) {
+            // 🔥 SOLO APROBAR SI LA ORDEN ESTÁ COMPLETED
+            const orderStatus = transactionData.orderStatus;
+
+            if (orderStatus !== "completed") {
+              console.log(`⏳ Pago aprobado pero orden aún no completed (estado: ${orderStatus}). Esperando...`);
+              updateState({ transactionStatus: "processing" });
+
+              // Reintentar cada 3 segundos durante 1 minuto
+              let retryCount = 0;
+              const maxRetries = 20;
+
+              const pollOrderStatus = setInterval(async () => {
+                retryCount++;
+                console.log(`🔄 Verificando orden... Intento ${retryCount}/${maxRetries}`);
+
+                try {
+                  const retryResp = await fetch(`/api/transactions/check-status`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orderId }),
+                  });
+
+                  if (retryResp.ok) {
+                    const retryData = await retryResp.json();
+
+                    if (retryData.success && retryData.orderStatus === "completed") {
+                      console.log("✅ ¡Orden completada!");
+                      clearInterval(pollOrderStatus);
+
+                      // Llamar recursivamente para procesar la orden completada
+                      checkTransactionAndUpdateOrder();
+                      return;
+                    }
+                  }
+                } catch (err) {
+                  console.error("Error verificando orden:", err);
+                }
+
+                if (retryCount >= maxRetries) {
+                  console.error("❌ Timeout esperando completed");
+                  clearInterval(pollOrderStatus);
+                  updateState({
+                    transactionStatus: "error",
+                    error: "Payment approved but order not completed. Contact support."
+                  });
+                }
+              }, 3000);
+
+              return; // No continuar hasta que esté completed
+            }
+
+            // ✅ La orden YA está completed
+            console.log("✅ Pago aprobado Y orden completed");
             updateState({ transactionStatus: "approved" });
             
             console.log("🛒 Payment approved - processing slots first, then clearing cart");
@@ -350,6 +628,12 @@ export const usePaymentSuccess = () => {
                     clearCart();
                     
                     updateState({ slotsUpdated: true });
+                    
+                    // 🎉 Redirect to success-checkout page after successful completion
+                    console.log('🎉 Redirecting to success-checkout page...');
+                    setTimeout(() => {
+                      router.push('/success-checkout');
+                    }, 1500);
                   } else {
                     console.error(`❌ SOME APPOINTMENTS FAILED TO PROCESS - NOT starting countdown`);
                     updateState({ slotsUpdated: false });
@@ -379,6 +663,12 @@ export const usePaymentSuccess = () => {
                     // Limpiar carrito después de actualizar slots exitosamente
                     console.log('🧹 Clearing cart after successful slot updates (legacy flow)...');
                     clearCartCompletely();
+                    
+                    // 🎉 Redirect to success-checkout page after successful completion (legacy flow)
+                    console.log('🎉 Redirecting to success-checkout page (legacy flow)...');
+                    setTimeout(() => {
+                      router.push('/success-checkout');
+                    }, 1500);
                   } else {
                     console.error(`❌ SOME ${orderTypeDisplay.toUpperCase()} SLOTS FAILED TO UPDATE - NOT starting countdown`);
                     updateState({ slotsUpdated: false });
@@ -393,6 +683,12 @@ export const usePaymentSuccess = () => {
                   // Limpiar carrito para otros tipos de orden
                   console.log('🧹 Clearing cart for non-driving order type (legacy flow)...');
                   clearCartCompletely();
+                  
+                  // 🎉 Redirect to success-checkout page after successful completion (other order types)
+                  console.log('🎉 Redirecting to success-checkout page (other order types)...');
+                  setTimeout(() => {
+                    router.push('/success-checkout');
+                  }, 1500);
                 }
               } else {
                 console.error("Failed to fetch order details");
@@ -420,16 +716,40 @@ export const usePaymentSuccess = () => {
             } catch (error) {
               console.error("Error fetching order details for reversion:", error);
             }
+            
+            // 🚨 Redirect to error-checkout page for rejected payments
+            console.log('🚨 Payment was rejected, redirecting to error-checkout page...');
+            setTimeout(() => {
+              router.push('/error-checkout');
+            }, 2000);
           }
         } else {
           updateState({ transactionStatus: "error" });
+          
+          // 🚨 Redirect to error-checkout page for payment errors
+          console.log('🚨 Payment error detected, redirecting to error-checkout page...');
+          setTimeout(() => {
+            router.push('/error-checkout');
+          }, 2000);
         }
       } catch (error) {
         console.error("Error checking transaction status:", error);
         updateState({ transactionStatus: "error" });
+        
+        // 🚨 Redirect to error-checkout page for transaction check errors
+        console.log('🚨 Transaction check error, redirecting to error-checkout page...');
+        setTimeout(() => {
+          router.push('/error-checkout');
+        }, 2000);
       }
     } else {
       updateState({ transactionStatus: "error" });
+      
+      // 🚨 Redirect to error-checkout page for missing userId/orderId
+      console.log('🚨 Missing userId or orderId, redirecting to error-checkout page...');
+      setTimeout(() => {
+        router.push('/error-checkout');
+      }, 2000);
     }
 
     // Después de obtener el resultado, esperar 1 segundo y voltear la carta

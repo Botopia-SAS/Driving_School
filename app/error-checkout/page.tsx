@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * Página de error en el proceso de checkout
- * Muestra overlay de error con animación y mensaje explicativo
- * Permite al usuario reintentar o volver a la página de carrito
+ * Checkout Error Page
+ * Shows error overlay with animation and explanatory message
+ * Allows user to retry or return to cart page
  *
- * Características:
- * - Animación profesional para comunicar el error
- * - Mensaje claro y explicativo
- * - Posibilidad de reintentar el proceso
- * - Redirección a la página de carrito al cerrar
+ * Features:
+ * - Professional animation to communicate the error
+ * - Clear and explanatory message
+ * - Possibility to retry the process
+ * - Redirection to cart page when closing
  */
 
 import { useRouter } from "next/navigation";
@@ -20,29 +20,26 @@ export default function ErrorCheckoutPage() {
   const router = useRouter();
   const [open, setOpen] = useState(true);
 
-  // Obtener mensaje de error personalizado si existe (por ahora no se usa)
-  const errorMessage = undefined;
-
-  // Coordenadas para el efecto de expansión de la animación (centrado)
+  // Coordinates for animation expansion effect (centered)
   const [triggerPosition, setTriggerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
 
   /**
-   * Maneja el cierre del overlay y la redirección
-   * - Cierra suavemente la animación
-   * - Redirecciona al usuario a la página de carrito
+   * Handles overlay closure and redirection
+   * - Smoothly closes the animation
+   * - Redirects user to the cart page
    */
   const handleClose = () => {
     setOpen(false);
 
-    // Pequeño retraso antes de redirigir para permitir que la animación de cierre termine
+    // Small delay before redirecting to allow closing animation to finish
     setTimeout(() => {
-      // Siempre redirigir a la página de carrito en caso de error
-      router.push("/carrito");
+      // Always redirect to cart page in case of error
+      router.push("/checkout");
     }, 300);
   };
 
-  // Inicializar posición solo en el cliente para evitar problemas de hidratación
+  // Initialize position only on client to avoid hydration issues
   useEffect(() => {
     setIsClient(true);
     setTriggerPosition({
@@ -51,7 +48,7 @@ export default function ErrorCheckoutPage() {
     });
   }, []);
 
-  // Ajustar posición al cambiar el tamaño de la ventana
+  // Adjust position when window size changes
   useEffect(() => {
     if (!isClient) return;
     
@@ -71,7 +68,7 @@ export default function ErrorCheckoutPage() {
       <CheckoutErrorOverlay
         open={open}
         onClose={handleClose}
-        message={errorMessage}
+        locale="en"
         triggerPosition={triggerPosition}
       />
     </div>
