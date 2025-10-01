@@ -711,7 +711,35 @@ export default function BookNowPage() {
                     }
                   }
 
-                  // Force refresh SSE to update calendar FIRST
+                  // Actualizar el estado local inmediatamente para mostrar como pending
+                  if (selectedInstructor?.schedule) {
+                    const updatedSchedule = selectedInstructor.schedule.map(day => {
+                      if (day.date === selectedSlot.date) {
+                        return {
+                          ...day,
+                          slots: day.slots.map(slot => {
+                            if (slot.start === selectedSlot.start && slot.end === selectedSlot.end) {
+                              return {
+                                ...slot,
+                                status: 'pending' as const,
+                                studentId: userId,
+                                booked: true
+                              };
+                            }
+                            return slot;
+                          })
+                        };
+                      }
+                      return day;
+                    });
+
+                    setSelectedInstructor({
+                      ...selectedInstructor,
+                      schedule: updatedSchedule
+                    });
+                  }
+
+                  // Force refresh SSE to update calendar from server
                   if (forceRefresh) {
                     console.log("🔄 Forcing SSE refresh after local payment reservation");
                     forceRefresh();
@@ -720,11 +748,7 @@ export default function BookNowPage() {
                   setIsBookingModalOpen(false);
                   setSelectedSlot(null);
                   setIsProcessingBooking(false);
-
-                  // Show modal after a brief delay to allow SSE to update
-                  setTimeout(() => {
-                    setShowContactModal(true);
-                  }, 500);
+                  setShowContactModal(true);
                 } else {
                   setIsProcessingBooking(false);
                   const errorData = await res.json();
@@ -1158,22 +1182,47 @@ export default function BookNowPage() {
                     });
                     
                     setShowCancelConfirm(false);
-                    setSlotToCancel(null);
-                    
+
                     if (res.ok) {
                       await res.json();
 
-                      // Force refresh SSE to update calendar immediately
+                      // Actualizar el estado local inmediatamente para mostrar como disponible
+                      if (selectedInstructor?.schedule) {
+                        const updatedSchedule = selectedInstructor.schedule.map(day => {
+                          if (day.date === slotToCancel.dateString) {
+                            return {
+                              ...day,
+                              slots: day.slots.map(slot => {
+                                if (slot.start === slotToCancel.slot.start && slot.end === slotToCancel.slot.end) {
+                                  return {
+                                    ...slot,
+                                    status: 'available' as const,
+                                    studentId: undefined,
+                                    booked: false
+                                  };
+                                }
+                                return slot;
+                              })
+                            };
+                          }
+                          return day;
+                        });
+
+                        setSelectedInstructor({
+                          ...selectedInstructor,
+                          schedule: updatedSchedule
+                        });
+                      }
+
+                      // Force refresh SSE to update calendar from server
                       console.log("🔄 Forcing SSE refresh after cancellation");
                       if (forceRefresh) {
                         forceRefresh();
                       }
 
-                      // Wait a bit for SSE to update before showing message
-                      setTimeout(() => {
-                        setCancellationMessage('Booking cancelled successfully. The slot is now available again.');
-                        setShowCancellation(true);
-                      }, 500);
+                      setSlotToCancel(null);
+                      setCancellationMessage('Booking cancelled successfully. The slot is now available again.');
+                      setShowCancellation(true);
                     } else {
                       const errorData = await res.json();
                       setCancellationMessage(`Could not cancel the booking: ${errorData.error || 'Please try again.'}`);

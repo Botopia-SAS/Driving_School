@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from "react";
 import TermsCheckbox from "./TermsCheckbox";
 
+interface SelectedSlot {
+  instructorName?: string;
+  amount?: number;
+  date?: string;
+  start?: string;
+  end?: string;
+}
+
+interface SelectedInstructor {
+  name?: string;
+}
+
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedSlot: any;
-  selectedInstructor: any;
+  selectedSlot: SelectedSlot | null;
+  selectedInstructor: SelectedInstructor | null;
   paymentMethod: 'online' | 'instructor';
   setPaymentMethod: (method: 'online' | 'instructor') => void;
   isProcessingBooking: boolean;
@@ -41,9 +53,9 @@ const BookingModal: React.FC<BookingModalProps> = ({
              <div 
          className="relative bg-white text-black rounded-lg shadow-2xl border border-[#e0e0e0] flex flex-col"
          style={{
-           minWidth: '350px',
-           maxWidth: '350px',
-           width: '350px',
+           minWidth: '420px',
+           maxWidth: '420px',
+           width: '420px',
            minHeight: '350px'
          }}
          onClick={(e) => e.stopPropagation()}
