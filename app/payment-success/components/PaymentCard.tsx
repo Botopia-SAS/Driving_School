@@ -19,6 +19,17 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ state }) => {
             <div className="absolute inset-0 bg-emerald-400/40 rounded-full blur-2xl scale-125 animate-pulse"></div>
           </div>
         );
+      case "processing":
+        return (
+          <div className="relative">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mb-6 mx-auto shadow-2xl">
+              <svg className="w-12 h-12 text-white animate-spin" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <div className="absolute inset-0 bg-blue-400/40 rounded-full blur-2xl scale-125 animate-pulse"></div>
+          </div>
+        );
       case "pending":
         return (
           <div className="relative">
@@ -64,6 +75,16 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ state }) => {
           bgClass: "bg-gradient-to-r from-emerald-50 to-emerald-100 border-emerald-200",
           countdownClass: "text-emerald-700",
           buttonClass: "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
+        };
+      case "processing":
+        return {
+          title: "Completing Order",
+          subtitle: "Finalizing your purchase",
+          description: "Payment approved! We are completing your order and updating your lesson slots.",
+          statusClass: "text-blue-600",
+          bgClass: "bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200",
+          countdownClass: "text-blue-700",
+          buttonClass: "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
         };
       case "pending":
         return {

@@ -44,7 +44,109 @@ export async function POST(req: NextRequest) {
     }
 
     if (!transaction) {
-      console.log("⚠️ No transaction found for orderId:", orderId);
+      console.log("⚠️ No transaction found locally for orderId:", orderId);
+
+      // 🔥 NUEVO: Consultar al backend EC2 si no se encuentra localmente
+      try {
+        console.log("🌐 Consultando backend EC2 para orderId:", orderId);
+        const ec2Response = await fetch(`https://botopiapagosatldriving.xyz/api/payment-status/order/${orderId}/transactions`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (ec2Response.ok) {
+          const ec2Data = await ec2Response.json();
+          console.log("📊 Datos del backend EC2:", ec2Data);
+
+          if (ec2Data.success && ec2Data.transactions && ec2Data.transactions.length > 0) {
+            const ec2Transaction = ec2Data.transactions[0]; // Tomar la más reciente
+
+            // Guardar la transacción localmente para futuras consultas
+            try {
+              await Transaction.create({
+                orderId: ec2Transaction.orderId,
+                orderIdFromApp: orderId,
+                userId: ec2Transaction.userId,
+                status: ec2Transaction.status,
+                amount: ec2Transaction.amount,
+                transactionId: ec2Transaction.transactionId,
+                resultMessage: ec2Transaction.resultMessage,
+                approvalCode: ec2Transaction.approvalCode,
+                invoiceNumber: ec2Transaction.invoiceNumber,
+                customerCode: ec2Transaction.customerCode,
+                rawWebhook: ec2Transaction.rawWebhook || {},
+                createdAt: ec2Transaction.createdAt
+              });
+              console.log("✅ Transacción del EC2 guardada localmente");
+            } catch (saveError) {
+              console.error("⚠️ Error guardando transacción del EC2:", saveError);
+            }
+
+            // Continuar con la verificación usando los datos del EC2
+            if (ec2Transaction.status === "APPROVED") {
+              console.log("✅ Transaction from EC2 is APPROVED, updating order status");
+
+              const order = await Order.findById(orderId);
+              if (!order) {
+                return NextResponse.json({
+                  success: false,
+                  message: "Order not found",
+                  transactionStatus: ec2Transaction.status
+                });
+              }
+
+              if (order.paymentStatus === "completed" && order.estado === "completed") {
+                return NextResponse.json({
+                  success: true,
+                  message: "Order already completed",
+                  transactionStatus: ec2Transaction.status,
+                  orderStatus: "completed"
+                });
+              }
+
+              const updateResponse = await fetch(`${req.nextUrl.origin}/api/orders/update-status`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  orderId: orderId,
+                  status: "completed",
+                  paymentStatus: "completed"
+                }),
+              });
+
+              if (updateResponse.ok) {
+                return NextResponse.json({
+                  success: true,
+                  message: "Order updated to completed (from EC2 data)",
+                  transactionStatus: ec2Transaction.status,
+                  orderStatus: "completed"
+                });
+              } else {
+                return NextResponse.json({
+                  success: false,
+                  message: "Failed to update order",
+                  transactionStatus: ec2Transaction.status
+                });
+              }
+            } else {
+              return NextResponse.json({
+                success: false,
+                message: "Transaction not approved yet (from EC2)",
+                transactionStatus: ec2Transaction.status,
+                resultMessage: ec2Transaction.resultMessage
+              });
+            }
+          }
+        }
+      } catch (ec2Error) {
+        console.error("❌ Error consultando backend EC2:", ec2Error);
+      }
+
+      // Si tampoco se encontró en EC2, devolver not_found
       return NextResponse.json({
         success: false,
         message: "No transaction found",
