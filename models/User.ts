@@ -74,6 +74,16 @@ export interface IUser extends Document {
   driving_test_cancelled?: IDrivingTestBooking[]; // Cancelled driving tests (redeemable)
   driving_lesson_bookings?: IDrivingLessonBooking[]; // Active booked driving lessons
   driving_lesson_cancelled?: IDrivingLessonBooking[]; // Cancelled driving lessons (redeemable)
+  ticketclass_cancelled?: Array<{
+    ticketClassId: string;
+    className: string;
+    locationId: string;
+    date: string;
+    hour: string;
+    duration: string;
+    cancelledAt: Date;
+    redeemed: boolean;
+  }>; // Cancelled ticket classes (redeemable)
 }
 
 const UserSchema = new Schema<IUser>({
@@ -172,6 +182,19 @@ const UserSchema = new Schema<IUser>({
     }],
     default: []
   },
+  ticketclass_cancelled: {
+    type: [{
+      ticketClassId: String,
+      className: String,
+      locationId: String,
+      date: String,
+      hour: String,
+      duration: String,
+      cancelledAt: Date,
+      redeemed: { type: Boolean, default: false }
+    }],
+    default: []
+  }
 }, {
   timestamps: true,
   strict: false // Allow additional fields without validation errors
