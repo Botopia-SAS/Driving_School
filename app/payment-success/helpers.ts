@@ -27,7 +27,7 @@ export async function fetchOrderDetails(orderId: string): Promise<{ order: Order
   return orderResponse.json();
 }
 
-export async function processTicketClasses(appointments: Appointment[], userId: string, orderId: string, orderNumber?: string): Promise<boolean> {
+export async function processTicketClasses(appointments: Appointment[], userId: string, orderId: string): Promise<boolean> {
   let allProcessed = true;
   for (const appointment of appointments) {
     try {
@@ -172,18 +172,29 @@ export async function processCancellationOrder(appointments: Appointment[], orde
 
     const appointment = appointments[0]; // Should only have one appointment for cancellation
 
-    // Call a dedicated cancellation processing endpoint
-    const response = await fetch('/api/booking/process-cancellation-payment', {
+    // Determine the correct endpoint based on classType
+    let endpoint = '/api/booking/process-cancellation-payment'; // Default for driving test
+    
+    if (appointment.classType === 'cancel_driving_lesson') {
+      endpoint = '/api/driving-lessons/process-paid-cancellation';
+      console.log('🚙 Using driving lesson cancellation endpoint');
+    } else {
+      console.log('🚗 Using driving test cancellation endpoint');
+    }
+
+    // Call the appropriate cancellation processing endpoint
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        studentId: userId, // For driving lessons
+        userId: userId,    // For driving tests (backward compatibility)
         instructorId: appointment.instructorId,
         date: appointment.date,
         start: appointment.start,
         end: appointment.end,
         slotId: appointment.slotId,
-        orderId,
-        userId // Pass userId to update user bookings
+        orderId
       })
     });
 

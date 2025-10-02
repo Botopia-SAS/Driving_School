@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Instructor from "@/models/Instructor";
+import User from "@/models/User";
 
 interface DrivingLessonSlot {
   _id: string;
@@ -19,7 +20,7 @@ interface DrivingLessonSlot {
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    const { slotId, instructorId, status, paid, paymentId, slotIds } = await req.json();
+    const { slotId, instructorId, status, paid, paymentId, slotIds, userId } = await req.json();
 
     console.log('🔄 [DRIVING LESSON UPDATE] Updating driving lesson status:', {
       slotId,
@@ -80,23 +81,23 @@ export async function POST(req: NextRequest) {
     for (const slotIdToUpdate of slotsToUpdate) {
       try {
         console.log(`🔍 [DRIVING LESSON UPDATE] Processing slot: ${slotIdToUpdate}`);
-        
+
         // SIMPLE UPDATE: Change status to 'booked' and paid to true - KEEP existing fields
         const updateResult = await Instructor.findOneAndUpdate(
-          { 
+          {
             _id: instructorId,
             'schedule_driving_lesson._id': slotIdToUpdate
           },
-          { 
-            $set: { 
+          {
+            $set: {
               'schedule_driving_lesson.$.status': 'booked',
               'schedule_driving_lesson.$.paid': true,
               'schedule_driving_lesson.$.paymentId': paymentId,
               'schedule_driving_lesson.$.confirmedAt': new Date()
               // DO NOT remove studentId, studentName, pickupLocation, dropoffLocation, etc.
-            } 
+            }
           },
-          { 
+          {
             new: true,
             runValidators: true
           }
@@ -138,6 +139,50 @@ export async function POST(req: NextRequest) {
 
     if (totalModified > 0) {
       console.log(`✅ [DRIVING LESSON UPDATE] Updated ${totalModified} driving lesson slots successfully`);
+
+      // Add bookings to user.driving_lesson_bookings
+      if (userId) {
+        try {
+          const instructor = await Instructor.findById(instructorId);
+          const bookingsToAdd = [];
+
+          for (const slotIdToUpdate of slotsToUpdate) {
+            const slot = instructor?.schedule_driving_lesson.find((s: DrivingLessonSlot) =>
+              s._id.toString() === slotIdToUpdate
+            );
+
+            if (slot) {
+              bookingsToAdd.push({
+                slotId: `${slot.date}-${slot.start}-${slot.end}`,
+                instructorId: instructorId,
+                instructorName: instructor.name,
+                date: slot.date,
+                start: slot.start,
+                end: slot.end,
+                amount: 90,
+                bookedAt: new Date(),
+                orderId: paymentId || '',
+                status: 'booked' as const,
+                redeemed: false,
+                packageName: slot.selectedProduct || '',
+                selectedProduct: slot.selectedProduct || ''
+              });
+            }
+          }
+
+          if (bookingsToAdd.length > 0) {
+            await User.findByIdAndUpdate(
+              userId,
+              { $push: { driving_lesson_bookings: { $each: bookingsToAdd } } },
+              { validateBeforeSave: false }
+            );
+            console.log(`✅ [DRIVING LESSON UPDATE] Added ${bookingsToAdd.length} bookings to user.driving_lesson_bookings`);
+          }
+        } catch (userError) {
+          console.error('❌ [DRIVING LESSON UPDATE] Failed to add to user bookings:', userError);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         message: `${totalModified} driving lesson slot(s) updated successfully`,

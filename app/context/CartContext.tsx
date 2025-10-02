@@ -74,94 +74,117 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   // Removed unused cartLoading state
   const { user } = useAuth();
 
-  // Load cart from localStorage on initial load
+  // Load cart from localStorage on initial load - SIMPLIFIED to avoid clearing issues
   useEffect(() => {
-    // Check if cart was recently cleared intentionally
-    const cartCleared = localStorage.getItem("cart-cleared");
-    if (cartCleared) {
-      const clearedTime = parseInt(cartCleared);
-      const timeSinceCleared = Date.now() - clearedTime;
-      // If cleared in the last 10 minutes, don't load from localStorage
-      if (timeSinceCleared < 10 * 60 * 1000) { // 10 minutes
-        console.log('🔄 [CartContext] Cart was recently cleared, not loading from localStorage');
-        setCart([]);
-        return;
-      } else {
-        // Remove old cleared marker
-        localStorage.removeItem("cart-cleared");
-      }
-    }
+    console.log('🔄 [CartContext] Initial cart load from localStorage');
     
     const storedCart = localStorage.getItem("cart");
     if (storedCart) {
       try {
         const parsedCart = JSON.parse(storedCart);
-        console.log('🔄 [CartContext] Loading cart from localStorage:', parsedCart);
+        console.log('🔄 [CartContext] Found cart in localStorage:', parsedCart.length, 'items');
         setCart(parsedCart);
       } catch (e) {
-        console.error("Error parsing cart from localStorage", e);
-        localStorage.removeItem("cart");
+        console.warn("Error parsing cart from localStorage:", e);
+        // Don't clear localStorage on parse errors - just use empty cart
         setCart([]);
       }
     } else {
+      console.log('🔄 [CartContext] No cart found in localStorage');
       setCart([]);
     }
   }, []);
 
-  // Sync cart with database when user is available (only once)
+  // Sync cart with database when user is available - BUT PRESERVE EXISTING CART
+  const syncedRef = React.useRef(false);
+  const lastUserIdRef = React.useRef<string | null>(null);
+  
   useEffect(() => {
-    if (user?._id) {
-      console.log('🔄 [CartContext] Syncing cart with database for user:', user._id);
-      
-      // Check if cart was recently cleared intentionally
-      const cartCleared = localStorage.getItem("cart-cleared");
-      const now = Date.now();
-      if (cartCleared) {
-        const clearedTime = parseInt(cartCleared);
-        const timeSinceCleared = now - clearedTime;
-        // If cleared in the last 10 minutes, don't sync from database
-        if (timeSinceCleared < 10 * 60 * 1000) { // 10 minutes
-          console.log('🔄 [CartContext] Cart was recently cleared, skipping sync from database');
-          setCart([]);
-          return;
-        } else {
-          // Remove old cleared marker
-          localStorage.removeItem("cart-cleared");
-        }
+    // Reset sync flag when user changes
+    if (user?._id !== lastUserIdRef.current) {
+      syncedRef.current = false;
+      lastUserIdRef.current = user?._id || null;
+    }
+    
+    // Only sync once when user becomes available AND avoid clearing existing cart
+    if (user?._id && !syncedRef.current) {
+      syncedRef.current = true;
+      console.log('🔄 [CartContext] CAREFUL sync with database for user:', user._id, '- preserving existing cart');
+
+      // Always prioritize preserving user's cart data
+      console.log('🔄 [CartContext] Prioritizing cart preservation during sync');
+
+      // Get current localStorage cart AND current cart state
+      const storedCart = localStorage.getItem("cart");
+      const localCartItems = storedCart ? JSON.parse(storedCart) : [];
+      const currentCartItems = cart; // Current cart state
+
+      console.log('🔄 [CartContext] SYNC CHECK - Current cart in state:', currentCartItems.length, 'items');
+      console.log('🔄 [CartContext] SYNC CHECK - LocalStorage cart:', localCartItems.length, 'items');
+
+      // If we already have items in the cart state, DON'T overwrite them
+      if (currentCartItems.length > 0) {
+        console.log('🛑 [CartContext] Cart already has items - SKIPPING database sync to preserve data');
+        return;
       }
-      
-      // Check cart status from database
+
+      // Check cart status from database only if current cart is empty
       fetch(`/api/cart/status?userId=${user._id}`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            console.log('🔄 [CartContext] Database cart items:', data.cartItems);
+            console.log('🔄 [CartContext] Database cart items:', data.cartItems.length);
+            console.log('🔄 [CartContext] Local cart items:', localCartItems.length);
+
             if (data.cartItems.length > 0) {
               console.log('🔄 [CartContext] Found items in database, syncing with local state');
               setCart(data.cartItems);
               localStorage.setItem("cart", JSON.stringify(data.cartItems));
+            } else if (localCartItems.length > 0) {
+              // Database is empty but localStorage has items - ALWAYS KEEP localStorage items
+              console.log('🔄 [CartContext] Database empty, localStorage has items - KEEPING localStorage data and updating DB');
+              setCart(localCartItems);
+              
+              // Save to database as well to keep them in sync
+              setTimeout(async () => {
+                if (user?._id) {
+                  try {
+                    console.log('🔄 [CartContext] Saving localStorage items to database...');
+                    await fetch("/api/cart", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ userId: user._id, items: localCartItems }),
+                    });
+                    console.log('✅ [CartContext] Successfully synced localStorage to database');
+                  } catch (err) {
+                    console.warn("[CartContext] Failed to sync localStorage items to DB:", err);
+                  }
+                }
+              }, 100);
             } else {
-              // If database is empty, clear everything (DB is source of truth)
-              console.log('🔄 [CartContext] Database is empty, clearing cart and localStorage');
-              setCart([]);
-              localStorage.removeItem("cart");
+              // Both are empty - this is OK for new users
+              console.log('🔄 [CartContext] Both database and localStorage are empty - normal for new users');
+              // Don't force setCart([]) here - let it be handled by initial load
             }
           }
         })
         .catch(err => {
           console.warn('[CartContext] Failed to sync with database:', err);
+          // On error, keep localStorage items
+          if (localCartItems.length > 0) {
+            console.log('🔄 [CartContext] Sync failed, keeping localStorage items');
+            setCart(localCartItems);
+          }
         });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // NO DEPENDENCIES - only run once on mount, user._id will be null initially
+  }, [user?._id, cart]); // Run when user._id changes or cart changes
 
-  // 🔄 SSE Connection for real-time cart updates - TEMPORARILY DISABLED
+  // 🔄 SSE Connection for real-time cart updates - RE-ENABLED
   useEffect(() => {
     if (!user?._id) return;
     
-    // TEMPORARILY DISABLE SSE TO STOP INFINITE LOOP
-    console.log('🔄 SSE temporarily disabled to stop infinite loop');
-    return;
+    // Re-enable SSE since we fixed the reload issue in CartIcon
+    console.log('🔄 Setting up SSE connection for cart updates');
 
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
@@ -542,9 +565,22 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     console.log('✅ [CartContext] Cart completely cleared');
   };
   
-  const reloadCartFromDB = () => {
-    // This function is now effectively handled by the SSE connection.
-    // It can be kept for specific manual refresh scenarios if needed, but is not essential for sync.
+  const reloadCartFromDB = async () => {
+    if (!user?._id) return;
+    
+    console.log('🔄 [CartContext] Manual cart reload requested...');
+    try {
+      const response = await fetch(`/api/cart/status?userId=${user._id}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('🔄 [CartContext] Manual reload - found', data.cartItems.length, 'items');
+        setCart(data.cartItems);
+        localStorage.setItem("cart", JSON.stringify(data.cartItems));
+      }
+    } catch (error) {
+      console.error('❌ Failed to reload cart from DB:', error);
+    }
   };
 
   return (

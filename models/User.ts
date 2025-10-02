@@ -72,6 +72,8 @@ export interface IUser extends Document {
   cart?: ICartItem[]; // Cart items for driving lessons
   driving_test_bookings?: IDrivingTestBooking[]; // Active booked driving tests
   driving_test_cancelled?: IDrivingTestBooking[]; // Cancelled driving tests (redeemable)
+  driving_lesson_bookings?: IDrivingLessonBooking[]; // Active booked driving lessons
+  driving_lesson_cancelled?: IDrivingLessonBooking[]; // Cancelled driving lessons (redeemable)
 }
 
 const UserSchema = new Schema<IUser>({
@@ -133,6 +135,43 @@ const UserSchema = new Schema<IUser>({
     }],
     default: []
   },
+  driving_lesson_bookings: {
+    type: [{
+      slotId: String,
+      instructorId: String,
+      instructorName: String,
+      date: String,
+      start: String,
+      end: String,
+      amount: Number,
+      bookedAt: Date,
+      orderId: String,
+      status: { type: String, enum: ['booked', 'cancelled'], default: 'booked' },
+      redeemed: { type: Boolean, default: false },
+      redeemedFrom: String,
+      packageName: String,
+      selectedProduct: String
+    }],
+    default: []
+  },
+  driving_lesson_cancelled: {
+    type: [{
+      slotId: String,
+      instructorId: String,
+      instructorName: String,
+      date: String,
+      start: String,
+      end: String,
+      amount: Number,
+      bookedAt: Date,
+      cancelledAt: Date,
+      orderId: String,
+      status: { type: String, enum: ['booked', 'cancelled'], default: 'cancelled' },
+      packageName: String,
+      selectedProduct: String
+    }],
+    default: []
+  },
 }, {
   timestamps: true,
   strict: false // Allow additional fields without validation errors
@@ -140,7 +179,7 @@ const UserSchema = new Schema<IUser>({
 
 // Add virtual for full name
 UserSchema.virtual('name').get(function() {
-  return `${this.firstName} ${this.lastName}`.trim();
+  return `${this.get('firstName')} ${this.get('lastName')}`.trim();
 });
 
 // Ensure virtuals are included when converting to JSON

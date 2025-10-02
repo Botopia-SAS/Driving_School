@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { broadcastScheduleUpdate } from '@/lib/sse-broadcast';
+import { broadcastScheduleUpdate } from '@/lib/sse-driving-lessons-broadcast';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,9 +11,9 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`🔄 Force update requested for driving lessons instructor ${instructorId}`);
-    
-    // Trigger broadcast to all active SSE connections
-    broadcastScheduleUpdate(instructorId);
+
+    // Trigger broadcast to all active SSE connections using the new system
+    await broadcastScheduleUpdate(instructorId);
     
     return NextResponse.json({ 
       success: true, 

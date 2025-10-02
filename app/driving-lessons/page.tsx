@@ -6,6 +6,7 @@ import { useAuth } from "@/components/AuthContext";
 import { useCart } from "@/app/context/CartContext";
 import LoginModal from "@/components/LoginModal";
 import Modal from "@/components/Modal";
+import CancellationModal from "@/components/CancellationModal";
 import { useAllDrivingLessonsSSE } from "../../hooks/useAllDrivingLessonsSSE";
 
 // Import our new components
@@ -95,10 +96,24 @@ function DrivingLessonsContent() {
   const [showCancellation, setShowCancellation] = useState(false);
   const [cancellationMessage, setCancellationMessage] = useState("");
   const [slotToCancel, setSlotToCancel] = useState<ScheduleEntry & { instructorId: string } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Estados para redención de slots cancelados - Removed unused variable
 
   const { user, setUser } = useAuth();
   const { addToCart } = useCart();
   const userId = user?._id || "";
+
+  // Estado para slots cancelados disponibles para redención
+  const [cancelledSlots, setCancelledSlots] = useState<{
+    slotId: string;
+    instructorId: string;
+    instructorName?: string;
+    date: string;
+    start: string;
+    end: string;
+    cancelledAt: string;
+  }[]>([]);
 
   // Función para manejar el login exitoso
   const handleLoginSuccess = (loggedInUser: { _id: string; name: string; email: string }) => {
@@ -142,49 +157,47 @@ function DrivingLessonsContent() {
   );
   
   // Only use SSE when we have instructors and they're not empty
-  const { 
+  const {
+    schedules,
     getScheduleForInstructor,
     forceRefresh
-    // Removed unused variables: schedules, isConnectedForInstructor, getAllSchedules
   } = useAllDrivingLessonsSSE(instructorIds.length > 0 ? instructorIds : []);
 
-
-  // Function to immediately update selected slots to pending status locally
-  const updateSlotsTopending = () => {
-    setInstructors(prevInstructors => {
-      return prevInstructors.map(instructor => {
-        if (!instructor.schedule_driving_lesson) return instructor;
-
-        const updatedSchedule = instructor.schedule_driving_lesson.map(entry => {
-          const slotKey = `${entry.date}-${entry.start}-${entry.end}`;
-          if (selectedSlots.has(slotKey)) {
-            return {
-              ...entry,
-              status: 'pending',
-              studentId: userId,
-              studentName: user?.name || 'Unknown Student'
-            };
-          }
-          return entry;
-        });
-
-        return {
-          ...instructor,
-          schedule_driving_lesson: updatedSchedule,
-          lastUpdated: Date.now()
-        };
-      });
-    });
-    
-    // Force refresh SSE to sync with server after local update
-    if (forceRefresh) {
-      setTimeout(() => {
-        forceRefresh(); // Refresh all instructors
-      }, 100); // Small delay to allow state to update first
+  // Automatically process SSE schedule updates and update instructors state
+  useEffect(() => {
+    if (!schedules || schedules.size === 0) {
+      console.log('⚠️ SSE schedules Map is empty or null');
+      return;
     }
-  };
 
-  // Helper functions - removed unused pad function
+    console.log('📡 SSE schedules Map updated, size:', schedules.size);
+    console.log('📡 SSE schedules data:', Array.from(schedules.entries()).map(([id, schedule]) => ({
+      instructorId: id,
+      slotsCount: Array.isArray(schedule) ? schedule.length : 0
+    })));
+
+    // Update instructors with SSE schedule data
+    setInstructors(prevInstructors => {
+      console.log('🔄 Updating instructors state with SSE data...');
+      const updated = prevInstructors.map(instructor => {
+        const sseSchedule = schedules.get(instructor._id);
+
+        if (sseSchedule && Array.isArray(sseSchedule)) {
+          console.log(`✅ Updating instructor ${instructor.name} with ${sseSchedule.length} slots from SSE`);
+          // Update this instructor's schedule with SSE data
+          return {
+            ...instructor,
+            schedule_driving_lesson: sseSchedule as ScheduleEntry[]
+          };
+        }
+
+        return instructor;
+      });
+      return updated;
+    });
+  }, [schedules]);
+
+  // Helper functions - removed unused updateSlotsTopending and pad functions
 
   const handleDateChange = (value: Date | null | (Date | null)[]) => {
     if (!value || Array.isArray(value)) return;
@@ -257,6 +270,32 @@ function DrivingLessonsContent() {
     fetchInstructors();
   }, [fetchInstructors]);
 
+  // Load cancelled slots for redemption when user is authenticated
+  useEffect(() => {
+    const loadCancelledSlots = async () => {
+      if (!user?._id) return;
+
+      try {
+        console.log('🔍 [DRIVING LESSONS] Fetching cancelled slots for user:', user._id);
+        const response = await fetch(`/api/users/${user._id}/cancelled-driving-lessons`);
+        console.log('📡 [DRIVING LESSONS] Response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📋 [DRIVING LESSONS] Loaded cancelled slots response:', data);
+          console.log('📋 [DRIVING LESSONS] Raw cancelledSlots array:', data.cancelledSlots);
+          setCancelledSlots(data.cancelledSlots || []);
+          console.log('✅ [DRIVING LESSONS] Available credits set to:', data.cancelledSlots?.length || 0);
+        } else {
+          console.warn('⚠️ [DRIVING LESSONS] Failed to load cancelled slots');
+        }
+      } catch (error) {
+        console.error('❌ [DRIVING LESSONS] Error loading cancelled slots:', error);
+      }
+    };
+
+    loadCancelledSlots();
+  }, [user?._id]);
 
   const generateCalendlyURL = (product: Product, instructor: Instructor, slot?: ScheduleEntry) => {
     const baseUrl = "https://calendly.com/your-driving-school"; // Change to your real Calendly URL
@@ -314,14 +353,41 @@ function DrivingLessonsContent() {
           duration: selectedProduct.duration || 1,
           description: selectedProduct.description
         };
-        
+
         addToCart(cartItem);
-        
+
+        // Update local state immediately to show slot as pending
+        setInstructors(prevInstructors => {
+          return prevInstructors.map(instructor => {
+            if (instructor._id === selectedInstructor._id && instructor.schedule_driving_lesson) {
+              const updatedSchedule = instructor.schedule_driving_lesson.map((slot: ScheduleEntry) => {
+                if (slot.date === selectedSlot.date && slot.start === selectedSlot.start && slot.end === selectedSlot.end) {
+                  return {
+                    ...slot,
+                    status: 'pending',
+                    studentId: userId,
+                    studentName: user ? (user as unknown as Record<string, unknown>).name as string || 'Unknown' : 'Unknown',
+                    booked: true,
+                    reservedAt: new Date()
+                  };
+                }
+                return slot;
+              });
+
+              return {
+                ...instructor,
+                schedule_driving_lesson: updatedSchedule
+              };
+            }
+            return instructor;
+          });
+        });
+
         // Force refresh SSE to update calendar immediately
         if (forceRefresh && selectedInstructor) {
           forceRefresh(selectedInstructor._id);
         }
-        
+
         setIsBookingModalOpen(false);
         setConfirmationMessage(`${selectedProduct.title} has been added to your cart. You can complete the payment process and then schedule your lesson.`);
         setShowConfirmation(true);
@@ -329,11 +395,44 @@ function DrivingLessonsContent() {
       } else {
         // Schedule directly with Calendly for pay at location
         const calendlyUrl = generateCalendlyURL(selectedProduct, selectedInstructor, selectedSlot);
-        
+
+        // Update local state immediately to show slot as pending
+        setInstructors(prevInstructors => {
+          return prevInstructors.map(instructor => {
+            if (instructor._id === selectedInstructor._id && instructor.schedule_driving_lesson) {
+              const updatedSchedule = instructor.schedule_driving_lesson.map((slot: ScheduleEntry) => {
+                if (slot.date === selectedSlot.date && slot.start === selectedSlot.start && slot.end === selectedSlot.end) {
+                  return {
+                    ...slot,
+                    status: 'pending',
+                    studentId: userId,
+                    studentName: user ? (user as unknown as Record<string, unknown>).name as string || 'Unknown' : 'Unknown',
+                    booked: true,
+                    reservedAt: new Date(),
+                    paymentMethod: 'location'
+                  };
+                }
+                return slot;
+              });
+
+              return {
+                ...instructor,
+                schedule_driving_lesson: updatedSchedule
+              };
+            }
+            return instructor;
+          });
+        });
+
+        // Force refresh SSE to update calendar immediately
+        if (forceRefresh && selectedInstructor) {
+          forceRefresh(selectedInstructor._id);
+        }
+
         setIsBookingModalOpen(false);
         setConfirmationMessage(`Redirecting to schedule your ${selectedProduct.title} with ${selectedInstructor.name} on ${selectedSlot.date} at ${selectedSlot.start}...`);
         setShowConfirmation(true);
-        
+
         setTimeout(() => {
           window.location.href = calendlyUrl;
         }, 2000);
@@ -371,10 +470,127 @@ function DrivingLessonsContent() {
     setIsRequestModalOpen(true);
   };
 
-  const handleRequestScheduleWithLocations = async (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local') => {
+  const handleRequestScheduleWithLocations = async (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local' | 'redeem') => {
     if (!selectedProduct || selectedSlots.size === 0 || !userId) {
       alert('Please make sure you have selected a package and time slots, and are logged in.');
       return;
+    }
+
+    // REDEEM: Use cancelled slot to book new driving lesson
+    if (paymentMethod === 'redeem') {
+      if (cancelledSlots.length === 0) {
+        alert('No cancelled slots available for redemption.');
+        return;
+      }
+
+      try {
+        // Get first selected slot for redemption
+        const firstSlotKey = Array.from(selectedSlots)[0];
+        console.log('🔍 [REDEEM SEARCH] Original slot key:', firstSlotKey);
+        
+        // Parse the slot key - format should be: "2025-10-01-09:30-11:30"
+        const parts = firstSlotKey.split('-');
+        const date = `${parts[0]}-${parts[1]}-${parts[2]}`; // "2025-10-01"  
+        const start = `${parts[3]}:${parts[4]}`; // "09:30"
+        const end = `${parts[5]}:${parts[6]}`; // "11:30"
+        
+        // Find instructor for the slot
+        console.log('🔍 [REDEEM SEARCH] Looking for slot:', { date, start, end });
+        console.log('🔍 [REDEEM SEARCH] Available instructors:', instructors.length);
+        
+        let targetInstructor: Instructor | null = null;
+        let availableSlotFound: ScheduleEntry | null = null;
+        
+        for (const instructor of instructors) {
+          console.log(`🔍 [REDEEM SEARCH] Checking instructor: ${instructor.name}`);
+          
+          if (!instructor.schedule_driving_lesson) {
+            console.log(`⚠️ [REDEEM SEARCH] ${instructor.name} has no schedule_driving_lesson`);
+            continue;
+          }
+          
+          for (const slot of instructor.schedule_driving_lesson) {
+            const isDateMatch = slot.date === date;
+            const isStartMatch = slot.start === start;
+            const isEndMatch = slot.end === end;
+            const isAvailable = slot.status === 'available';
+            
+            console.log(`🔍 [REDEEM SEARCH] Slot check:`, {
+              instructorName: instructor.name,
+              slotDate: slot.date,
+              slotStart: slot.start,
+              slotEnd: slot.end,
+              status: slot.status,
+              dateMatch: isDateMatch,
+              startMatch: isStartMatch,
+              endMatch: isEndMatch,
+              isAvailable: isAvailable,
+              allMatch: isDateMatch && isStartMatch && isEndMatch && isAvailable
+            });
+            
+            if (isDateMatch && isStartMatch && isEndMatch && isAvailable) {
+              console.log(`✅ [REDEEM SEARCH] FOUND PERFECT MATCH! Instructor: ${instructor.name}`);
+              targetInstructor = instructor;
+              availableSlotFound = slot;
+              break;
+            }
+          }
+          
+          if (targetInstructor) break;
+        }
+
+        if (!targetInstructor || !availableSlotFound) {
+          console.log('❌ [REDEEM SEARCH] No available instructor found for selected slot');
+          alert('Selected slot is no longer available.');
+          return;
+        }
+
+        console.log('✅ [REDEEM SEARCH] Found target instructor:', targetInstructor.name);
+        console.log('✅ [REDEEM SEARCH] Available slot details:', availableSlotFound);
+
+        const res = await fetch('/api/driving-lessons/redeem-cancelled-slot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: userId,
+            instructorId: targetInstructor._id,
+            date: date,
+            start: start,
+            end: end,
+            pickupLocation: pickupLocation,
+            dropoffLocation: dropoffLocation,
+            packageName: selectedProduct.title,
+            selectedProduct: selectedProduct._id
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log('✅ [DRIVING LESSONS] Slot redeemed successfully:', data);
+          
+          // Clear selections
+          setSelectedSlots(new Set());
+          setSelectedHours(0);
+          setIsRequestModalOpen(false);
+          
+          // Refresh cancelled slots
+          const slotsRes = await fetch(`/api/users/${userId}/cancelled-driving-lessons`);
+          if (slotsRes.ok) {
+            const slotsData = await slotsRes.json();
+            setCancelledSlots(slotsData.cancelledSlots || []);
+          }
+          
+          alert('Driving lesson booked successfully using your credit!');
+          return;
+        } else {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to redeem slot');
+        }
+      } catch (error) {
+        console.error('❌ [DRIVING LESSONS] Error redeeming slot:', error);
+        alert(`Error redeeming credit: ${error instanceof Error ? error.message : 'Please try again.'}`);
+        return;
+      }
     }
 
     try {
@@ -402,9 +618,7 @@ function DrivingLessonsContent() {
         throw new Error(result.error || 'Failed to create schedule request');
       }
 
-      
-      // Immediately update selected slots to pending in the UI
-      updateSlotsTopending();
+      // SSE will automatically update the schedule - no manual update needed (like Book-Now)
 
       // If online payment, add to cart and mark slots as pending (NO create order yet)
       if (paymentMethod === 'online') {
@@ -490,42 +704,14 @@ function DrivingLessonsContent() {
     setShowCancelConfirm(true);
   };
 
-  const confirmCancelPendingSlot = async () => {
-    if (!slotToCancel) return;
-    
-    try {
-      
-      const response = await fetch('/api/driving-lessons/cancel-pending', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instructorId: slotToCancel.instructorId,
-          date: slotToCancel.date,
-          start: slotToCancel.start,
-          end: slotToCancel.end,
-          studentId: userId
-        })
-      });
+  // confirmCancelPendingSlot function removed as it was unused - reserved for future implementation
 
-      const result = await response.json();
-      
-      setShowCancelConfirm(false);
-      setSlotToCancel(null);
+  // Handle canceling a BOOKED slot (paid)
+  const handleCancelBookedSlot = async (slot: ScheduleEntry & { instructorId: string; dateString: string }) => {
+    if (!userId) return;
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to cancel pending slot');
-      }
-
-      setCancellationMessage('Slot cancelled successfully. The slot is now available again.');
-      setShowCancellation(true);
-      
-      // SSE will automatically update the schedule
-      
-    } catch (error) {
-      console.error('❌ Error canceling pending slot:', error);
-      setCancellationMessage(`Error canceling slot: ${error.message || 'Please try again.'}`);
-      setShowCancellation(true);
-    }
+    setSlotToCancel(slot);
+    setShowCancelConfirm(true);
   };
 
   const getWeekDates = useCallback((date: Date) => {
@@ -655,6 +841,7 @@ function DrivingLessonsContent() {
             setShowLogin(true);
           }}
           onCancelPendingSlot={handleCancelPendingSlot}
+          onCancelBookedSlot={handleCancelBookedSlot}
           key={`schedule-${Date.now()}`}
         />
       </div>
@@ -677,6 +864,7 @@ function DrivingLessonsContent() {
         onClose={() => setIsRequestModalOpen(false)}
         selectedProduct={selectedProduct}
         selectedHours={selectedHours}
+        cancelledSlots={cancelledSlots}
         onRequestSchedule={handleRequestScheduleWithLocations}
       />
 
@@ -713,54 +901,6 @@ function DrivingLessonsContent() {
         onLoginSuccess={handleLoginSuccess}
       />
 
-      {/* Modal de confirmación de cancelación */}
-      <Modal
-        isOpen={showCancelConfirm}
-        onClose={() => {
-          setShowCancelConfirm(false);
-          setSlotToCancel(null);
-        }}
-      >
-        <div className="p-6 text-center">
-          <div className="mb-4">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold mb-4 text-red-600">Cancel Pending Slot</h2>
-            <p className="text-gray-700 mb-4">
-              Are you sure you want to cancel this pending driving lesson slot?
-            </p>
-            {slotToCancel && (
-              <div className="bg-gray-50 p-4 rounded-lg mb-4 text-left">
-                <p><strong>Date:</strong> {slotToCancel.date}</p>
-                <p><strong>Time:</strong> {slotToCancel.start} - {slotToCancel.end}</p>
-                <p><strong>Status:</strong> <span className="text-orange-600">Pending</span></p>
-              </div>
-            )}
-            <p className="text-sm text-gray-500">The slot will become available for other students.</p>
-          </div>
-          <div className="flex justify-center gap-3">
-            <button
-              className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
-              onClick={() => {
-                setShowCancelConfirm(false);
-                setSlotToCancel(null);
-              }}
-            >
-              Keep Slot
-            </button>
-            <button
-              className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
-              onClick={confirmCancelPendingSlot}
-            >
-              Yes, Cancel Slot
-            </button>
-          </div>
-        </div>
-      </Modal>
-
       {/* Modal de resultado de cancelación */}
       <Modal
         isOpen={showCancellation}
@@ -784,6 +924,160 @@ function DrivingLessonsContent() {
           </button>
         </div>
       </Modal>
+
+      {/* Cancellation Modal for Booked Slots */}
+      <CancellationModal
+        isOpen={showCancelConfirm}
+        onClose={() => {
+          setShowCancelConfirm(false);
+          setSlotToCancel(null);
+        }}
+        slotDetails={slotToCancel ? {
+          date: slotToCancel.date,
+          start: slotToCancel.start,
+          end: slotToCancel.end,
+          amount: 90,
+          instructorName: instructors.find(i => i._id === slotToCancel.instructorId)?.name || 'Unknown Instructor',
+          status: slotToCancel.status,
+          slotId: (slotToCancel as ScheduleEntry & {slotId?: string; _id?: string}).slotId || (slotToCancel as ScheduleEntry & {slotId?: string; _id?: string})._id || '',
+          instructorId: slotToCancel.instructorId
+        } : null}
+        onConfirmCancel={async (paymentMethod?: 'online' | 'call') => {
+          if (!slotToCancel || !user) return;
+
+          setIsCancelling(true);
+          
+          try {
+            console.log('🚙 [DRIVING LESSONS] Cancelling slot:', slotToCancel, 'PaymentMethod:', paymentMethod);
+
+            // Si se proporciona paymentMethod, es una cancelación con cargo
+            if (paymentMethod) {
+              if (paymentMethod === 'online') {
+                // PAID CANCELLATION - Pay Online: Create order and redirect to Stripe
+                const orderRes = await fetch('/api/booking/create-cancellation-order', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: user._id,
+                    instructorId: slotToCancel.instructorId,
+                    slotId: (slotToCancel as ScheduleEntry & {slotId?: string; _id?: string}).slotId || (slotToCancel as ScheduleEntry & {slotId?: string; _id?: string})._id || 'unknown',
+                    date: slotToCancel.date,
+                    start: slotToCancel.start,
+                    end: slotToCancel.end,
+                    amount: 90,
+                    classType: 'cancel_driving_lesson'
+                  }),
+                });
+
+                if (!orderRes.ok) {
+                  const errorData = await orderRes.json();
+                  throw new Error(errorData.error || 'Failed to create cancellation order');
+                }
+
+                const { checkoutUrl } = await orderRes.json();
+                console.log('🔗 [DRIVING LESSONS] Redirecting to Stripe checkout:', checkoutUrl);
+
+                // Redirect to Stripe checkout
+                window.location.href = checkoutUrl;
+                return;
+              } else {
+                // PAID CANCELLATION - Call to Pay: Show phone number modal
+                setIsCancelling(false);
+                setShowCancelConfirm(false);
+                setSlotToCancel(null);
+                setCancellationMessage('Please call 561-330-7007 to complete your cancellation payment of $90.00 USD. Once payment is processed, your slot will be cancelled.');
+                setShowCancellation(true);
+                return;
+              }
+            }
+
+            // FREE CANCELLATION - Process immediately
+            const response = await fetch('/api/driving-lessons/cancel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                studentId: user._id,
+                instructorId: slotToCancel.instructorId,
+                date: slotToCancel.date,
+                start: slotToCancel.start,
+                end: slotToCancel.end,
+                slotId: (slotToCancel as ScheduleEntry & {slotId?: string; _id?: string}).slotId || (slotToCancel as ScheduleEntry & {slotId?: string; _id?: string})._id || 'unknown'
+              }),
+            });
+
+            const result = await response.json();
+            console.log('✅ [DRIVING LESSONS] Cancellation response:', result);
+
+            if (response.ok) {
+              // Show appropriate message based on 48-hour policy
+              if (result.wasPending) {
+                setCancellationMessage('Pending driving lesson cancelled successfully.');
+              } else if (result.isWithin48Hours) {
+                setCancellationMessage(
+                  `Driving lesson cancelled. Since this was within 48 hours of your lesson, no credit has been issued. ` +
+                  `The cancellation policy helps ensure fairness for all students.`
+                );
+              } else {
+                setCancellationMessage(
+                  `Driving lesson cancelled successfully! You have been credited and can redeem this for a future lesson. ` +
+                  `Look for the "Redeem Credit" option when booking your next lesson.`
+                );
+              }
+              
+              setShowCancellation(true);
+              
+              // Close the cancel modal
+              setShowCancelConfirm(false);
+              setSlotToCancel(null);
+
+              // The SSE connection will automatically update the schedule
+              
+            } else if (result.requiresPayment) {
+              // Cancellation within 48 hours - requires payment
+              console.log('💰 [DRIVING LESSONS] Payment required for cancellation');
+              
+              // Create cancellation order and redirect to Stripe
+              const orderRes = await fetch('/api/booking/create-cancellation-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: user._id,
+                  instructorId: slotToCancel.instructorId,
+                  slotId: (slotToCancel as ScheduleEntry & {slotId?: string; _id?: string}).slotId || (slotToCancel as ScheduleEntry & {slotId?: string; _id?: string})._id || 'unknown',
+                  date: slotToCancel.date,
+                  start: slotToCancel.start,
+                  end: slotToCancel.end,
+                  amount: 90,
+                  classType: 'cancel_driving_lesson'
+                }),
+              });
+
+              if (orderRes.ok) {
+                const { checkoutUrl } = await orderRes.json();
+                console.log('🔗 [DRIVING LESSONS] Redirecting to Stripe checkout:', checkoutUrl);
+                
+                // Redirect to Stripe checkout for cancellation payment
+                window.location.href = checkoutUrl;
+                return;
+              } else {
+                const errorData = await orderRes.json();
+                throw new Error(errorData.error || 'Failed to create cancellation order');
+              }
+            } else {
+              console.error('❌ [DRIVING LESSONS] Cancellation failed:', result);
+              setCancellationMessage(`Failed to cancel lesson: ${result.error || 'Unknown error'}`);
+              setShowCancellation(true);
+            }
+          } catch (error) {
+            console.error('❌ [DRIVING LESSONS] Error cancelling lesson:', error);
+            setCancellationMessage('Error cancelling lesson. Please try again or contact support.');
+            setShowCancellation(true);
+          } finally {
+            setIsCancelling(false);
+          }
+        }}
+        isProcessing={isCancelling}
+      />
     </section>
   );
 }
