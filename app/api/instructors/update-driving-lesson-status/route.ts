@@ -17,6 +17,22 @@ interface DrivingLessonSlot {
   selectedProduct?: string;
 }
 
+interface DrivingLessonBooking {
+  slotId: string;
+  instructorId: string;
+  instructorName?: string;
+  date: string;
+  start: string;
+  end: string;
+  amount: number;
+  bookedAt: Date;
+  orderId?: string;
+  status: 'booked' | 'cancelled';
+  redeemed?: boolean;
+  packageName?: string;
+  selectedProduct?: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
@@ -144,7 +160,7 @@ export async function POST(req: NextRequest) {
       if (userId) {
         try {
           const instructor = await Instructor.findById(instructorId);
-          const bookingsToAdd = [];
+          const bookingsToAdd: DrivingLessonBooking[] = [];
 
           for (const slotIdToUpdate of slotsToUpdate) {
             const slot = instructor?.schedule_driving_lesson.find((s: DrivingLessonSlot) =>
