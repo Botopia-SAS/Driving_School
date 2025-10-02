@@ -41,6 +41,29 @@ export async function broadcastScheduleUpdate(instructorId: string) {
   console.log(`📡 Broadcast complete: ${updatesSent} updates sent, ${connectionsToRemove.length} connections removed`);
 }
 
+// Broadcast function specifically for driving lessons (uses the new SSE endpoint)
+export async function broadcastDrivingLessonsUpdate(instructorId: string) {
+  console.log(`📡 Broadcasting driving lessons update for instructor: ${instructorId}`);
+  
+  // This will trigger updates through the SSE endpoint we just created
+  // The actual broadcasting is handled by the SSE endpoint itself
+  
+  try {
+    // Force a fetch to trigger the update broadcast
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    await fetch(`${baseUrl}/api/sse/driving-lessons-schedule/force-update?instructorId=${instructorId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ instructorId })
+    });
+    console.log(`✅ Triggered driving lessons update for instructor ${instructorId}`);
+  } catch (error) {
+    console.warn(`⚠️ Failed to trigger driving lessons update for instructor ${instructorId}:`, error);
+  }
+}
+
 export function addConnection(connectionId: string, connection: {
   writer: WritableStreamDefaultWriter<Uint8Array>;
   encoder: TextEncoder;

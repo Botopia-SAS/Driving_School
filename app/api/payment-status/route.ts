@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
+import Instructor from '@/models/Instructor';
+import { broadcastScheduleUpdate, broadcastDrivingLessonsUpdate } from '@/lib/sse-broadcast';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,10 +23,32 @@ export async function POST(request: NextRequest) {
     }
 
     if (paymentStatus === 'completed') {
+      // Find all affected instructors BEFORE updating - for driving lessons
+      const affectedDrivingLessonInstructors = await Instructor.find({
+        'schedule_driving_lesson': {
+          $elemMatch: {
+            studentId: userId,
+            selectedProduct: productId,
+            status: 'pending'
+          }
+        }
+      }).select('_id');
+
+      // Find all affected instructors BEFORE updating - for driving tests  
+      const affectedDrivingTestInstructors = await User.find({
+        role: 'instructor',
+        'schedule_driving_test': {
+          $elemMatch: {
+            studentId: userId,
+            selectedProduct: productId,
+            status: 'pending'
+          }
+        }
+      }).select('_id');
+
       // Update all pending driving lesson slots for this user and product to 'booked'
-      const drivingLessonResult = await User.updateMany(
+      const drivingLessonResult = await Instructor.updateMany(
         {
-          role: 'instructor',
           'schedule_driving_lesson': {
             $elemMatch: {
               studentId: userId,
@@ -65,6 +89,29 @@ export async function POST(request: NextRequest) {
         }
       );
 
+      // Broadcast SSE updates for all affected driving lesson instructors
+      const drivingLessonBroadcastPromises = affectedDrivingLessonInstructors.map(async (instructor) => {
+        try {
+          await broadcastDrivingLessonsUpdate(instructor._id.toString());
+          console.log(`📡 Sent driving lessons SSE update for instructor: ${instructor._id}`);
+        } catch (error) {
+          console.warn(`⚠️ Failed to send driving lessons SSE update for instructor ${instructor._id}:`, error);
+        }
+      });
+
+      // Broadcast SSE updates for all affected driving test instructors
+      const drivingTestBroadcastPromises = affectedDrivingTestInstructors.map(async (instructor) => {
+        try {
+          await broadcastScheduleUpdate(instructor._id.toString());
+          console.log(`📡 Sent driving test SSE update for instructor: ${instructor._id}`);
+        } catch (error) {
+          console.warn(`⚠️ Failed to send driving test SSE update for instructor ${instructor._id}:`, error);
+        }
+      });
+
+      // Wait for all SSE broadcasts to complete (but don't fail if some fail)
+      await Promise.allSettled([...drivingLessonBroadcastPromises, ...drivingTestBroadcastPromises]);
+
       const totalUpdated = drivingLessonResult.modifiedCount + drivingTestResult.modifiedCount;
       console.log(`✅ Payment confirmed: ${drivingLessonResult.modifiedCount} driving lessons + ${drivingTestResult.modifiedCount} driving tests updated`);
 
@@ -77,10 +124,32 @@ export async function POST(request: NextRequest) {
       });
 
     } else if (paymentStatus === 'failed' || paymentStatus === 'cancelled') {
+      // Find all affected instructors BEFORE reverting - for driving lessons
+      const affectedDrivingLessonInstructors = await Instructor.find({
+        'schedule_driving_lesson': {
+          $elemMatch: {
+            studentId: userId,
+            selectedProduct: productId,
+            status: 'pending'
+          }
+        }
+      }).select('_id');
+
+      // Find all affected instructors BEFORE reverting - for driving tests
+      const affectedDrivingTestInstructors = await User.find({
+        role: 'instructor',
+        'schedule_driving_test': {
+          $elemMatch: {
+            studentId: userId,
+            selectedProduct: productId,
+            status: 'pending'
+          }
+        }
+      }).select('_id');
+
       // Revert pending driving lesson slots back to available
-      const drivingLessonResult = await User.updateMany(
+      const drivingLessonResult = await Instructor.updateMany(
         {
-          role: 'instructor',
           'schedule_driving_lesson': {
             $elemMatch: {
               studentId: userId,
@@ -128,6 +197,29 @@ export async function POST(request: NextRequest) {
           }
         }
       );
+
+      // Broadcast SSE updates for all affected driving lesson instructors (cancellation)
+      const drivingLessonBroadcastPromises = affectedDrivingLessonInstructors.map(async (instructor) => {
+        try {
+          await broadcastDrivingLessonsUpdate(instructor._id.toString());
+          console.log(`📡 Sent driving lessons SSE cancellation update for instructor: ${instructor._id}`);
+        } catch (error) {
+          console.warn(`⚠️ Failed to send driving lessons SSE cancellation update for instructor ${instructor._id}:`, error);
+        }
+      });
+
+      // Broadcast SSE updates for all affected driving test instructors (cancellation)
+      const drivingTestBroadcastPromises = affectedDrivingTestInstructors.map(async (instructor) => {
+        try {
+          await broadcastScheduleUpdate(instructor._id.toString());
+          console.log(`📡 Sent driving test SSE cancellation update for instructor: ${instructor._id}`);
+        } catch (error) {
+          console.warn(`⚠️ Failed to send driving test SSE cancellation update for instructor ${instructor._id}:`, error);
+        }
+      });
+
+      // Wait for all SSE broadcasts to complete (but don't fail if some fail)
+      await Promise.allSettled([...drivingLessonBroadcastPromises, ...drivingTestBroadcastPromises]);
 
       const totalReverted = drivingLessonResult.modifiedCount + drivingTestResult.modifiedCount;
       console.log(`❌ Payment failed/cancelled: ${drivingLessonResult.modifiedCount} driving lessons + ${drivingTestResult.modifiedCount} driving tests reverted`);

@@ -332,7 +332,7 @@ export const usePaymentSuccess = () => {
                     (apt.classType === 'driving_test' || apt.classType === 'driving test') && apt.slotId
                   );
                   const cancellations = orderData.order.appointments.filter((apt: OrderAppointment) =>
-                    apt.classType === 'cancel_driving_test'
+                    apt.classType === 'cancel_driving_test' || apt.classType === 'cancel_driving_lesson'
                   );
 
                   // Procesar Cancellations FIRST (before other appointments)
@@ -345,7 +345,7 @@ export const usePaymentSuccess = () => {
                   // Procesar Ticket Classes
                   if (ticketClasses.length > 0) {
                     console.log('🎫 Procesando ticket classes...');
-                    const ticketOk = await processTicketClasses(ticketClasses, userId, orderId, orderData.order.orderNumber);
+                    const ticketOk = await processTicketClasses(ticketClasses, userId, orderId);
                     if (!ticketOk) allProcessed = false;
                   }
 
@@ -548,7 +548,7 @@ export const usePaymentSuccess = () => {
                     (apt.classType === 'driving_test' || apt.classType === 'driving test') && apt.slotId
                   );
                   const cancellations = orderData.order.appointments.filter(apt =>
-                    apt.classType === 'cancel_driving_test'
+                    apt.classType === 'cancel_driving_test' || apt.classType === 'cancel_driving_lesson'
                   );
 
                   console.log('🎯 [PAYMENT-SUCCESS] Modular processing - Appointments summary:', {
@@ -611,7 +611,7 @@ export const usePaymentSuccess = () => {
                   // Process TICKET CLASSES using specific route
                   if (ticketClasses.length > 0) {
                     console.log('🎫 [PAYMENT-SUCCESS] Processing ticket classes with specific route...');
-                    const ok = await processTicketClasses(ticketClasses, userId!, orderId, state.orderDetails?.orderNumber);
+                    const ok = await processTicketClasses(ticketClasses, userId!, orderId);
                     if (!ok) {
                       console.error('❌ [PAYMENT-SUCCESS] Ticket classes processing failed');
                       allProcessed = false;

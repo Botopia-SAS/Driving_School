@@ -58,19 +58,22 @@ export function useAllDrivingLessonsSSE(instructorIds: string[]) {
     instructorIds.forEach(instructorId => {
       const connectionKey = `driving-lessons-${instructorId}`;
       let connection = globalDrivingLessonsConnections.get(connectionKey);
-      
+
       if (!connection) {
-        const eventSource = new EventSource(`/api/driving-lessons/schedule-updates?id=${instructorId}`);
-        
+        console.log(`🔌 [CLIENT] Creating new SSE connection for instructor: ${instructorId}`);
+        const eventSource = new EventSource(`/api/sse/driving-lessons-schedule?instructorId=${instructorId}`);
+
         connection = {
           eventSource,
           refCount: 0,
           lastUsed: Date.now()
         };
-        
+
         globalDrivingLessonsConnections.set(connectionKey, connection);
-        
+        console.log(`📊 [CLIENT] Total SSE connections: ${globalDrivingLessonsConnections.size}`);
+
         eventSource.onopen = () => {
+          console.log(`✅ [CLIENT] SSE connection opened for instructor: ${instructorId}`);
           if (mountedRef.current) {
             setConnections(prev => new Map(prev.set(instructorId, true)));
             setErrors(prev => {
@@ -80,15 +83,18 @@ export function useAllDrivingLessonsSSE(instructorIds: string[]) {
             });
           }
         };
-        
+
         eventSource.onmessage = (event) => {
+          console.log(`📨 [CLIENT] SSE message received for instructor ${instructorId}:`, event.data);
           if (!mountedRef.current) return;
-          
+
           try {
             const data: ScheduleData = JSON.parse(event.data);
-            
+            console.log(`📦 [CLIENT] Parsed SSE data:`, data);
+
             if (data.type === 'initial' || data.type === 'update') {
               if (data.schedule) {
+                console.log(`✅ [CLIENT] Updating schedules for instructor ${instructorId} with ${data.schedule.length} slots`);
                 setSchedules(prev => new Map(prev.set(instructorId, data.schedule!)));
               }
             } else if (data.type === 'error') {
@@ -96,16 +102,19 @@ export function useAllDrivingLessonsSSE(instructorIds: string[]) {
                 setErrors(prev => new Map(prev.set(instructorId, data.message!)));
               }
             }
-          } catch {
-            // Silently handle parse errors
+          } catch (error) {
+            console.error(`❌ [CLIENT] Failed to parse SSE message:`, error);
           }
         };
-        
-        eventSource.onerror = () => {
+
+        eventSource.onerror = (error) => {
+          console.error(`❌ [CLIENT] SSE connection error for instructor ${instructorId}:`, error);
           if (mountedRef.current) {
             setConnections(prev => new Map(prev.set(instructorId, false)));
           }
         };
+      } else {
+        console.log(`♻️ [CLIENT] Reusing existing SSE connection for instructor: ${instructorId}`);
       }
       
       // Increment reference count

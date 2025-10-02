@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import Instructor from '@/models/Instructor';
-import { broadcastScheduleUpdate } from '@/lib/sse-broadcast';
+import { broadcastDrivingLessonsUpdate } from '@/lib/sse-broadcast';
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     // Find all instructors that have the selected slots
     const instructorsToUpdate: Array<{
       instructorId: string;
+      instructorName: string;
       date: string;
       start: string;
       end: string;
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
       if (instructor) {
         instructorsToUpdate.push({
           instructorId: instructor._id.toString(),
+          instructorName: instructor.name,
           date: parsedDate,
           start: parsedStart,
           end: parsedEnd
@@ -135,45 +137,24 @@ export async function POST(request: NextRequest) {
 
       console.log('✅ Update result:', updateResult);
       
-      // Broadcast the schedule update for this instructor
+      // Broadcast the schedule update for this instructor (driving lessons)
       try {
-        await broadcastScheduleUpdate(slot.instructorId);
+        await broadcastDrivingLessonsUpdate(slot.instructorId);
       } catch (broadcastError) {
-        console.warn('⚠️ Failed to broadcast schedule update:', broadcastError);
+        console.warn('⚠️ Failed to broadcast driving lessons schedule update:', broadcastError);
       }
     }
 
-    // Create a schedule request record for tracking
-    const scheduleRequest = {
-      userId,
-      productId,
-      selectedSlots,
-      selectedHours,
-      pickupLocation,
-      dropoffLocation,
-      paymentMethod,
-      status: 'pending',
-      instructorsInvolved: instructorsToUpdate.map(slot => slot.instructorId),
-      createdAt: new Date()
-    };
-
-    // Store the request in the user's record for tracking
-    const userUpdateResult = await User.updateOne(
-      { _id: userId },
-      {
-        $push: {
-          scheduleRequests: scheduleRequest
-        }
-      }
-    );
-
-    console.log('👤 User update result:', userUpdateResult);
+    // NOTE: Do NOT add to user.driving_lesson_bookings here!
+    // Bookings are only added when payment is completed successfully in payment-success
+    // For "Pay at Location", the slot stays as "pending" until payment is made
+    console.log('✅ Triggered driving lessons update for instructor:', instructorsToUpdate.map(s => s.instructorId).join(', '));
 
     return NextResponse.json({
       success: true,
-      message: 'Schedule request created successfully',
-      requestId: scheduleRequest.createdAt.getTime().toString(),
-      slotsUpdated: instructorsToUpdate.length
+      message: 'Driving lesson slots marked as pending',
+      slotsUpdated: instructorsToUpdate.length,
+      instructors: instructorsToUpdate
     });
 
   } catch (error) {

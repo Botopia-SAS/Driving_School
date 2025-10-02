@@ -55,6 +55,7 @@ interface ScheduleTableProps {
   onRequestSchedule: () => void;
   onAuthRequired?: () => void;
   onCancelPendingSlot?: (slot: ScheduleEntry & { instructorId: string }) => void;
+  onCancelBookedSlot?: (slot: ScheduleEntry & { instructorId: string; dateString: string }) => void;
 }
 
 export default function ScheduleTableImproved({
@@ -71,20 +72,13 @@ export default function ScheduleTableImproved({
   selectedHours,
   onRequestSchedule,
   onAuthRequired,
-  onCancelPendingSlot
+  onCancelPendingSlot,
+  onCancelBookedSlot
 }: ScheduleTableProps) {
-  
-  // Use SSE hook for real-time schedule updates for all instructors
-  const instructorIds = React.useMemo(() => 
-    instructors.map(instructor => instructor._id), 
-    [instructors]
-  );
-  const { 
-    getScheduleForInstructor, 
-    getErrorForInstructor, 
-    getAllSchedules 
-  } = useAllDrivingLessonsSSE(instructorIds);
-  
+
+  // Use instructors directly from props - SSE is handled in parent component
+  const instructorsWithSSE = instructors;
+
   // Access cart to know which pending slots are still in the cart
   const { cart } = useCart();
   const pendingSlotKeysInCart = React.useMemo(() => {
@@ -132,7 +126,7 @@ export default function ScheduleTableImproved({
     let instructorId = slot.instructorId;
     if (!instructorId) {
       // Find instructor by searching through all schedules
-      for (const instructor of instructors) {
+      for (const instructor of instructorsWithSSE) {
         const foundSlot = instructor.schedule_driving_lesson?.find(
           (scheduleSlot) =>
             scheduleSlot.date === slot.date &&
@@ -155,27 +149,24 @@ export default function ScheduleTableImproved({
 
     // Call the cancel function with instructor ID
     onCancelPendingSlot({ ...slot, instructorId });
-  }, [onCancelPendingSlot, instructors, userId]);
+  }, [onCancelPendingSlot, instructorsWithSSE, userId]);
 
   // Debug: Log userId and user bookings
   useEffect(() => {
     console.log('🔍 [USER BOOKINGS DEBUG] userId:', userId);
     if (userId) {
-      const allSchedules = getAllSchedules();
-      if (allSchedules.length > 0) {
-        console.log('🔍 [USER BOOKINGS DEBUG] Checking for user bookings...');
-        allSchedules.forEach(({ instructorId, schedule }) => {
-          const userBookings = (schedule as ScheduleEntry[]).filter(slot => 
-            slot.studentId && slot.studentId.toString() === userId && 
-            (slot.status === 'booked' || slot.status === 'scheduled' || slot.paid)
-          );
-          if (userBookings.length > 0) {
-            console.log(`🔍 [USER BOOKINGS DEBUG] Found ${userBookings.length} bookings for instructor ${instructorId}:`, userBookings);
-          }
-        });
-      }
+      console.log('🔍 [USER BOOKINGS DEBUG] Checking for user bookings in instructors...');
+      instructorsWithSSE.forEach((instructor) => {
+        const userBookings = (instructor.schedule_driving_lesson || []).filter(slot =>
+          slot.studentId && slot.studentId.toString() === userId &&
+          (slot.status === 'booked' || slot.status === 'scheduled' || slot.paid)
+        );
+        if (userBookings.length > 0) {
+          console.log(`🔍 [USER BOOKINGS DEBUG] Found ${userBookings.length} bookings for instructor ${instructor._id}:`, userBookings);
+        }
+      });
     }
-  }, [userId, getAllSchedules]);
+  }, [userId, instructorsWithSSE]);
   
   const [showMultipleInstructorsModal, setShowMultipleInstructorsModal] = useState(false);
   const [multipleInstructorsData, setMultipleInstructorsData] = useState<{
@@ -248,29 +239,18 @@ export default function ScheduleTableImproved({
   const calculateSelectedHours = React.useCallback((): number => {
     let totalMinutes = 0;
     selectedSlots.forEach(slotKey => {
-      // Search across all instructors for the lesson (both SSE and static data)
-      for (const instructor of instructors) {
-        // First try SSE data
-        const sseSchedule = getScheduleForInstructor(instructor._id);
+      // Search across all instructors for the lesson
+      for (const instructor of instructorsWithSSE) {
         let lesson: ScheduleEntry | null = null;
-        
-        if (sseSchedule && Array.isArray(sseSchedule)) {
-          const foundLesson = (sseSchedule as ScheduleEntry[]).find((l: ScheduleEntry) => {
-            const lessonKey = `${l.date}-${l.start}-${l.end}`;
-            return lessonKey === slotKey && isEffectivelyAvailable(l);
-          });
-          lesson = foundLesson || null;
-        }
-        
-        // Fallback to static data if SSE data not found
-        if (!lesson && instructor.schedule_driving_lesson) {
+
+        if (instructor.schedule_driving_lesson) {
           const foundLesson = instructor.schedule_driving_lesson.find(l => {
             const lessonKey = `${l.date}-${l.start}-${l.end}`;
             return lessonKey === slotKey && isEffectivelyAvailable(l);
           });
           lesson = foundLesson || null;
         }
-        
+
         if (lesson) {
           const startMin = timeToMinutes(lesson.start);
           const endMin = timeToMinutes(lesson.end);
@@ -279,72 +259,52 @@ export default function ScheduleTableImproved({
         }
       }
     });
-    
+
     return Math.round(totalMinutes / 60 * 100) / 100;
-  }, [instructors, selectedSlots, timeToMinutes, getScheduleForInstructor, isEffectivelyAvailable]);
+  }, [instructorsWithSSE, selectedSlots, timeToMinutes, isEffectivelyAvailable]);
 
   // Function to create grouped schedule like Book-Now
   const createGroupedSchedule = () => {
     const grouped: { [instructorId: string]: { instructor: Instructor, schedule: { date: string; slots: ScheduleEntry[] }[] } } = {};
-    
-    // Use SSE data if available, otherwise fall back to static instructor data
-    const instructorsToShow = selectedInstructorForSchedule 
-      ? [selectedInstructorForSchedule]
-      : instructors;
+
+    // Use instructorsWithSSE which already has SSE data merged
+    const instructorsToShow = selectedInstructorForSchedule
+      ? instructorsWithSSE.filter(i => i._id === selectedInstructorForSchedule._id)
+      : instructorsWithSSE;
 
     instructorsToShow.forEach(instructor => {
-      // Try to get SSE data first
-      const sseSchedule = getScheduleForInstructor(instructor._id);
-      
-      if (sseSchedule && Array.isArray(sseSchedule) && sseSchedule.length > 0) {
-        // Process SSE data similar to Book-Now
+      if (instructor.schedule_driving_lesson && instructor.schedule_driving_lesson.length > 0) {
+        // Group schedule by date
         const scheduleByDate: { [date: string]: ScheduleEntry[] } = {};
-        
-        sseSchedule.forEach((lesson: ScheduleEntry) => {
-          if (!scheduleByDate[lesson.date]) {
-            scheduleByDate[lesson.date] = [];
-          }
-          scheduleByDate[lesson.date].push(lesson);
-        });
-        
-        const schedule = Object.entries(scheduleByDate).map(([date, slots]) => ({ date, slots }));
-        grouped[instructor._id] = { 
-          instructor, 
-          schedule 
-        };
-        console.log(`📅 Using SSE data for instructor ${instructor.name}:`, schedule.length, 'days with slots');
-      } else if (instructor.schedule_driving_lesson) {
-        // Fallback to static data
-        const scheduleByDate: { [date: string]: ScheduleEntry[] } = {};
-        
+
         instructor.schedule_driving_lesson.forEach(lesson => {
           if (!scheduleByDate[lesson.date]) {
             scheduleByDate[lesson.date] = [];
           }
           scheduleByDate[lesson.date].push(lesson);
         });
-        
+
         const schedule = Object.entries(scheduleByDate).map(([date, slots]) => ({ date, slots }));
-        grouped[instructor._id] = { instructor, schedule };
-        console.log(`📅 Using static data for instructor ${instructor.name}:`, schedule.length, 'days with slots');
-      } else {
-        console.log(`⚠️ No schedule data found for instructor ${instructor.name}`);
+        grouped[instructor._id] = {
+          instructor,
+          schedule
+        };
       }
     });
-    
+
     return grouped;
   };
   
   const groupedSchedule = createGroupedSchedule();
   
-  // Debug: Log SSE data
+  // Debug: Log instructor data
   React.useEffect(() => {
-    console.log("🔍 Debug - SSE data for all instructors:");
+    console.log("🔍 Debug - Instructor data:");
     instructors.forEach(instructor => {
-      const sseData = getScheduleForInstructor(instructor._id);
-      console.log(`  ${instructor.name} (${instructor._id}):`, sseData?.length || 0, 'slots');
+      const scheduleData = instructor.schedule_driving_lesson || [];
+      console.log(`  ${instructor.name} (${instructor._id}):`, scheduleData.length, 'slots');
     });
-  }, [instructors, getScheduleForInstructor]);
+  }, [instructors]);
 
   // Notify parent component when selected hours change
   React.useEffect(() => {
@@ -372,26 +332,6 @@ export default function ScheduleTableImproved({
         <span className="text-[#10B981]">Available Schedules</span>
       </h2>
 
-      {/* Connection Status Indicator - Only show when there are actual connection errors */}
-      {(() => {
-        const hasConnectionErrors = instructors.some(instructor => getErrorForInstructor(instructor._id));
-        
-        if (hasConnectionErrors) {
-          return (
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center justify-center">
-                <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
-                <span className="text-yellow-800 text-sm">
-                  Problemas de conexión detectados. Algunos horarios pueden no mostrarse correctamente.
-                </span>
-              </div>
-            </div>
-          );
-        }
-        
-        // Remove the "Conectando con los instructores..." message
-        return null;
-      })()}
 
       
 
@@ -570,28 +510,24 @@ export default function ScheduleTableImproved({
                     
                     // Add back user's own bookings so they can see them
                     if (userId) {
-                      const allSchedules = getAllSchedules();
-                      allSchedules.forEach(({ instructorId, schedule }) => {
-                        const instructor = instructors.find(inst => inst._id === instructorId);
-                        if (instructor) {
-                          const userBookings = (schedule as ScheduleEntry[]).filter(slot => 
-                            slot.studentId && slot.studentId.toString() === userId && 
-                            (slot.status === 'booked' || slot.status === 'scheduled' || slot.paid) &&
-                            slot.date === dateString &&
-                            timeToMinutes(slot.start) <= timeToMinutes(block.start) &&
-                            timeToMinutes(slot.end) > timeToMinutes(block.start)
+                      instructorsWithSSE.forEach((instructor) => {
+                        const userBookings = (instructor.schedule_driving_lesson || []).filter(slot =>
+                          slot.studentId && slot.studentId.toString() === userId &&
+                          (slot.status === 'booked' || slot.status === 'scheduled' || slot.paid) &&
+                          slot.date === dateString &&
+                          timeToMinutes(slot.start) <= timeToMinutes(block.start) &&
+                          timeToMinutes(slot.end) > timeToMinutes(block.start)
+                        );
+
+                        userBookings.forEach(booking => {
+                          // Only add if not already in slotsAtTime
+                          const alreadyExists = slotsAtTime.some(({ lesson }) =>
+                            (lesson as ScheduleEntry & { _id?: string })._id === (booking as ScheduleEntry & { _id?: string })._id
                           );
-                          
-                          userBookings.forEach(booking => {
-                            // Only add if not already in slotsAtTime
-                            const alreadyExists = slotsAtTime.some(({ lesson }) => 
-                              (lesson as ScheduleEntry & { _id?: string })._id === (booking as ScheduleEntry & { _id?: string })._id
-                            );
-                            if (!alreadyExists) {
-                              slotsAtTime.push({ instructor, lesson: booking });
-                            }
-                          });
-                        }
+                          if (!alreadyExists) {
+                            slotsAtTime.push({ instructor, lesson: booking });
+                          }
+                        });
                       });
                     }
                     
@@ -608,8 +544,8 @@ export default function ScheduleTableImproved({
                       );
                       
                       if (slotStartingHere) {
-                        const { lesson: slot } = slotStartingHere;
-                        
+                        const { lesson: slot, instructor: slotInstructor } = slotStartingHere;
+
                         // Calculate rowSpan (same logic as Book-Now)
                         const slotStartMin = timeToMinutes(slot.start);
                         const slotEndMin = timeToMinutes(slot.end);
@@ -717,10 +653,20 @@ export default function ScheduleTableImproved({
                         const isUsersBooked = (slot.status === 'scheduled' || slot.status === 'booked' || slot.paid) && slot.studentId && userId && slot.studentId.toString() === userId;
                         if (isUsersBooked) {
                           return (
-                            <td 
-                              key={date.toDateString()} 
+                            <td
+                              key={date.toDateString()}
                               rowSpan={rowSpan}
-                              className="border border-gray-300 py-1 bg-blue-500 text-white font-bold min-w-[80px] w-[80px]"
+                              className="border border-gray-300 py-1 bg-blue-500 text-white font-bold min-w-[80px] w-[80px] cursor-pointer hover:bg-blue-600 transition-colors"
+                              onClick={() => {
+                                if (onCancelBookedSlot) {
+                                  onCancelBookedSlot({
+                                    ...slot,
+                                    instructorId: slotInstructor._id,
+                                    dateString: slot.date
+                                  });
+                                }
+                              }}
+                              title="Click to cancel this booking"
                             >
                               <div className="text-xs font-semibold">Driving Lesson</div>
                               <div className="text-xs">{slot.start} - {slot.end}</div>

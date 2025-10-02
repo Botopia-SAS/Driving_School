@@ -121,7 +121,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Validate required fields
-    if (!userId || !instructorId || !slotId || !date || !start || !end || !amount || classType !== 'cancel_driving_test') {
+    if (!userId || !instructorId || !slotId || !date || !start || !end || !amount || 
+        (classType !== 'cancel_driving_test' && classType !== 'cancel_driving_lesson')) {
       return NextResponse.json(
         { error: "Missing required fields or invalid classType" },
         { status: 400 }
@@ -155,13 +156,13 @@ export async function POST(req: NextRequest) {
     // Create order with cancellation details
     const order = new Order({
       userId,
-      orderType: 'cancel_driving_test',
+      orderType: classType,
       items: [{
         id: `cancellation_${slotId}`,
-        title: 'Driving Test Cancellation Fee',
+        title: classType === 'cancel_driving_lesson' ? 'Driving Lesson Cancellation Fee' : 'Driving Test Cancellation Fee',
         price: amount,
         quantity: 1,
-        description: `Cancellation fee for driving test on ${date} at ${start}-${end}`
+        description: `Cancellation fee for ${classType === 'cancel_driving_lesson' ? 'driving lesson' : 'driving test'} on ${date} at ${start}-${end}`
       }],
       appointments: [{
         slotId,
@@ -169,7 +170,7 @@ export async function POST(req: NextRequest) {
         date,
         start,
         end,
-        classType: 'cancel_driving_test',
+        classType,
         amount,
         status: 'pending'
       }],
@@ -207,11 +208,11 @@ export async function POST(req: NextRequest) {
       dni: user.dni || "",
       items: [{
         id: `cancellation_${slotId}`,
-        title: 'Driving Test Cancellation Fee',
-        name: 'Driving Test Cancellation Fee',
+        title: classType === 'cancel_driving_lesson' ? 'Driving Lesson Cancellation Fee' : 'Driving Test Cancellation Fee',
+        name: classType === 'cancel_driving_lesson' ? 'Driving Lesson Cancellation Fee' : 'Driving Test Cancellation Fee',
         price: amount,
         quantity: 1,
-        description: `Cancellation fee for driving test on ${date} at ${start}-${end}`
+        description: `Cancellation fee for ${classType === 'cancel_driving_lesson' ? 'driving lesson' : 'driving test'} on ${date} at ${start}-${end}`
       }],
       // IDs en múltiples formas para mayor compatibilidad
       userId: userId,
@@ -233,7 +234,7 @@ export async function POST(req: NextRequest) {
         orderId: order._id.toString(),
         timestamp: Date.now(),
         source: "cancellation-checkout",
-        classType: 'cancel_driving_test'
+        classType: classType
       },
 
       // 🔑 CUSTOMER_CODE para ConvergePay (8 dígitos máximo)

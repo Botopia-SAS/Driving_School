@@ -26,7 +26,8 @@ interface RequestModalProps {
   onClose: () => void;
   selectedProduct: Product | null;
   selectedHours: number;
-  onRequestSchedule: (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local') => void;
+  cancelledSlots?: { slotId: string; date: string; start: string; end: string; cancelledAt: string; }[];
+  onRequestSchedule: (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local' | 'redeem') => void;
 }
 
 export default function RequestModal({
@@ -34,20 +35,23 @@ export default function RequestModal({
   onClose,
   selectedProduct,
   selectedHours,
+  cancelledSlots = [],
   onRequestSchedule
 }: RequestModalProps) {
   // Google Maps states
   const [pickupLocation, setPickupLocation] = useState<string>("");
   const [dropoffLocation, setDropoffLocation] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'local'>('online');
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'local' | 'redeem'>('online');
   const [termsAccepted, setTermsAccepted] = useState(false);
   
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setTermsAccepted(false);
+      console.log('🎯 [REQUEST MODAL] Modal opened with cancelled slots:', cancelledSlots);
+      console.log('🎯 [REQUEST MODAL] Cancelled slots count:', cancelledSlots?.length || 0);
     }
-  }, [isOpen]);
+  }, [isOpen, cancelledSlots]);
   const pickupAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const dropoffAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   
@@ -144,7 +148,7 @@ export default function RequestModal({
                 type="radio"
                 value="online"
                 checked={paymentMethod === 'online'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local' | 'redeem')}
                 className="mr-2 text-green-600 focus:ring-green-500"
               />
               <div>
@@ -158,7 +162,7 @@ export default function RequestModal({
                 type="radio"
                 value="local"
                 checked={paymentMethod === 'local'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local' | 'redeem')}
                 className="mr-2 text-blue-600 focus:ring-blue-500"
               />
               <div>
@@ -166,6 +170,23 @@ export default function RequestModal({
                 <div className="text-xs text-gray-600">Complete payment when you arrive</div>
               </div>
             </label>
+            
+            {/* Redeem Credit Option - Only show if user has cancelled slots */}
+            {cancelledSlots && cancelledSlots.length > 0 && (
+              <label className="flex items-center p-2 border border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all cursor-pointer">
+                <input
+                  type="radio"
+                  value="redeem"
+                  checked={paymentMethod === 'redeem'}
+                  onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local' | 'redeem')}
+                  className="mr-2 text-purple-600 focus:ring-purple-500"
+                />
+                <div>
+                  <div className="font-semibold text-purple-600 text-xs">Redeem Credit ({cancelledSlots.length} available)</div>
+                  <div className="text-xs text-gray-600">Use a cancelled lesson credit at no charge</div>
+                </div>
+              </label>
+            )}
           </div>
         </div>
 
@@ -233,13 +254,20 @@ export default function RequestModal({
               pickupLocation.trim() && dropoffLocation.trim() && termsAccepted
                 ? paymentMethod === 'online' 
                   ? "bg-green-600 text-white hover:bg-green-700"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
+                  : paymentMethod === 'redeem'
+                    ? "bg-purple-600 text-white hover:bg-purple-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
             onClick={handleRequestSchedule}
             disabled={!pickupLocation.trim() || !dropoffLocation.trim() || !termsAccepted}
           >
-            {paymentMethod === 'online' ? 'Add to Cart & Checkout' : 'Request Schedule'}
+            {paymentMethod === 'online' 
+              ? 'Add to Cart & Checkout' 
+              : paymentMethod === 'redeem'
+                ? 'Redeem Credit & Book'
+                : 'Request Schedule'
+            }
           </button>
         </div>
       </div>

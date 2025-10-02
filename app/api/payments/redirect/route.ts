@@ -319,22 +319,12 @@ export async function GET(req: NextRequest) {
         } else {
           // Crear nueva orden con el tipo correcto
           console.log("[API][redirect] Creando nueva orden de tipo:", currentOrderType);
-          
-          // Generate sequential order number using simple counter to avoid race conditions
-          const lastOrder = await Order.findOne({}, { orderNumber: 1 })
-            .sort({ createdAt: -1 })
-            .lean() as { orderNumber?: string | number } | null;
-          
-          let nextOrderNumber = 1;
-          if (lastOrder && lastOrder.orderNumber) {
-            const currentNumber = parseInt(lastOrder.orderNumber.toString());
-            if (!isNaN(currentNumber)) {
-              nextOrderNumber = currentNumber + 1;
-            }
-          }
-          
-          const orderNumberStr = nextOrderNumber.toString();
-          console.log("[API][redirect] Siguiente número de orden:", orderNumberStr);
+
+          // Generate unique order number using timestamp + random to avoid duplicates
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+          const orderNumberStr = `${timestamp}-${randomSuffix}`;
+          console.log("[API][redirect] Número de orden único generado:", orderNumberStr);
           
           // Crear appointments - SIEMPRE para cualquier item que tenga información de cita
           const appointments: Array<{

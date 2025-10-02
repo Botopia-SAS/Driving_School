@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import Cart from "@/models/Cart";
+import User from "@/models/User";
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    
+
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
 
@@ -18,9 +18,10 @@ export async function GET(req: NextRequest) {
 
     console.log("🔍 Checking cart status for user:", userId);
 
-    const cart = await Cart.findOne({ userId });
-    
-    if (!cart) {
+    // Get cart from user.cart field in users collection
+    const user = await User.findById(userId).select('cart');
+
+    if (!user || !user.cart || !Array.isArray(user.cart)) {
       console.log("✅ No cart found for user, returning empty cart");
       return NextResponse.json({
         success: true,
@@ -30,22 +31,22 @@ export async function GET(req: NextRequest) {
     }
 
     // Filter out corrupted items (items with undefined id, title, or price)
-    const validItems = cart.items.filter(item => 
-      item.id && 
-      item.title && 
-      typeof item.price === 'number' && 
+    const validItems = user.cart.filter((item: any) =>
+      item.id &&
+      item.title &&
+      typeof item.price === 'number' &&
       item.price > 0
     );
 
-    console.log("✅ Cart found, total items:", cart.items.length);
+    console.log("✅ Cart found in user.cart, total items:", user.cart.length);
     console.log("✅ Valid items after filtering:", validItems.length);
-    
-    if (validItems.length !== cart.items.length) {
+
+    if (validItems.length !== user.cart.length) {
       console.log("🧹 Found corrupted items, cleaning cart...");
-      // Update cart with only valid items
-      await Cart.findOneAndUpdate(
-        { userId },
-        { items: validItems, updatedAt: new Date() }
+      // Update user.cart with only valid items
+      await User.findByIdAndUpdate(
+        userId,
+        { cart: validItems }
       );
     }
 

@@ -28,18 +28,26 @@ export async function POST(request: Request) {
     let foundSlot: ScheduleSlot | null = null;
     let scheduleType: string | null = null;
 
-    // Check in driving test schedule
+    // Check in driving test schedule - find the slot that belongs to this student
     if (instructor.schedule_driving_test) {
-      foundSlot = instructor.schedule_driving_test.find((slot: ScheduleSlot) => 
-        slot.date === date && slot.start === start && slot.end === end
+      foundSlot = instructor.schedule_driving_test.find((slot: ScheduleSlot) =>
+        slot.date === date &&
+        slot.start === start &&
+        slot.end === end &&
+        slot.studentId?.toString() === studentId &&
+        (slot.status === 'booked' || slot.status === 'scheduled' || slot.status === 'pending')
       );
       if (foundSlot) scheduleType = 'schedule_driving_test';
     }
 
     // Check in regular schedule if not found
     if (!foundSlot && instructor.schedule) {
-      foundSlot = instructor.schedule.find((slot: ScheduleSlot) => 
-        slot.date === date && slot.start === start && slot.end === end
+      foundSlot = instructor.schedule.find((slot: ScheduleSlot) =>
+        slot.date === date &&
+        slot.start === start &&
+        slot.end === end &&
+        slot.studentId?.toString() === studentId &&
+        (slot.status === 'booked' || slot.status === 'scheduled' || slot.status === 'pending')
       );
       if (foundSlot) scheduleType = 'schedule';
     }
@@ -84,13 +92,16 @@ export async function POST(request: Request) {
     // Para slots "booked" o "scheduled" - marcar como cancelled y crear nuevo slot disponible
     else if (foundSlot.status === 'booked' || foundSlot.status === 'scheduled') {
       console.log('📋 Original slot before cancellation:', JSON.stringify(foundSlot, null, 2));
+      console.log('📋 Slot payment method:', foundSlot.paymentMethod);
+      console.log('📋 Is this a redeemed slot?', foundSlot.paymentMethod === 'redeemed');
 
       // 1. Marcar el slot actual como 'cancelled'
       foundSlot.status = 'cancelled';
 
       // 2. Crear un nuevo slot con el mismo horario pero disponible con un _id único
-      const newSlotId = new mongoose.Types.ObjectId();
-      const slotIdString = `driving_test_${newSlotId.toString()}_${date.replace(/-/g, '')}_${start.replace(/:/g, '')}`;
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 11);
+      const slotIdString = `driving_test_${instructorId}_${date}_${start}_${timestamp}_${randomStr}`;
 
       console.log('🆕 Creating new slot with ID:', slotIdString);
 
@@ -170,32 +181,79 @@ export async function POST(request: Request) {
           if (bookingIndex !== -1) {
             const booking = user.driving_test_bookings[bookingIndex];
 
-            // Add to cancelled array with cancelledAt date
-            const cancelledBooking = {
-              ...booking.toObject(),
-              status: 'cancelled' as const,
-              cancelledAt: new Date()
-            };
+            // Check if this booking was redeemed (used a cancelled slot)
+            const wasRedeemed = booking.redeemed === true;
+            const redeemedFromSlotId = booking.redeemedFrom;
 
-            const updatedUser = await User.findByIdAndUpdate(
-              studentId,
-              {
-                $pull: {
-                  driving_test_bookings: {
-                    date: date,
-                    start: start,
-                    end: end
-                  }
-                },
-                $push: { driving_test_cancelled: cancelledBooking }
-              },
-              { new: true }
-            );
-
-            console.log('✅ Moved booking to cancelled array in User:', {
-              remainingBookings: updatedUser?.driving_test_bookings?.length || 0,
-              totalCancelled: updatedUser?.driving_test_cancelled?.length || 0
+            console.log('🔍 Booking redeemed status:', {
+              wasRedeemed,
+              redeemedFromSlotId
             });
+
+            // If this booking was redeemed, restore the original cancelled slot back
+            if (wasRedeemed && redeemedFromSlotId) {
+              console.log('🔄 This was a redeemed booking, restoring original cancelled slot:', redeemedFromSlotId);
+
+              // Find the original cancelled slot info from the current booking
+              // We need to restore it to driving_test_cancelled
+              const restoredCancelledSlot = {
+                slotId: redeemedFromSlotId,
+                instructorId: booking.instructorId,
+                instructorName: booking.instructorName,
+                date: booking.date,
+                start: booking.start,
+                end: booking.end,
+                amount: booking.amount,
+                bookedAt: booking.bookedAt,
+                cancelledAt: new Date(), // When it was originally cancelled
+                orderId: booking.orderId,
+                status: 'cancelled' as const
+              };
+
+              await User.findByIdAndUpdate(
+                studentId,
+                {
+                  $pull: {
+                    driving_test_bookings: {
+                      date: date,
+                      start: start,
+                      end: end
+                    }
+                  },
+                  $push: { driving_test_cancelled: restoredCancelledSlot }
+                },
+                { new: true }
+              );
+
+              console.log('✅ Restored cancelled slot back to user (redeemed booking cancelled)');
+            } else {
+              // Normal cancellation: move booking to cancelled array
+              const cancelledBooking = {
+                ...booking.toObject(),
+                status: 'cancelled' as const,
+                cancelledAt: new Date()
+              };
+
+              const updatedUser = await User.findByIdAndUpdate(
+                studentId,
+                {
+                  $pull: {
+                    driving_test_bookings: {
+                      date: date,
+                      start: start,
+                      end: end
+                    }
+                  },
+                  $push: { driving_test_cancelled: cancelledBooking }
+                },
+                { new: true }
+              );
+
+              console.log('✅ Moved booking to cancelled array in User:', {
+                remainingBookings: updatedUser?.driving_test_bookings?.length || 0,
+                totalCancelled: updatedUser?.driving_test_cancelled?.length || 0
+              });
+            }
           } else {
             console.log('⚠️ Booking not found in user.driving_test_bookings');
           }

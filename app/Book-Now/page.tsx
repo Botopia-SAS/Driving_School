@@ -1395,6 +1395,13 @@ export default function BookNowPage() {
                 });
               }
 
+              // Refresh cancelled slots to update counter
+              const slotsRes = await fetch(`/api/users/${userId}/cancelled-slots`);
+              if (slotsRes.ok) {
+                const slotsData = await slotsRes.json();
+                setCancelledSlots(slotsData.cancelledSlots || []);
+              }
+
               // Force refresh SSE to update calendar from server
               // console.log("🔄 Forcing SSE refresh after cancellation");
               if (forceRefresh) {
