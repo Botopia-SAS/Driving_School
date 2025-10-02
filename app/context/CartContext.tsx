@@ -139,24 +139,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
             if (data.cartItems.length > 0) {
               console.log('🔄 [CartContext] Found items in database, syncing with local state');
               setCart(data.cartItems);
+              localStorage.setItem("cart", JSON.stringify(data.cartItems));
             } else {
-              // If database is empty but localStorage has items, keep localStorage
-              const localCart = localStorage.getItem("cart");
-              if (localCart) {
-                try {
-                  const parsedCart = JSON.parse(localCart);
-                  if (parsedCart && parsedCart.length > 0) {
-                    console.log('🔄 [CartContext] Database is empty but localStorage has items, keeping local cart');
-                    // Don't clear - the items in localStorage are being added to cart
-                    return;
-                  }
-                } catch (e) {
-                  console.error('Error parsing local cart:', e);
-                }
-              }
-              // Only clear if both DB and localStorage are empty
-              console.log('🔄 [CartContext] Database and localStorage empty, clearing cart');
+              // If database is empty, clear everything (DB is source of truth)
+              console.log('🔄 [CartContext] Database is empty, clearing cart and localStorage');
               setCart([]);
+              localStorage.removeItem("cart");
             }
           }
         })

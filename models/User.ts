@@ -26,6 +26,24 @@ interface IDrivingTestBooking {
   redeemedFrom?: string; // SlotId of the cancelled slot that was redeemed
 }
 
+// Interface for driving lesson bookings
+interface IDrivingLessonBooking {
+  slotId: string;
+  instructorId: string;
+  instructorName?: string;
+  date: string;
+  start: string;
+  end: string;
+  amount: number;
+  bookedAt: Date;
+  orderId?: string;
+  status: 'booked' | 'cancelled';
+  pickupLocation?: string;
+  dropoffLocation?: string;
+  redeemed?: boolean;
+  redeemedFrom?: string;
+}
+
 export interface IUser extends Document {
   firstName: string;
   middleName?: string;
