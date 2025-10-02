@@ -207,8 +207,9 @@ export async function GET(req: NextRequest) {
           title: item.title || item.classType || 'Driving Test',
           price: Number(item.price || item.amount || 0),
           quantity: Number(item.quantity || 1),
-          description: preOrderType === 'drivings' ? 'drivings' : 
-                      (item.description || item.packageDetails || 
+          description: preOrderType === 'drivings' ? 'drivings' :
+                      preOrderType === 'ticket_class_cancellation' ? 'ticketclass cancellation' :
+                      (item.description || item.packageDetails ||
                       (item.classType === 'driving test' ? 'Driving test appointment' : 'Driving lesson package')),
           ...item // Mantener otros campos como packageDetails, selectedSlots, etc.
         }));
@@ -829,20 +830,22 @@ export async function POST(req: NextRequest) {
       // Procesar items del carrito para el payment gateway
       // Usar descripción basada en orderType para órdenes mixtas
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const orderDescription = orderType === 'drivings' ? 'drivings' : 
+      const orderDescription = orderType === 'drivings' ? 'drivings' :
                               orderType === 'driving_test' ? 'driving test' :
                               orderType === 'driving_lesson' ? 'driving lesson' :
                               orderType === 'ticket_class' ? 'ticket class' :
+                              orderType === 'ticket_class_cancellation' ? 'ticketclass cancellation' :
                               'driving services';
-      
+
       items = cartItems.map(item => ({
         id: item.id || `item-${Date.now()}-${Math.random()}`,
         title: String(item.title || item.name || (item.classType === 'driving test' ? 'Driving Test' : 'Driving Service')),
         name: String(item.title || item.name || (item.classType === 'driving test' ? 'Driving Test' : 'Driving Service')),
         quantity: item.quantity || 1,
         price: item.price || item.amount || 0,
-        description: String(orderType === 'drivings' ? 'drivings' : 
-                    (item.description || item.packageDetails || 
+        description: String(orderType === 'drivings' ? 'drivings' :
+                    orderType === 'ticket_class_cancellation' ? 'ticketclass cancellation' :
+                    (item.description || item.packageDetails ||
                     (item.classType === 'driving test' ? 'Driving test appointment' : 'Driving lesson package')))
       }));
 
