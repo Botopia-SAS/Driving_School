@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Modal from "@/components/Modal";
-import { useAllDrivingLessonsSSE } from "@/hooks/useAllDrivingLessonsSSE";
 import { useCart } from "@/app/context/CartContext";
 
 interface Instructor {
@@ -56,6 +55,7 @@ interface ScheduleTableProps {
   onAuthRequired?: () => void;
   onCancelPendingSlot?: (slot: ScheduleEntry & { instructorId: string }) => void;
   onCancelBookedSlot?: (slot: ScheduleEntry & { instructorId: string; dateString: string }) => void;
+  isProcessingSlots?: boolean;
 }
 
 export default function ScheduleTableImproved({
@@ -73,7 +73,8 @@ export default function ScheduleTableImproved({
   onRequestSchedule,
   onAuthRequired,
   onCancelPendingSlot,
-  onCancelBookedSlot
+  onCancelBookedSlot,
+  isProcessingSlots = false
 }: ScheduleTableProps) {
 
   // Use instructors directly from props - SSE is handled in parent component
@@ -211,6 +212,11 @@ export default function ScheduleTableImproved({
 
   // Helper function to toggle slot selection
   const toggleSlotSelection = (lesson: ScheduleEntry): void => {
+    // No permitir selección si se están procesando slots
+    if (isProcessingSlots) {
+      return;
+    }
+    
     // Verificar si el usuario está autenticado antes de permitir la selección
     if (!userId && onAuthRequired) {
       onAuthRequired();
@@ -326,10 +332,25 @@ export default function ScheduleTableImproved({
     );
   }
 
+  if (!selectedInstructorForSchedule) {
+    return (
+      <div className="w-full lg:w-2/3 mt-6 lg:mt-0">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-center mb-4 mt-12">
+          <span className="text-[#10B981]">Schedules</span>
+        </h2>
+        <div className="text-center py-20">
+          <p className="text-gray-500 text-lg">
+            Please select an instructor to view their available schedules.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full lg:w-2/3 mt-6 lg:mt-0">
       <h2 className="text-2xl sm:text-3xl font-extrabold text-center mb-4 mt-12">
-        <span className="text-[#10B981]">Available Schedules</span>
+        <span className="text-[#10B981]">Schedules</span>
       </h2>
 
 
@@ -356,7 +377,7 @@ export default function ScheduleTableImproved({
           {/* Hours Selection Status */}
           <div className="mt-3 p-3 bg-white rounded-lg border-2 border-blue-200 shadow-sm">
             <p className="text-gray-700 font-medium text-center mb-1 text-sm">
-              <strong>Hours selected:</strong> {selectedHours} of {selectedProduct.duration || 0} available
+              <strong>Hours selected:</strong> {selectedHours} of {selectedProduct.duration || 0} hours
             </p>
             {selectedHours > 0 && selectedHours < (selectedProduct.duration || 0) && (
               <p className="text-orange-600 text-xs text-center">
@@ -377,7 +398,7 @@ export default function ScheduleTableImproved({
       
           {/* Request Schedule Button */}
           <div className="mt-3">
-            {selectedHours === (selectedProduct.duration || 0) && selectedHours > 0 ? (
+            {selectedHours === (selectedProduct.duration || 0) && selectedHours > 0 && !isProcessingSlots ? (
               <button
                 onClick={onRequestSchedule}
                 className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors shadow-md hover:shadow-lg text-sm"
@@ -389,7 +410,12 @@ export default function ScheduleTableImproved({
                 disabled
                 className="w-full bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold cursor-not-allowed text-sm"
               >
-                {selectedHours === 0 
+                {isProcessingSlots ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </div>
+                ) : selectedHours === 0 
                   ? "Select hours from schedule to continue" 
                   : `Select ${selectedProduct.duration || 0} hours to continue`
                 }
@@ -592,7 +618,7 @@ export default function ScheduleTableImproved({
                                         {slotsAtTime.length > 5 ? `+${slotsAtTime.length - 1} more` : `+${slotsAtTime.length - 1} more`}
                                       </div>
                                       <div className="text-xs">
-                                        {slotsAtTime.length > 5 ? 'Many available' : 'Click to see all'}
+                                        {slotsAtTime.length > 5 ? 'Multiple slots' : 'Click to see all'}
                                       </div>
                                     </div>
                                   </div>

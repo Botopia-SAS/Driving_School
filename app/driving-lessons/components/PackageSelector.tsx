@@ -50,7 +50,6 @@ interface PackageSelectorProps {
   instructors: Instructor[];
   selectedInstructorForSchedule: Instructor | null;
   onInstructorSelect: (instructor: Instructor | null) => void;
-  getScheduleForInstructor: (instructorId: string) => any;
 }
 
 export default function PackageSelector({
@@ -61,8 +60,7 @@ export default function PackageSelector({
   onProductSelect,
   instructors,
   selectedInstructorForSchedule,
-  onInstructorSelect,
-  getScheduleForInstructor
+  onInstructorSelect
 }: PackageSelectorProps) {
   return (
     <div className="w-full lg:w-1/3 flex flex-col items-center mt-8 sm:mt-12">
@@ -109,20 +107,13 @@ export default function PackageSelector({
         </select>
       </div>
 
-      {/* Available Instructors */}
+      {/* Instructors */}
       <div className="w-full mb-6">
         <h3 className="text-lg sm:text-xl font-semibold text-center mb-4 text-black">
-          Available Instructors
+          Instructors
         </h3>
         <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 justify-center">
           {instructors.map((instructor) => {
-            // Use SSE data first, fallback to static data
-            const sseSchedule = getScheduleForInstructor(instructor._id);
-            const scheduleToUse = sseSchedule && sseSchedule.length > 0 ? sseSchedule : instructor.schedule_driving_lesson;
-            
-            const availableCount = scheduleToUse?.filter(
-              (lesson: ScheduleEntry) => lesson.status === "available"
-            ).length || 0;
             const isSelected = selectedInstructorForSchedule?._id === instructor._id;
 
             return (
@@ -149,14 +140,7 @@ export default function PackageSelector({
                     </div>
                   )}
                 </div>
-                <h4 className="font-semibold text-sm text-gray-800 truncate mb-1 capitalize">{instructor.name}</h4>
-                <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                  availableCount > 0 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {availableCount} available
-                </div>
+                <h4 className="font-semibold text-sm text-gray-800 truncate capitalize">{instructor.name}</h4>
               </div>
             );
           })}
