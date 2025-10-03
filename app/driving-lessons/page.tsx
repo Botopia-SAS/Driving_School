@@ -1182,6 +1182,19 @@ function DrivingLessonsContent() {
             }
 
             // FREE CANCELLATION - Process immediately
+            // Find the CURRENT booked slot in instructor's schedule to get the correct slotId
+            const instructor = instructors.find(i => i._id === slotToCancel.instructorId);
+            const currentBookedSlot = instructor?.schedule_driving_lesson?.find(slot =>
+              slot.date === slotToCancel.date &&
+              slot.start === slotToCancel.start &&
+              slot.end === slotToCancel.end &&
+              slot.status === 'booked' &&
+              slot.studentId === userId
+            );
+
+            const correctSlotId = currentBookedSlot?._id || slotToCancel._id || 'unknown';
+            console.log('🔍 [FREE CANCEL] Using slotId for cancellation:', correctSlotId, 'from current booked slot:', currentBookedSlot?._id);
+
             const response = await fetch('/api/driving-lessons/cancel', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1191,7 +1204,7 @@ function DrivingLessonsContent() {
                 date: slotToCancel.date,
                 start: slotToCancel.start,
                 end: slotToCancel.end,
-                slotId: slotToCancel._id || 'unknown'
+                slotId: correctSlotId
               }),
             });
 

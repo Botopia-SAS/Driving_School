@@ -26,7 +26,14 @@ interface RequestModalProps {
   onClose: () => void;
   selectedProduct: Product | null;
   selectedHours: number;
-  cancelledSlots?: { slotId: string; date: string; start: string; end: string; cancelledAt: string; }[];
+  cancelledSlots?: { 
+    slotId: string; 
+    date: string; 
+    start: string; 
+    end: string; 
+    cancelledAt: string; 
+    duration?: number;
+  }[];
   onRequestSchedule: (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local' | 'redeem') => Promise<void>;
 }
 
@@ -44,6 +51,25 @@ export default function RequestModal({
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'local' | 'redeem'>('online');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Calculate current package duration for filtering cancelled slots
+  const currentPackageDuration = selectedProduct?.duration || selectedHours;
+  
+  // Filter cancelled slots to only show ones matching current package duration
+  const availableCreditsForDuration = cancelledSlots?.filter(slot => {
+    // Calculate slot duration from start/end times if duration not provided directly
+    if ('duration' in slot) {
+      return slot.duration === currentPackageDuration;
+    }
+    
+    if (!slot.start || !slot.end) return false;
+    const [startHour, startMin] = slot.start.split(':').map(Number);
+    const [endHour, endMin] = slot.end.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    const slotDuration = (endMinutes - startMinutes) / 60;
+    return slotDuration === currentPackageDuration;
+  }) || [];
   
   // Reset state when modal opens
   useEffect(() => {
@@ -177,8 +203,8 @@ export default function RequestModal({
               </div>
             </label>
             
-            {/* Redeem Credit Option - Only show if user has cancelled slots */}
-            {cancelledSlots && cancelledSlots.length > 0 && (
+            {/* Redeem Credit Option - Only show if user has credits for this duration */}
+            {availableCreditsForDuration && availableCreditsForDuration.length > 0 && (
               <label className="flex items-center p-2 border border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all cursor-pointer">
                 <input
                   type="radio"
@@ -188,7 +214,9 @@ export default function RequestModal({
                   className="mr-2 text-purple-600 focus:ring-purple-500"
                 />
                 <div>
-                  <div className="font-semibold text-purple-600 text-xs">Redeem Credit ({cancelledSlots.length} available)</div>
+                  <div className="font-semibold text-purple-600 text-xs">
+                    Redeem Credit ({availableCreditsForDuration.length} available for {currentPackageDuration}h)
+                  </div>
                   <div className="text-xs text-gray-600">Use a cancelled lesson credit at no charge</div>
                 </div>
               </label>
