@@ -563,11 +563,6 @@ export default function ScheduleTableImproved({
                       });
                     }
                     
-                    // Debug: Log when no slots found
-                    if (slotsAtTime.length === 0 && !hasDrivingTestConflict) {
-                      console.log(`🔍 No slots found for ${dateString} at ${block.start}-${block.end}`);
-                    }
-                    
                     // Handle multiple instructors in the same time block
                     if (slotsAtTime.length > 0) {
                       // Find the slot that starts at this exact block (for rowSpan)
@@ -755,7 +750,6 @@ export default function ScheduleTableImproved({
                     }
                     
                     // Always show something - if no slot, show "-"
-                    console.log(`✅ Showing "-" for ${dateString} at ${block.start}-${block.end}`);
                     return (
                       <td key={date.toDateString()} className="border border-gray-300 py-1 bg-gray-50 text-black min-w-[80px] w-[80px] text-center text-xs">-</td>
                     );

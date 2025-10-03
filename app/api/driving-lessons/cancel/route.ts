@@ -262,15 +262,29 @@ export async function POST(request: NextRequest) {
 
       if (user && user.driving_lesson_bookings) {
         // Find the booking to move
-        const bookingIndex = user.driving_lesson_bookings.findIndex((booking: Record<string, unknown>) =>
-          booking.instructorId?.toString() === instructorId &&
-          booking.date === date &&
-          booking.start === start &&
-          booking.end === end
-        );
+        // IMPORTANT: Try to find by slotId first (most precise), then fallback to date/time matching
+        let bookingIndex = -1;
+
+        if (slotId) {
+          bookingIndex = user.driving_lesson_bookings.findIndex((booking: Record<string, unknown>) =>
+            booking.slotId?.toString() === slotId
+          );
+          console.log('🔍 [DRIVING LESSON CANCEL] Searching by slotId:', slotId, 'Found index:', bookingIndex);
+        }
+
+        // Fallback to date/time/instructor matching if not found by slotId
+        if (bookingIndex === -1) {
+          bookingIndex = user.driving_lesson_bookings.findIndex((booking: Record<string, unknown>) =>
+            booking.instructorId?.toString() === instructorId &&
+            booking.date === date &&
+            booking.start === start &&
+            booking.end === end
+          );
+          console.log('🔍 [DRIVING LESSON CANCEL] Searching by date/time/instructor. Found index:', bookingIndex);
+        }
 
         console.log('🔍 [DRIVING LESSON CANCEL] Looking for booking to move:', {
-          instructorId, date, start, end, bookingIndex
+          slotId, instructorId, date, start, end, bookingIndex
         });
 
         if (bookingIndex !== -1) {

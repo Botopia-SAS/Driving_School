@@ -822,6 +822,10 @@ function DrivingLessonsContent() {
       } else {
         // Pay at location: show success modal like Driving Test
         setShowSuccessPendingModal(true);
+        // Force SSE refresh to show updated schedule
+        if (selectedInstructorForSchedule) {
+          forceRefresh(selectedInstructorForSchedule._id);
+        }
       }
 
       // Close the modal
@@ -1126,6 +1130,19 @@ function DrivingLessonsContent() {
             // Si se proporciona paymentMethod, es una cancelación con cargo
             if (paymentMethod) {
               if (paymentMethod === 'online') {
+                // Find the CURRENT booked slot in instructor's schedule to get the correct slotId
+                const instructor = instructors.find(i => i._id === slotToCancel.instructorId);
+                const currentBookedSlot = instructor?.schedule_driving_lesson?.find(slot =>
+                  slot.date === slotToCancel.date &&
+                  slot.start === slotToCancel.start &&
+                  slot.end === slotToCancel.end &&
+                  slot.status === 'booked' &&
+                  slot.studentId === userId
+                );
+
+                const correctSlotId = currentBookedSlot?._id || slotToCancel._id || 'unknown';
+                console.log('🔍 [CANCEL] Using slotId for order:', correctSlotId, 'from current booked slot:', currentBookedSlot?._id);
+
                 // PAID CANCELLATION - Pay Online: Create order and redirect to Stripe
                 const orderRes = await fetch('/api/booking/create-cancellation-order', {
                   method: 'POST',
@@ -1133,7 +1150,7 @@ function DrivingLessonsContent() {
                   body: JSON.stringify({
                     userId: user._id,
                     instructorId: slotToCancel.instructorId,
-                    slotId: slotToCancel._id || 'unknown',
+                    slotId: correctSlotId,
                     date: slotToCancel.date,
                     start: slotToCancel.start,
                     end: slotToCancel.end,
@@ -1208,7 +1225,20 @@ function DrivingLessonsContent() {
             } else if (result.requiresPayment) {
               // Cancellation within 48 hours - requires payment
               console.log('💰 [DRIVING LESSONS] Payment required for cancellation');
-              
+
+              // Find the CURRENT booked slot in instructor's schedule to get the correct slotId
+              const instructor = instructors.find(i => i._id === slotToCancel.instructorId);
+              const currentBookedSlot = instructor?.schedule_driving_lesson?.find(slot =>
+                slot.date === slotToCancel.date &&
+                slot.start === slotToCancel.start &&
+                slot.end === slotToCancel.end &&
+                slot.status === 'booked' &&
+                slot.studentId === userId
+              );
+
+              const correctSlotId = currentBookedSlot?._id || slotToCancel._id || 'unknown';
+              console.log('🔍 [CANCEL] Using slotId for order:', correctSlotId, 'from current booked slot:', currentBookedSlot?._id);
+
               // Create cancellation order and redirect to Stripe
               const orderRes = await fetch('/api/booking/create-cancellation-order', {
                 method: 'POST',
@@ -1216,7 +1246,7 @@ function DrivingLessonsContent() {
                 body: JSON.stringify({
                   userId: user._id,
                   instructorId: slotToCancel.instructorId,
-                  slotId: slotToCancel._id || 'unknown',
+                  slotId: correctSlotId,
                   date: slotToCancel.date,
                   start: slotToCancel.start,
                   end: slotToCancel.end,
