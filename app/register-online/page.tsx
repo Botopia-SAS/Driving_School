@@ -81,12 +81,12 @@ function RegisterOnlineContent() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestedTicketClass, setRequestedTicketClass] = useState<TicketClass | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [showCancellationPaymentModal, setShowCancellationPaymentModal] = useState(false);
   const [cancellationData, setCancellationData] = useState<{
-    ticketClassId: string;
-    userId: string;
-    cancellationFee: number;
-    message: string;
+    ticketClassId?: string;
+    userId?: string;
+    cancellationFee?: number;
+    message?: string;
+    requiresPayment: boolean;
   } | null>(null);
   
   // Estados para el modal de reserva
@@ -327,12 +327,88 @@ function RegisterOnlineContent() {
     }
   };
 
+  // Check cancellation policy when modal opens (does NOT cancel)
+  const checkCancellationPolicy = async () => {
+    if (!classToUnbook || !userId) return;
+
+    try {
+      const response = await fetch('/api/register-online/check-cancellation-policy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketClassId: classToUnbook._id,
+          userId: userId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.requiresPayment) {
+        setCancellationData({
+          ticketClassId: data.ticketClassId,
+          userId: data.userId,
+          cancellationFee: data.cancellationFee,
+          message: data.message,
+          requiresPayment: true
+        });
+      } else {
+        setCancellationData({
+          ticketClassId: data.ticketClassId,
+          userId: data.userId,
+          requiresPayment: false
+        });
+      }
+    } catch (error) {
+      console.error('Error checking cancellation policy:', error);
+    }
+  };
+
   const handleUnbookClass = async () => {
     if (!classToUnbook || !userId) {
       return;
     }
 
     try {
+      // If payment required, create order and redirect to Elavon
+      if (cancellationData?.requiresPayment) {
+        const orderResponse = await fetch('/api/orders/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: cancellationData.userId,
+            total: cancellationData.cancellationFee,
+            orderType: 'ticket_class_cancellation',
+            appointments: [{
+              ticketClassId: cancellationData.ticketClassId,
+              classType: 'ticket_class_cancellation',
+              date: classToUnbook?.date,
+              start: classToUnbook?.hour,
+              end: classToUnbook?.endHour,
+              amount: cancellationData.cancellationFee
+            }]
+          })
+        });
+
+        if (!orderResponse.ok) {
+          throw new Error('Failed to create cancellation order');
+        }
+
+        const orderData = await orderResponse.json();
+        const orderId = orderData.order._id || orderData.order.orderNumber;
+
+        // Redirect to Elavon
+        const redirectResponse = await fetch(`/api/payments/redirect?userId=${cancellationData.userId}&orderId=${orderId}`);
+        const redirectData = await redirectResponse.json();
+
+        if (redirectData.redirectUrl) {
+          window.location.href = redirectData.redirectUrl;
+        } else {
+          throw new Error('No redirect URL received');
+        }
+        return;
+      }
+
+      // Free cancellation
       const response = await fetch('/api/register-online/unbook', {
         method: 'POST',
         headers: {
@@ -346,28 +422,12 @@ function RegisterOnlineContent() {
 
       const data = await response.json();
 
-      // Check if payment is required (status 402)
-      if (response.status === 402 && data.requiresPayment) {
-        // Close current modal and show payment modal
-        setShowUnbookConfirm(false);
-
-        // Store cancellation data and show payment modal
-        setCancellationData({
-          ticketClassId: data.ticketClassId,
-          userId: data.userId,
-          cancellationFee: data.cancellationFee,
-          message: data.message
-        });
-        setShowCancellationPaymentModal(true);
-        return;
-      }
-
       if (response.ok) {
         setConfirmationMessage(`Successfully unenrolled from ${classToUnbook.classInfo?.title || 'the class'}!`);
         setShowConfirmation(true);
         setShowUnbookConfirm(false);
         setClassToUnbook(null);
-        // The SSE will automatically update the UI with new enrollment data
+        setCancellationData(null);
       } else {
         setConfirmationMessage(data.error || 'Failed to unenroll from class');
         setShowConfirmation(true);
@@ -476,6 +536,13 @@ function RegisterOnlineContent() {
 
     fetchData();
   }, []);
+
+  // Check cancellation policy when modal opens
+  useEffect(() => {
+    if (showUnbookConfirm && classToUnbook && userId) {
+      checkCancellationPolicy();
+    }
+  }, [showUnbookConfirm, classToUnbook, userId]);
 
   // Update selected instructor when instructor ID changes
   useEffect(() => {
@@ -1042,25 +1109,31 @@ function RegisterOnlineContent() {
         </div>
       )}
 
-      {/* Unbook Confirmation Modal */}
+      {/* Unified Cancellation Modal */}
       {showUnbookConfirm && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
-          onClick={() => setShowUnbookConfirm(false)}
+          onClick={() => {
+            setShowUnbookConfirm(false);
+            setCancellationData(null);
+          }}
         >
-          <div 
+          <div
             className="relative bg-white text-black rounded-lg shadow-2xl border border-[#e0e0e0] flex flex-col"
             style={{
-              minWidth: '320px',
-              maxWidth: '320px',
-              width: '320px',
-              minHeight: '300px'
+              minWidth: '420px',
+              maxWidth: '420px',
+              width: '420px',
+              minHeight: '350px'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Botón de cierre */}
             <button
-              onClick={() => setShowUnbookConfirm(false)}
+              onClick={() => {
+                setShowUnbookConfirm(false);
+                setCancellationData(null);
+              }}
               className="absolute top-3 right-3 p-2 z-[9999] transition-all duration-300 bg-red-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Close modal"
             >
@@ -1080,33 +1153,91 @@ function RegisterOnlineContent() {
               </svg>
             </button>
 
-            <div className="p-6 text-center w-full">
-              <div className="mb-4 mt-4">
-          <h2 className="text-xl font-bold mb-4 text-red-600">Unenroll from Class</h2>
-          {classToUnbook && (
-            <div className="bg-red-50 p-4 rounded-lg mb-4">
-              <p className="mb-2"><strong>Class:</strong> {classToUnbook.classInfo?.title || getClassTypeDisplay(classToUnbook.type)}</p>
-              <p className="mb-2"><strong>Date:</strong> {formatDateForDisplay(classToUnbook.date)}</p>
-              <p className="mb-2"><strong>Time:</strong> {formatTime(classToUnbook.hour)} - {formatTime(classToUnbook.endHour)}</p>
-            </div>
-          )}
-          <p className="mb-4 text-gray-700">Are you sure you want to unenroll from this class?</p>
+            <div className="p-6 text-black flex flex-col h-full">
+              <h2 className="text-xl font-bold mb-4 text-center text-red-600">Cancel Your Class</h2>
+
+              {/* Class Details */}
+              {classToUnbook && (
+                <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <p className="text-sm mb-2"><strong>Class:</strong> {classToUnbook.classInfo?.title || getClassTypeDisplay(classToUnbook.type)}</p>
+                  <p className="text-sm mb-2"><strong>Date:</strong> {formatDateForDisplay(classToUnbook.date)}</p>
+                  <p className="text-sm"><strong>Time:</strong> {formatTime(classToUnbook.hour)} - {formatTime(classToUnbook.endHour)}</p>
+                </div>
+              )}
+
+              {/* Cancellation Policy Information */}
+              {cancellationData === null ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-red-500 border-t-transparent rounded-full"></div>
+                  <span className="ml-3 text-gray-600">Checking cancellation policy...</span>
+                </div>
+              ) : cancellationData.requiresPayment ? (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start">
+                    <svg className="h-6 w-6 text-orange-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="w-full">
+                      <h3 className="text-orange-800 font-semibold mb-1">Cancellation Fee Required</h3>
+                      <p className="text-orange-700 text-sm mb-2">
+                        Cancellation within 48 hours requires a <strong className="text-orange-900">${cancellationData.cancellationFee}.00 USD</strong> fee
+                      </p>
+                      <p className="text-orange-600 text-xs">
+                        After payment, you'll receive credit to redeem for any future class.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start">
+                    <svg className="h-6 w-6 text-green-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <h3 className="text-green-800 font-semibold mb-1">Free Cancellation</h3>
+                      <p className="text-green-700 text-sm">
+                        Your class is more than 48 hours away. You can cancel without any charges and receive credit for a future class.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-gray-600 text-sm text-center mb-4">
+                {cancellationData?.requiresPayment
+                  ? `You will be charged $${cancellationData.cancellationFee}.00 to cancel this class.`
+                  : 'Are you sure you want to cancel this class?'
+                }
+              </p>
+
+              {/* Action Buttons */}
+              <div className="mt-auto flex justify-between gap-3">
+                <button
+                  className="flex-1 bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-all duration-200 font-medium text-sm"
+                  onClick={() => {
+                    setShowUnbookConfirm(false);
+                    setCancellationData(null);
+                  }}
+                  disabled={cancellationData === null}
+                >
+                  Keep Class
+                </button>
+                <button
+                  className={`flex-1 px-6 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${
+                    cancellationData === null
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : cancellationData.requiresPayment
+                        ? 'bg-orange-500 text-white hover:bg-orange-600'
+                        : 'bg-red-500 text-white hover:bg-red-600'
+                  }`}
+                  disabled={cancellationData === null}
+                  onClick={handleUnbookClass}
+                >
+                  {cancellationData?.requiresPayment ? 'Pay & Cancel' : 'Yes, Cancel Class'}
+                </button>
               </div>
-          <div className="flex justify-center gap-3">
-            <button
-              className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
-              onClick={() => setShowUnbookConfirm(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
-              onClick={handleUnbookClass}
-            >
-              Accept & Cancel
-            </button>
-          </div>
-        </div>
+            </div>
           </div>
         </div>
       )}
@@ -1255,137 +1386,6 @@ function RegisterOnlineContent() {
         onLoginSuccess={handleLoginSuccess}
       />
 
-      {/* Cancellation Payment Modal */}
-      {showCancellationPaymentModal && cancellationData && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
-          onClick={() => setShowCancellationPaymentModal(false)}
-        >
-          <div
-            className="relative bg-white text-black rounded-lg shadow-2xl border border-[#e0e0e0] flex flex-col"
-            style={{
-              minWidth: '400px',
-              maxWidth: '400px',
-              width: '400px',
-              minHeight: '300px'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Botón de cierre */}
-            <button
-              onClick={() => setShowCancellationPaymentModal(false)}
-              className="absolute top-3 right-3 p-2 z-[9999] transition-all duration-300 bg-red-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Close modal"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-gray-600 hover:text-gray-900"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-
-            <div className="p-6 text-center w-full">
-              <div className="mb-4 mt-4">
-                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4">
-                  <svg className="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-bold mb-4 text-yellow-600">Cancellation Fee Required</h2>
-                <div className="bg-yellow-50 p-4 rounded-lg mb-4">
-                  <p className="text-gray-700 mb-3">{cancellationData.message}</p>
-                  <p className="text-2xl font-bold text-yellow-600 mb-2">${cancellationData.cancellationFee}</p>
-                  <p className="text-sm text-gray-600">
-                    You are cancelling within 48 hours of the class start time. A cancellation fee is required.
-                  </p>
-                </div>
-                {classToUnbook && (
-                  <div className="bg-gray-50 p-3 rounded-lg mb-4 text-left text-sm">
-                    <p className="mb-1"><strong>Class:</strong> {classToUnbook.classInfo?.title || getClassTypeDisplay(classToUnbook.type)}</p>
-                    <p className="mb-1"><strong>Date:</strong> {formatDateForDisplay(classToUnbook.date)}</p>
-                    <p className="mb-1"><strong>Time:</strong> {formatTime(classToUnbook.hour)} - {formatTime(classToUnbook.endHour)}</p>
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-center gap-3">
-                <button
-                  className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
-                  onClick={() => {
-                    setShowCancellationPaymentModal(false);
-                    setCancellationData(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
-                  onClick={async () => {
-                    // Create order and redirect to Elavon for payment
-                    try {
-                      console.log('💳 Creating cancellation order for ticket class:', cancellationData.ticketClassId);
-
-                      // Create order with cancellation details
-                      const orderResponse = await fetch('/api/orders/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          userId: cancellationData.userId,
-                          total: cancellationData.cancellationFee,
-                          orderType: 'ticket_class_cancellation',
-                          appointments: [{
-                            ticketClassId: cancellationData.ticketClassId,
-                            classType: 'ticket_class_cancellation',
-                            date: classToUnbook?.date,
-                            start: classToUnbook?.hour,
-                            end: classToUnbook?.endHour,
-                            amount: cancellationData.cancellationFee
-                          }]
-                        })
-                      });
-
-                      if (!orderResponse.ok) {
-                        throw new Error('Failed to create cancellation order');
-                      }
-
-                      const orderData = await orderResponse.json();
-                      console.log('✅ Cancellation order created:', orderData);
-
-                      // Redirect directly to Elavon payment
-                      const orderId = orderData.order._id || orderData.order.orderNumber;
-
-                      // Call /api/payments/redirect to get Elavon URL
-                      const redirectResponse = await fetch(`/api/payments/redirect?userId=${cancellationData.userId}&orderId=${orderId}`);
-                      const redirectData = await redirectResponse.json();
-
-                      if (redirectData.redirectUrl) {
-                        console.log('✅ Redirecting to Elavon:', redirectData.redirectUrl);
-                        window.location.href = redirectData.redirectUrl; // Direct to Elavon
-                      } else {
-                        throw new Error('No redirect URL received');
-                      }
-
-                    } catch (error) {
-                      console.error('❌ Error creating cancellation order:', error);
-                      alert('Error processing cancellation payment. Please try again.');
-                    }
-                  }}
-                >
-                  Pay Now
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
