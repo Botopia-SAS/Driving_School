@@ -41,31 +41,59 @@ export async function POST(req: NextRequest) {
     if (user.cart && user.cart.length > 0) {
       console.log(`🗑️ Found ${user.cart.length} items in user cart, freeing slots...`);
       
-      // Process each driving test item to free its slot
+      // Process each item to free its slots based on class type
       for (const item of user.cart) {
-        if (item.classType === 'driving test' && item.instructorId) {
+        if (item.instructorId) {
           try {
-            // Find the instructor and free the slot
+            // Find the instructor
             const instructor = await Instructor.findById(item.instructorId);
-            if (instructor && instructor.schedule_driving_test) {
-              // Priorizar slots que NO están cancelados
+            if (!instructor) {
+              console.warn(`⚠️ Instructor not found for item: ${item.id}`);
+              continue;
+            }
+
+            // Handle different class types
+            if (item.classType === 'driving test' && instructor.schedule_driving_test) {
+              // Free driving test slots
               const matchingSlots = instructor.schedule_driving_test.filter((s: { date?: string; start?: string; end?: string; status?: string }) =>
                 s.date === item.date &&
                 s.start === item.start &&
                 s.end === item.end
               );
 
-              // Priorizar slots NO cancelados
               const slot = matchingSlots.find((s: { status?: string }) => s.status !== 'cancelled') || matchingSlots[0];
 
               if (slot) {
-                // For driving test, only keep essential fields
                 (slot as Record<string, unknown>).status = 'available';
                 (slot as Record<string, unknown>).studentId = null;
                 (slot as Record<string, unknown>).studentName = null;
                 (slot as Record<string, unknown>).paid = false;
 
-                // DELETE fields that don't belong to driving test slots
+                // Clean up driving test specific fields
+                delete (slot as Record<string, unknown>).booked;
+                delete (slot as Record<string, unknown>).reservedAt;
+                delete (slot as Record<string, unknown>).paymentMethod;
+                delete (slot as Record<string, unknown>).orderId;
+                delete (slot as Record<string, unknown>).orderNumber;
+                console.log(`✅ Freed driving test slot: ${item.date} ${item.start}-${item.end}`);
+              }
+            } else if (item.classType === 'driving lesson' && instructor.schedule_driving_lesson) {
+              // Free driving lesson slots
+              const matchingSlots = instructor.schedule_driving_lesson.filter((s: { date?: string; start?: string; end?: string; status?: string }) =>
+                s.date === item.date &&
+                s.start === item.start &&
+                s.end === item.end
+              );
+
+              const slot = matchingSlots.find((s: { status?: string }) => s.status !== 'cancelled') || matchingSlots[0];
+
+              if (slot) {
+                (slot as Record<string, unknown>).status = 'available';
+                (slot as Record<string, unknown>).studentId = null;
+                (slot as Record<string, unknown>).studentName = null;
+                (slot as Record<string, unknown>).paid = false;
+
+                // Clean up driving lesson specific fields
                 delete (slot as Record<string, unknown>).booked;
                 delete (slot as Record<string, unknown>).reservedAt;
                 delete (slot as Record<string, unknown>).paymentMethod;
@@ -74,13 +102,40 @@ export async function POST(req: NextRequest) {
                 delete (slot as Record<string, unknown>).pickupLocation;
                 delete (slot as Record<string, unknown>).dropoffLocation;
                 delete (slot as Record<string, unknown>).selectedProduct;
-                console.log(`✅ Freed slot: ${item.date} ${item.start}-${item.end}`);
+                console.log(`✅ Freed driving lesson slot: ${item.date} ${item.start}-${item.end}`);
+              }
+            } else if (item.classType === 'ticket' && instructor.schedule) {
+              // Free ticket class slots
+              const matchingSlots = instructor.schedule.filter((s: { date?: string; start?: string; end?: string; status?: string }) =>
+                s.date === item.date &&
+                s.start === item.start &&
+                s.end === item.end
+              );
+
+              const slot = matchingSlots.find((s: { status?: string }) => s.status !== 'cancelled') || matchingSlots[0];
+
+              if (slot) {
+                (slot as Record<string, unknown>).status = 'available';
+                (slot as Record<string, unknown>).studentId = null;
+                (slot as Record<string, unknown>).studentName = null;
+                (slot as Record<string, unknown>).paid = false;
+
+                // Clean up ticket class specific fields
+                delete (slot as Record<string, unknown>).booked;
+                delete (slot as Record<string, unknown>).reservedAt;
+                delete (slot as Record<string, unknown>).paymentMethod;
+                delete (slot as Record<string, unknown>).orderId;
+                delete (slot as Record<string, unknown>).orderNumber;
+                console.log(`✅ Freed ticket class slot: ${item.date} ${item.start}-${item.end}`);
               }
             }
+
             await instructor.save();
           } catch (error) {
-            console.warn(`⚠️ Failed to free slot for item:`, error);
+            console.warn(`⚠️ Failed to free slot for item ${item.id}:`, error);
           }
+        } else {
+          console.log(`ℹ️ Item ${item.id} has no instructorId, skipping slot freeing`);
         }
       }
       

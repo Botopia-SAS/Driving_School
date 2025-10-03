@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
-import Cart from "@/models/Cart";
 import Order from '@/models/Order';
 import { startAndWaitEC2 } from "@/app/api/checkout/aws-ec2";
 import { secureFetch } from "@/app/utils/secure-fetch";
@@ -214,10 +213,14 @@ export async function GET(req: NextRequest) {
         const hasDrivingLessons = validItems.some(item => item.classType === 'driving lesson' || item.packageDetails);
         
         let preOrderType = 'general';
-        if (hasTickets) {
-          preOrderType = 'ticket_class';
+        if (hasTickets && hasDrivingTests) {
+          preOrderType = 'classes'; // Combinación de ticket class + driving test
+        } else if (hasTickets && hasDrivingLessons) {
+          preOrderType = 'classes'; // Combinación de ticket class + driving lesson
         } else if (hasDrivingTests && hasDrivingLessons) {
-          preOrderType = 'drivings';
+          preOrderType = 'drivings'; // Combinación de driving test + driving lesson
+        } else if (hasTickets) {
+          preOrderType = 'ticket_class';
         } else if (hasDrivingTests) {
           preOrderType = 'driving_test';
         } else if (hasDrivingLessons) {
@@ -231,6 +234,7 @@ export async function GET(req: NextRequest) {
           price: Number(item.price || item.amount || 0),
           quantity: Number(item.quantity || 1),
           description: preOrderType === 'drivings' ? 'drivings' :
+                      preOrderType === 'classes' ? 'classes' :
                       preOrderType === 'ticket_class_cancellation' ? 'ticketclass cancellation' :
                       (item.description || item.packageDetails ||
                       (item.classType === 'driving test' ? 'Driving test appointment' : 'Driving lesson package')),
@@ -278,14 +282,13 @@ export async function GET(req: NextRequest) {
             total: latestOrder.total
           });
         } else {
-          // Si no hay órdenes pendientes, buscar en colección Cart (para otros productos)
-          const cart = await Cart.findOne({ userId });
-          if (!cart || !cart.items.length) {
+          // Si no hay órdenes pendientes, verificar carrito del usuario
+          if (!user.cart || user.cart.length === 0) {
             console.log("[API][redirect] Carrito vacío en todas las ubicaciones, redirigiendo a home");
             return NextResponse.redirect(`${BASE_URL}/?error=cart-empty`);
           }
-          items = cart.items;
-          total = cart.items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
+          items = user.cart;
+          total = user.cart.reduce((sum, item) => sum + (item.price || item.amount || 0) * (item.quantity || 1), 0);
         }
       }
       //console.log("[API][redirect] Carrito encontrado", { items, total });
@@ -513,10 +516,6 @@ export async function GET(req: NextRequest) {
         if (user.cart && user.cart.length > 0) {
           await User.findByIdAndUpdate(userId, { cart: [] }, { runValidators: false });
           console.log("[API][redirect] Carrito del usuario vaciado");
-        } else {
-          // Limpiar colección Cart (para otros productos)
-          const deleteResult = await Cart.deleteOne({ userId });
-          console.log("[API][redirect] Carrito de colección vaciado:", deleteResult);
         }
       }
     } else if (orderToUse) {
@@ -688,11 +687,6 @@ export async function POST(req: NextRequest) {
       
       if (user.cart && user.cart.length > 0) {
         cartItems = user.cart;
-      } else {
-        const cartDoc = await Cart.findOne({ userId });
-        if (cartDoc && cartDoc.items) {
-          cartItems = cartDoc.items;
-        }
       }
 
       if (cartItems.length === 0) {
@@ -854,6 +848,7 @@ export async function POST(req: NextRequest) {
       // Usar descripción basada en orderType para órdenes mixtas
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const orderDescription = orderType === 'drivings' ? 'drivings' :
+                              orderType === 'classes' ? 'classes' :
                               orderType === 'driving_test' ? 'driving test' :
                               orderType === 'driving_lesson' ? 'driving lesson' :
                               orderType === 'ticket_class' ? 'ticket class' :
@@ -867,6 +862,7 @@ export async function POST(req: NextRequest) {
         quantity: item.quantity || 1,
         price: item.price || item.amount || 0,
         description: String(orderType === 'drivings' ? 'drivings' :
+                    orderType === 'classes' ? 'classes' :
                     orderType === 'ticket_class_cancellation' ? 'ticketclass cancellation' :
                     (item.description || item.packageDetails ||
                     (item.classType === 'driving test' ? 'Driving test appointment' : 'Driving lesson package')))
@@ -918,14 +914,10 @@ export async function POST(req: NextRequest) {
       console.log("[API][redirect] Orden creada:", createdOrder._id);
       finalOrderId = createdOrder._id.toString();
       
-      // Limpiar carrito del usuario (para driving-lessons)
+      // Limpiar carrito del usuario
       if (user.cart && user.cart.length > 0) {
         await User.findByIdAndUpdate(userId, { cart: [] }, { runValidators: false });
         console.log("[API][redirect] Carrito del usuario vaciado");
-      } else {
-        // Limpiar colección Cart (para otros productos)
-        const deleteResult = await Cart.deleteOne({ userId });
-        console.log("[API][redirect] Carrito de colección vaciado:", deleteResult);
       }
     } else if (orderToUse) {
       finalOrderId = orderToUse._id.toString();
