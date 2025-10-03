@@ -364,20 +364,8 @@ const ContactPage = () => {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-lg">561 735 1615</p>
+                <p className="font-semibold text-lg">(561) 969-0150</p>
                 <p className="text-blue-100 text-sm">Primary Phone</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="bg-white/20 p-3 rounded-full">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-              </div>
-              <div>
-                <p className="font-semibold text-lg">561 330 7007</p>
-                <p className="text-blue-100 text-sm">Secondary Phone</p>
               </div>
             </div>
 
@@ -389,11 +377,11 @@ const ContactPage = () => {
                 </svg>
               </div>
               <div>
-                <a 
-                  href="mailto:info@drivingschoolpalmbeach.com"
+                <a
+                  href="mailto:drivingtrafficschool@gmail.com"
                   className="font-semibold text-lg hover:text-blue-200 transition-colors"
                 >
-                  info@drivingschoolpalmbeach.com
+                  drivingtrafficschool@gmail.com
                 </a>
                 <p className="text-blue-100 text-sm">Email Address</p>
               </div>

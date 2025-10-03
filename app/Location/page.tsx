@@ -147,7 +147,7 @@ const LocationPage: React.FC = () => {
                       </div>
                       <div>
                         <strong>Phone:</strong>
-                        <span className="text-blue-600 font-bold ml-2">561 330 7007</span>
+                        <a href="/contact" className="text-blue-600 font-bold ml-2 hover:underline">(561) 969-0150</a>
                       </div>
                     </div>
                     <div className="flex items-center">
@@ -160,10 +160,10 @@ const LocationPage: React.FC = () => {
                       <div>
                         <strong>Email:</strong>
                         <a
-                          href="mailto:info@drivingschoolpalmbeach.com"
+                          href="/contact"
                           className="text-blue-600 underline ml-2 hover:text-blue-800"
                         >
-                          info@drivingschoolpalmbeach.com
+                          drivingtrafficschool@gmail.com
                         </a>
                       </div>
                     </div>
@@ -391,18 +391,18 @@ const LocationPage: React.FC = () => {
                               </div>
                               <strong>Phone:</strong>
                               <a
-                                href="tel:5613307007"
+                                href="/contact"
                                 className="text-blue-600 hover:underline"
                                 style={{
                                   color: '#2563eb',
                                   textDecoration: 'none'
                                 }}
                               >
-                                561 330 7007
+                                (561) 969-0150
                               </a>
                             </p>
 
-                            <p 
+                            <p
                               className="flex items-center gap-3 text-gray-800"
                               style={{
                                 display: 'flex',
@@ -420,14 +420,14 @@ const LocationPage: React.FC = () => {
                               </div>
                               <strong>Email:</strong>
                               <a
-                                href="mailto:info@drivingschoolpalmbeach.com"
+                                href="/contact"
                                 className="text-blue-600 hover:underline"
                                 style={{
                                   color: '#2563eb',
                                   textDecoration: 'none'
                                 }}
                               >
-                                info@drivingschoolpalmbeach.com
+                                drivingtrafficschool@gmail.com
                               </a>
                             </p>
                           </div>

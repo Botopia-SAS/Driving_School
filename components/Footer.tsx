@@ -74,10 +74,14 @@ const Footer = () => {
               </li>
             <li>
               <a href="/contact" className="hover:text-[#27ae60] transition-all duration-300">
-                info@drivingschoolpalmbeach.com
+                drivingtrafficschool@gmail.com
               </a>
             </li>
-            <li>📞 561 330 7007</li>
+            <li>
+              <a href="/contact" className="hover:text-[#27ae60] transition-all duration-300">
+                📞 (561) 969-0150
+              </a>
+            </li>
           </ul>
 
           {/* 🔹 Redes Sociales con efecto Glow */}
