@@ -93,7 +93,7 @@ const AreasWeServe = () => {
         {/* Tarjeta premium Boca Raton */}
         <div className="lg:w-2/3 w-full flex flex-col items-center lg:items-start">
           <h2 className="text-4xl font-black text-gray-900 mb-4 text-center lg:text-left tracking-tight">Areas We Serve</h2>
-          <p className="text-lg text-gray-700 mb-10 w-full text-center lg:text-left max-w-2xl">We are dedicated to providing world-class driving school services to West Palm Beach and surrounding areas.</p>
+          <p className="text-lg text-gray-700 mb-10 w-full text-center lg:text-left max-w-2xl">We are dedicated to providing world-class driving school services throughout Palm Beach County and surrounding areas.</p>
 
           {/* Solo una zona: Boca Raton premium card */}
           {areas.length === 1 && (
@@ -209,12 +209,30 @@ const AreasWeServe = () => {
                   <p className="flex items-center gap-2 text-gray-800 text-base">
                     <span className="inline-block w-5 h-5"><svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" stroke="#1A7F5A" strokeWidth="2"/><path d="M10 4C7.23858 4 5 6.23858 5 9C5 12.75 10 17 10 17C10 17 15 12.75 15 9C15 6.23858 12.7614 4 10 4Z" fill="#1A7F5A"/><circle cx="10" cy="9" r="2" fill="white"/></svg></span>
                     <strong>Phone:</strong>
-                    <a href="tel:5613307007" className="text-blue-700 hover:underline font-medium">561 330 7007</a>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedZone(null);
+                        router.push('/contact');
+                      }}
+                      className="text-blue-700 hover:underline font-medium cursor-pointer bg-transparent border-none p-0"
+                    >
+                      (561) 969-0150
+                    </button>
                   </p>
                   <p className="flex items-center gap-2 text-gray-800 text-base">
                     <span className="inline-block w-5 h-5"><svg width="20" height="20" fill="none" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="2" fill="#1A7F5A"/><rect x="2" y="4" width="16" height="12" rx="2" stroke="#1A7F5A" strokeWidth="2"/><path d="M2 4L10 12L18 4" stroke="white" strokeWidth="2"/></svg></span>
                     <strong>Email:</strong>
-                    <a href="mailto:info@drivingschoolpalmbeach.com" className="text-blue-700 hover:underline font-medium">info@drivingschoolpalmbeach.com</a>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedZone(null);
+                        router.push('/contact');
+                      }}
+                      className="text-blue-700 hover:underline font-medium cursor-pointer bg-transparent border-none p-0"
+                    >
+                      drivingtrafficschool@gmail.com
+                    </button>
                   </p>
                 </div>
                 <div className="border-t pt-4 mt-4">
@@ -232,9 +250,9 @@ const AreasWeServe = () => {
             </div>
             {/* Mapa integrado dentro del modal */}
             <div className="w-full flex justify-center mt-6 mb-6">
-              <div className="w-full max-w-2xl h-48 md:h-56 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-md">
+              <div className="w-full max-w-2xl h-64 md:h-80 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-md">
                 <iframe
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(selectedZone?.zone || "")}&output=embed`}
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(selectedZone?.zone || "")}&z=12&output=embed`}
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}

@@ -93,7 +93,7 @@ const Header = () => {
           href="/contact"
           className={`hidden lg:flex ${isHome ? (isScrolled ? "text-[#0056b3]" : "text-white") : "text-[#0056b3]"} font-semibold underline cursor-pointer`}
         >
-          Phone: <strong className="font-semibold">561 330 7007</strong>
+          Phone: <strong className="font-semibold">(561) 969-0150</strong>
         </Link>
         {/* 🛒 Carrito de Compras con color dinámico */}
         <div>
