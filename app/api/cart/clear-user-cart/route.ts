@@ -54,16 +54,29 @@ export async function POST(req: NextRequest) {
 
             // Handle different class types
             if (item.classType === 'driving test' && instructor.schedule_driving_test) {
-              // Free driving test slots
-              const matchingSlots = instructor.schedule_driving_test.filter((s: { date?: string; start?: string; end?: string; status?: string }) =>
-                s.date === item.date &&
-                s.start === item.start &&
-                s.end === item.end
-              );
+              console.log(`🔍 Looking for driving test slot: ${item.date} ${item.start}-${item.end}`);
+              console.log(`🔍 Instructor has ${instructor.schedule_driving_test.length} driving test slots`);
+              
+              // Free driving test slots - look for slots that match the cart item
+              const matchingSlots = instructor.schedule_driving_test.filter((s: { date?: string; start?: string; end?: string; status?: string; studentId?: string }) => {
+                const matches = s.date === item.date &&
+                               s.start === item.start &&
+                               s.end === item.end;
+                console.log(`🔍 Slot ${s.date} ${s.start}-${s.end} (status: ${s.status}, studentId: ${s.studentId}) matches: ${matches}`);
+                return matches;
+              });
 
-              const slot = matchingSlots.find((s: { status?: string }) => s.status !== 'cancelled') || matchingSlots[0];
+              console.log(`🔍 Found ${matchingSlots.length} matching slots`);
+
+              // Find the slot that belongs to this user (pending or booked)
+              const slot = matchingSlots.find((s: { status?: string; studentId?: string }) => 
+                s.status === 'pending' || s.status === 'booked' || s.status === 'scheduled'
+              ) || matchingSlots[0];
 
               if (slot) {
+                console.log(`🔍 Found slot to free: ${slot.date} ${slot.start}-${slot.end} (status: ${slot.status})`);
+                
+                // Force the slot back to available
                 (slot as Record<string, unknown>).status = 'available';
                 (slot as Record<string, unknown>).studentId = null;
                 (slot as Record<string, unknown>).studentName = null;
@@ -75,7 +88,9 @@ export async function POST(req: NextRequest) {
                 delete (slot as Record<string, unknown>).paymentMethod;
                 delete (slot as Record<string, unknown>).orderId;
                 delete (slot as Record<string, unknown>).orderNumber;
-                console.log(`✅ Freed driving test slot: ${item.date} ${item.start}-${item.end}`);
+                console.log(`✅ Freed driving test slot: ${item.date} ${item.start}-${item.end} -> status: available`);
+              } else {
+                console.warn(`⚠️ No slot found to free for driving test: ${item.date} ${item.start}-${item.end}`);
               }
             } else if (item.classType === 'driving lesson' && instructor.schedule_driving_lesson) {
               // Free driving lesson slots

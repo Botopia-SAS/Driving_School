@@ -749,8 +749,32 @@ export async function POST(req: NextRequest) {
           });
           
           if (item.classType === 'driving test') {
+            // Get the actual slot _id from the instructor's schedule
+            let actualSlotId = item.slotId || `${item.date || 'unknown'}-${item.start || 'unknown'}-${item.end || 'unknown'}`;
+            
+            if (item.instructorId) {
+              try {
+                const instructor = await Instructor.findById(item.instructorId);
+                if (instructor && instructor.schedule_driving_test) {
+                  const matchingSlot = instructor.schedule_driving_test.find((slot: any) =>
+                    slot.date === item.date &&
+                    slot.start === item.start &&
+                    slot.end === item.end &&
+                    slot.studentId === userId
+                  );
+                  
+                  if (matchingSlot && matchingSlot._id) {
+                    actualSlotId = matchingSlot._id;
+                    console.log(`[API][redirect] POST - Found actual slot _id: ${actualSlotId}`);
+                  }
+                }
+              } catch (error) {
+                console.warn(`[API][redirect] POST - Could not get actual slot _id:`, error);
+              }
+            }
+            
             appointments.push({
-              slotId: item.slotId || `${item.date || 'unknown'}-${item.start || 'unknown'}-${item.end || 'unknown'}`,
+              slotId: actualSlotId,
               instructorId: item.instructorId || '',
               instructorName: item.instructorName || '',
               date: item.date || '',
