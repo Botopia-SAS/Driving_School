@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import Cart from "@/models/Cart";
+import User from "@/models/User";
 
 export async function POST(req: NextRequest) {
   await connectDB();
@@ -32,13 +32,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing or invalid items array" }, { status: 400 });
   }
   try {
-    const cart = await Cart.findOneAndUpdate(
-      { userId },
-      { items, updatedAt: new Date() },
-      { upsert: true, new: true }
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { cart: items, updatedAt: new Date() },
+      { new: true, runValidators: false }
     );
-    //console.log("[API][cart] Cart saved:", cart);
-    return NextResponse.json({ success: true, cart });
+    
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    
+    //console.log("[API][cart] Cart saved to user.cart:", user.cart?.length || 0, "items");
+    return NextResponse.json({ success: true, cart: user.cart });
   } catch (error) {
     console.log("[API][cart] Failed to save cart:", error);
     return NextResponse.json({ error: "Failed to save cart", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
@@ -53,8 +58,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
   }
   try {
-    const cart = await Cart.findOne({ userId });
-    return NextResponse.json({ cart });
+    const user = await User.findById(userId).select('cart');
+    if (!user || !user.cart || !Array.isArray(user.cart)) {
+      return NextResponse.json({ cart: { items: [] } });
+    }
+    return NextResponse.json({ cart: { items: user.cart } });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch cart", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
@@ -81,7 +89,16 @@ export async function DELETE(req: NextRequest) {
   }
   
   try {
-    const result = await Cart.findOneAndDelete({ userId });
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { cart: [], updatedAt: new Date() },
+      { new: true, runValidators: false }
+    );
+    
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    
     console.log(`🗑️ [API][cart] Cart cleared for user: ${userId}`);
     return NextResponse.json({ success: true, message: "Cart cleared successfully" });
   } catch (error) {

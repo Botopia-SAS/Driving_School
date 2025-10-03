@@ -8,6 +8,25 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
+    // Parse request body with error handling
+    let requestBody;
+    try {
+      const text = await req.text();
+      if (!text || text.trim() === '') {
+        return NextResponse.json(
+          { error: "Empty request body" },
+          { status: 400 }
+        );
+      }
+      requestBody = JSON.parse(text);
+    } catch (parseError) {
+      console.error("❌ Error parsing request body:", parseError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+
     const {
       userId,
       instructorId,
@@ -15,7 +34,7 @@ export async function POST(req: NextRequest) {
       start,
       end,
       classType
-    } = await req.json();
+    } = requestBody;
 
     console.log('🗑️ Removing driving test from cart:', {
       userId,
