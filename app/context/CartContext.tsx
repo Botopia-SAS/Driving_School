@@ -463,9 +463,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   const clearCart = async () => {
     console.log('🗑️ [CartContext] Clearing cart completely...');
     
-    // First, handle ticket classes and driving lesson packages before clearing the cart
+    // First, handle ticket classes, driving tests, and driving lesson packages before clearing the cart
     if (user?._id && cart.length > 0) {
       const ticketClassItems = cart.filter(item => item.ticketClassId);
+      const drivingTestItems = cart.filter(item => item.classType === 'driving test' && item.instructorId);
       const drivingLessonItems = cart.filter(item => Array.isArray(item.selectedSlots) && item.selectedSlots.length > 0);
       
       if (ticketClassItems.length > 0) {
@@ -486,6 +487,32 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
             console.log(`✅ [CartContext] Ticket class ${item.title} student request removed`);
           } catch (error) {
             console.warn(`⚠️ [CartContext] Failed to remove ticket class ${item.title}:`, error);
+          }
+        }
+      }
+
+      if (drivingTestItems.length > 0) {
+        console.log(`🗑️ [CartContext] Removing ${drivingTestItems.length} driving test appointment(s) and freeing their slots...`);
+        
+        // Remove each driving test individually to free up slots
+        for (const item of drivingTestItems) {
+          try {
+            await fetch("/api/cart/remove-driving-test", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                userId: user._id, 
+                instructorId: item.instructorId,
+                date: item.date,
+                start: item.start,
+                end: item.end,
+                classType: item.classType,
+                slotId: item.slotId // Include slotId if available for precise slot targeting
+              }),
+            });
+            console.log(`✅ [CartContext] Driving test appointment ${item.title} slot freed`);
+          } catch (error) {
+            console.warn(`⚠️ [CartContext] Failed to remove driving test appointment ${item.title}:`, error);
           }
         }
       }
