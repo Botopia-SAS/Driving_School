@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     // console.log('🔍 Fetching instructors with type:', type, 'includeSchedule:', includeSchedule);
     
     let filter = {};
-    let selectFields = 'name photo email specialization category type';
+    let selectFields = 'name photo email specialization category type canTeachDrivingLesson canTeachDrivingTest canTeachTicketClass';
     
     // Incluir schedule_driving_lesson si se solicita
     if (includeSchedule) {
@@ -22,30 +22,24 @@ export async function GET(request: NextRequest) {
     
     // Filtrar por tipo de instructor
     if (type === 'driving-lessons') {
-      // Buscar instructores que tengan driving lessons en su schedule, independientemente de canTeachDrivingLesson
+      // Solo instructores con canTeachDrivingLesson: true
       filter = {
-        $or: [
-          { canTeachDrivingLesson: true },
-          { category: 'driving-lessons' },
-          { type: 'driving-lessons' },
-          { specialization: { $in: ['driving', 'driving-lessons', 'road-skills'] } },
-          { 
-            schedule_driving_lesson: { 
-              $exists: true, 
-              $not: { $size: 0 } 
-            } 
-          }
-        ]
+        canTeachDrivingLesson: true
       };
     }
+    
+    console.log('🔍 [API] Filter being used:', JSON.stringify(filter));
+    console.log('🔍 [API] Select fields:', selectFields);
     
     const instructors = await Instructor.find(filter)
       .select(selectFields)
       .sort({ name: 1 })
       .lean();
     
-    // console.log('👨‍🏫 Instructors found:', instructors.length);
-    // console.log('📋 Instructors data:', JSON.stringify(instructors, null, 2));
+    console.log('👨‍🏫 [API] Instructors found:', instructors.length);
+    instructors.forEach(instructor => {
+      console.log(`�‍🏫 [API] ${instructor.name}: canTeachDrivingLesson = ${instructor.canTeachDrivingLesson}`);
+    });
     
     // Si no encontramos instructores específicos, devolver todos
     if (instructors.length === 0 && type === 'driving-lessons') {

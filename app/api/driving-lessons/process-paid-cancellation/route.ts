@@ -132,7 +132,9 @@ export async function POST(request: NextRequest) {
       classType: foundSlot.classType || 'driving lesson',
       studentName: null,
       paid: false,
-      amount: foundSlot.amount || 90,
+      pickupLocation: '',
+      dropoffLocation: '',
+      selectedProduct: ''
     };
 
     // Add the new available slot to the schedule

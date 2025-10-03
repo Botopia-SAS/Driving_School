@@ -81,14 +81,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has any cancelled slots with matching duration
-    // Only consider slots cancelled outside 48 hours (they have credit)
+    // Consider slots that: 1) were cancelled outside 48 hours (free), OR 2) have paidCancellation=true (paid $90 fee)
     const cancelledMatchingSlots = (user.driving_lesson_cancelled || []).filter((slot: Record<string, unknown>) => {
       const slotStart = slot.start as string;
       const slotEnd = slot.end as string;
       const cancelledAt = slot.cancelledAt as Date;
-      
+      const paidCancellation = slot.paidCancellation as boolean;
+      const redeemed = slot.redeemed as boolean;
+
       if (!slotStart || !slotEnd || !cancelledAt) return false;
-      
+      if (redeemed) return false; // Already redeemed
+
       // Calculate slot duration
       const [slotStartHour, slotStartMin] = slotStart.split(':').map(Number);
       const [slotEndHour, slotEndMin] = slotEnd.split(':').map(Number);
@@ -102,15 +105,21 @@ export async function POST(request: NextRequest) {
       const hoursDifference = Math.abs(timeDifference) / (1000 * 60 * 60);
       const wasCancelledOutside48Hours = hoursDifference > 48;
 
+      // Slot is redeemable if: cancelled outside 48h OR paid cancellation fee
+      const isRedeemable = wasCancelledOutside48Hours || paidCancellation;
+
       console.log('🔍 [REDEEM DRIVING LESSON] Checking cancelled slot:', {
         slotId: slot.slotId,
         slotDuration: slotDurationHours,
         requestedDuration: durationHours,
         wasCancelledOutside48Hours,
+        paidCancellation,
+        redeemed,
+        isRedeemable,
         hoursDifference: hoursDifference.toFixed(1)
       });
 
-      return slotDurationHours === durationHours && wasCancelledOutside48Hours;
+      return slotDurationHours === durationHours && isRedeemable;
     });
 
     console.log('🎯 [REDEEM DRIVING LESSON] Found', cancelledMatchingSlots.length, 'redeemable cancelled slots');
@@ -190,21 +199,10 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [REDEEM DRIVING LESSON] Slot booked successfully');
 
-    // Remove one cancelled slot (use the first matching one)
+    // Remove one cancelled slot (use the first matching one) and add new booking
+    // Use atomic operations to avoid validation errors
     const cancelledSlotToRemove = cancelledMatchingSlots[0];
-    const cancelledIndex = user.driving_lesson_cancelled.findIndex(
-      (slot: Record<string, unknown>) => 
-        slot.slotId === cancelledSlotToRemove.slotId &&
-        slot.date === cancelledSlotToRemove.date &&
-        slot.start === cancelledSlotToRemove.start
-    );
 
-    if (cancelledIndex !== -1) {
-      user.driving_lesson_cancelled.splice(cancelledIndex, 1);
-      console.log('✅ [REDEEM DRIVING LESSON] Removed cancelled slot from user record');
-    }
-
-    // Add to bookings
     const newBooking = {
       slotId: foundSlot._id as string,
       instructorId: instructorId,
@@ -219,17 +217,35 @@ export async function POST(request: NextRequest) {
       redeemed: true,
       redeemedFrom: cancelledSlotToRemove.slotId as string,
       packageName: packageName || 'Driving Lesson',
-      selectedProduct: selectedProduct
+      selectedProduct: selectedProduct,
+      pickupLocation: pickupLocation,
+      dropoffLocation: dropoffLocation
     };
 
-    if (!user.driving_lesson_bookings) {
-      user.driving_lesson_bookings = [];
-    }
+    // Use atomic update to avoid validation issues
+    await User.updateOne(
+      { _id: userId },
+      {
+        $pull: {
+          driving_lesson_cancelled: {
+            slotId: cancelledSlotToRemove.slotId,
+            date: cancelledSlotToRemove.date,
+            start: cancelledSlotToRemove.start
+          }
+        }
+      }
+    );
 
-    user.driving_lesson_bookings.push(newBooking);
+    console.log('✅ [REDEEM DRIVING LESSON] Removed cancelled slot from user record');
 
-    // Save user changes
-    await user.save();
+    await User.updateOne(
+      { _id: userId },
+      {
+        $push: {
+          driving_lesson_bookings: newBooking
+        }
+      }
+    );
 
     console.log('✅ [REDEEM DRIVING LESSON] Added new booking to user record');
 

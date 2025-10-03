@@ -9,6 +9,7 @@ interface Instructor {
   photo?: string;
   email?: string;
   schedule_driving_lesson?: ScheduleEntry[];
+  canTeachDrivingLesson?: boolean;
 }
 
 interface ScheduleEntry {
@@ -279,7 +280,7 @@ export default function ScheduleTable({
         <h3 className="text-lg font-bold text-center mb-3 text-black">Available Instructors</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-4xl mx-auto">
           {instructors.map((instructor) => {
-            // Contar lecciones disponibles para este instructor
+            // Contar lecciones disponibles para este instructor (excluir cancelled)
             const availableLessonsCount = instructor.schedule_driving_lesson?.filter(
               lesson => lesson.status === "available"
             ).length || 0;
@@ -430,7 +431,9 @@ export default function ScheduleTable({
 
                   // Helper function to find the lesson that starts at a specific time block
                   const findLessonStartingAtBlock = (date: string, blockStart: string): ScheduleEntry | null => {
-                    return selectedInstructor.schedule_driving_lesson?.find(lesson => {
+                    return selectedInstructor.schedule_driving_lesson
+                      ?.filter(lesson => lesson.status !== 'cancelled') // Excluir slots cancelados
+                      ?.find(lesson => {
                       if (lesson.date !== date) return false;
                       const lessonStartMin = timeToMinutes(lesson.start);
                       const blockStartMin = timeToMinutes(blockStart);
@@ -444,8 +447,10 @@ export default function ScheduleTable({
                   // Pre-calcular todas las lecciones y marcar celdas ocupadas
                   weekDates.forEach((date) => {
                     const dateString = formatDate(date);
-                    
-                    selectedInstructor.schedule_driving_lesson?.forEach(lesson => {
+
+                    selectedInstructor.schedule_driving_lesson
+                      ?.filter(lesson => lesson.status !== 'cancelled') // Excluir slots cancelados
+                      ?.forEach(lesson => {
                       if (lesson.date === dateString) {
                         // Marcar todos los slots que esta lección ocupa
                         allTimeSlots.forEach((slot) => {

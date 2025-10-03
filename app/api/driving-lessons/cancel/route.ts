@@ -86,10 +86,24 @@ export async function POST(request: NextRequest) {
     let scheduleType: string | null = null;
 
     // Check in driving lesson schedule
+    // IMPORTANT: Use slotId if provided to avoid finding wrong slot when multiple slots exist at same time
     if (instructor.schedule_driving_lesson) {
-      foundSlot = instructor.schedule_driving_lesson.find((slot: ScheduleSlot) =>
-        slot.date === date && slot.start === start && slot.end === end
-      );
+      if (slotId) {
+        // Use slotId for precise matching
+        foundSlot = instructor.schedule_driving_lesson.find((slot: ScheduleSlot) =>
+          slot._id === slotId
+        );
+        console.log('🔍 [DRIVING LESSON CANCEL] Searching by slotId:', slotId, 'Found:', !!foundSlot);
+      } else {
+        // Fallback to date/time matching (also match studentId to avoid conflicts)
+        foundSlot = instructor.schedule_driving_lesson.find((slot: ScheduleSlot) =>
+          slot.date === date &&
+          slot.start === start &&
+          slot.end === end &&
+          slot.studentId === studentId
+        );
+        console.log('🔍 [DRIVING LESSON CANCEL] Searching by date/time/studentId. Found:', !!foundSlot);
+      }
       if (foundSlot) scheduleType = 'schedule_driving_lesson';
     }
 
@@ -221,7 +235,6 @@ export async function POST(request: NextRequest) {
         classType: foundSlot.classType || 'driving lesson',
         studentName: undefined,
         paid: false,
-        amount: foundSlot.amount || 90,
         pickupLocation: '',
         dropoffLocation: '',
         selectedProduct: ''

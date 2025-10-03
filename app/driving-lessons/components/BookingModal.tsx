@@ -9,6 +9,7 @@ interface Instructor {
   name: string;
   photo?: string;
   email?: string;
+  canTeachDrivingLesson?: boolean;
 }
 
 interface ScheduleEntry {
