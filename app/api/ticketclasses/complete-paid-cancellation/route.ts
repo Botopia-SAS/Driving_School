@@ -3,11 +3,15 @@ import dbConnect from '@/lib/dbConnect';
 import TicketClass from '@/models/TicketClass';
 import User from '@/models/User';
 
+/**
+ * Endpoint to complete a paid cancellation (within 48 hours)
+ * Called after payment is successful
+ */
 export async function POST(request: NextRequest) {
   try {
     await dbConnect();
 
-    const { ticketClassId, userId } = await request.json();
+    const { ticketClassId, userId, paymentId } = await request.json();
 
     if (!ticketClassId || !userId) {
       return NextResponse.json(
@@ -37,30 +41,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User is not enrolled in this class' }, { status: 400 });
     }
 
-    // Calculate 48-hour policy
-    // Handle both ISO date strings and Date objects
-    const classDate = ticketClass.date instanceof Date ? ticketClass.date : new Date(ticketClass.date);
-    const dateStr = classDate.toISOString().split('T')[0]; // Get YYYY-MM-DD
-    const timeStr = ticketClass.hour.includes(':') ? ticketClass.hour : `${ticketClass.hour}:00`;
-
-    const classDateTime = new Date(`${dateStr}T${timeStr}:00`);
-    const now = new Date();
-    const hoursDifference = (classDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    const isWithin48Hours = hoursDifference <= 48;
-
-    // If within 48 hours, require payment
-    if (isWithin48Hours) {
-      return NextResponse.json({
-        requiresPayment: true,
-        message: 'Cancellation within 48 hours requires a $90 fee',
-        cancellationFee: 90,
-        hoursDifference,
-        ticketClassId,
-        userId
-      }, { status: 402 }); // 402 Payment Required
-    }
-
-    // FREE CANCELLATION (>48 hours)
     // Find student index
     const studentIndex = ticketClass.students.findIndex(
       (student: any) => {
@@ -114,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Successfully cancelled class - credit added to your account',
+      message: 'Paid cancellation completed successfully - credit added to your account',
       creditGranted: true,
       ticketClass: {
         _id: ticketClass._id,
@@ -125,7 +105,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Error cancelling class:', error);
+    console.error('❌ Error completing paid cancellation:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

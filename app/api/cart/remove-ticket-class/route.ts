@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
+import User from "@/models/User";
 
 // Import models
 const TicketClass = mongoose.models.TicketClass || mongoose.model('TicketClass', new mongoose.Schema({}, { strict: false }), 'ticketclasses');
@@ -69,6 +70,22 @@ export async function POST(req: NextRequest) {
         console.log(`✅ Removed ${removedCount} student request(s) from ticket class`);
       } else {
         console.log('ℹ️ No student request found to remove');
+      }
+    }
+
+    // Remove from user's cart array
+    const user = await User.findById(userId);
+    if (user && user.cart && Array.isArray(user.cart)) {
+      const initialCartLength = user.cart.length;
+
+      user.cart = user.cart.filter((item: any) =>
+        item.ticketClassId?.toString() !== ticketClassId
+      );
+
+      const removedFromCart = initialCartLength - user.cart.length;
+
+      if (removedFromCart > 0) {
+        await user.save({ validateBeforeSave: false });
       }
     }
 

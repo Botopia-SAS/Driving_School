@@ -193,22 +193,11 @@ const ClassesPage: React.FC = () => {
               </div>
             )}
 
-            <div className="flex justify-between mt-6 gap-4">
-              {/* 📌 VER HORARIO (Blanco con borde azul y letra azul) */}
-              <button
-                onClick={() => {
-                  setSelectedClass(null);
-                  // Scroll to contact section if needed
-                }}
-                className="border-2 border-[#0056b3] text-[#0056b3] font-semibold px-6 py-3 rounded-lg hover:bg-[#0056b3] hover:text-white transition text-center"
-              >
-                View Schedule
-              </button>
-
-              {/* 📌 BOTÓN DE ACCIÓN (Azul) */}
+            <div className="mt-6">
+              {/* 📌 BOTÓN DE ACCIÓN (Azul - Full Width) */}
               <button
                 onClick={() => router.push(`/register-online?classId=${selectedClass._id}`)}
-                className="bg-[#0056b3] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#004494] transition text-center"
+                className="w-full bg-[#0056b3] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#004494] transition text-center"
               >
                 Register Now
               </button>

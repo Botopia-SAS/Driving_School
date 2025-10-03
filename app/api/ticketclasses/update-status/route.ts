@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import TicketClass from "@/models/TicketClass";
+import User from "@/models/User";
 import mongoose from "mongoose";
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const { ticketClassId, studentId, status, paymentId, orderId } = await req.json();
-
-    console.log('🔄 [TICKET CLASS UPDATE] Updating ticket class status:', {
-      ticketClassId,
-      studentId,
-      status,
-      paymentId,
-      orderId
-    });
 
     if (!ticketClassId || !studentId || !status) {
       return NextResponse.json(
@@ -32,37 +25,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('✅ [TICKET CLASS UPDATE] Found ticket class:', {
-      id: ticketClass._id,
-      type: ticketClass.type,
-      date: ticketClass.date,
-      hour: ticketClass.hour,
-      studentsCount: ticketClass.students?.length || 0,
-      requestsCount: ticketClass.studentRequests?.length || 0
-    });
-
     let updateResult;
 
     if (status === 'confirmed' || status === 'enrolled') {
       // Move student from requests to enrolled students
-      console.log('📝 [TICKET CLASS UPDATE] Moving student from requests to enrolled students');
-      
       // First, find and remove the student request
       const studentObjectId = new mongoose.Types.ObjectId(studentId);
-      
+
       updateResult = await TicketClass.updateOne(
         { _id: ticketClassId },
         {
-          $pull: { 
-            studentRequests: { studentId: studentObjectId } 
+          $pull: {
+            studentRequests: { studentId: studentObjectId }
           }
         }
       );
 
-      if (updateResult.modifiedCount === 0) {
-        console.log('⚠️ [TICKET CLASS UPDATE] No student request found to remove');
-      } else {
-        console.log('✅ [TICKET CLASS UPDATE] Removed student request');
+      // Check if student was previously cancelled from THIS SAME slot
+      const wasCancelled = ticketClass.students_cancelled?.some(
+        (id: any) => id.toString() === studentId
+      );
+
+      if (wasCancelled) {
+        // Remove from students_cancelled
+        await TicketClass.updateOne(
+          { _id: ticketClassId },
+          {
+            $pull: {
+              students_cancelled: studentObjectId
+            }
+          }
+        );
+
+        // Mark as redeemed in user.ticketclass_cancelled
+        const user = await User.findById(studentId);
+        if (user && user.ticketclass_cancelled) {
+          const cancelledIndex = user.ticketclass_cancelled.findIndex(
+            (tc: any) => tc.ticketClassId === ticketClassId.toString() && !tc.redeemed
+          );
+
+          if (cancelledIndex !== -1) {
+            user.ticketclass_cancelled[cancelledIndex].redeemed = true;
+            await user.save({ validateBeforeSave: false });
+          }
+        }
       }
 
       // Then add the student to enrolled students
@@ -76,9 +82,9 @@ export async function POST(req: NextRequest) {
 
       updateResult = await TicketClass.updateOne(
         { _id: ticketClassId },
-        { 
-          $push: { 
-            students: enrolledStudent 
+        {
+          $push: {
+            students: enrolledStudent
           },
           $set: {
             updatedAt: new Date()
@@ -94,11 +100,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.log('✅ [TICKET CLASS UPDATE] Student enrolled successfully');
-
     } else if (status === 'cancelled' || status === 'rejected') {
       // Remove student request (if payment failed)
-      console.log('❌ [TICKET CLASS UPDATE] Removing student request due to payment failure');
       
       const studentObjectId = new mongoose.Types.ObjectId(studentId);
       
@@ -113,12 +116,6 @@ export async function POST(req: NextRequest) {
           }
         }
       );
-
-      if (updateResult.modifiedCount === 0) {
-        console.log('⚠️ [TICKET CLASS UPDATE] No student request found to remove');
-      } else {
-        console.log('✅ [TICKET CLASS UPDATE] Removed student request');
-      }
     }
 
     return NextResponse.json({

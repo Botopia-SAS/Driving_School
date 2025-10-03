@@ -332,7 +332,7 @@ export const usePaymentSuccess = () => {
                     (apt.classType === 'driving_test' || apt.classType === 'driving test') && apt.slotId
                   );
                   const cancellations = orderData.order.appointments.filter((apt: OrderAppointment) =>
-                    apt.classType === 'cancel_driving_test' || apt.classType === 'cancel_driving_lesson'
+                    apt.classType === 'cancel_driving_test' || apt.classType === 'cancel_driving_lesson' || apt.classType === 'ticket_class_cancellation'
                   );
 
                   // Procesar Cancellations FIRST (before other appointments)
@@ -548,7 +548,7 @@ export const usePaymentSuccess = () => {
                     (apt.classType === 'driving_test' || apt.classType === 'driving test') && apt.slotId
                   );
                   const cancellations = orderData.order.appointments.filter(apt =>
-                    apt.classType === 'cancel_driving_test' || apt.classType === 'cancel_driving_lesson'
+                    apt.classType === 'cancel_driving_test' || apt.classType === 'cancel_driving_lesson' || apt.classType === 'ticket_class_cancellation'
                   );
 
                   console.log('🎯 [PAYMENT-SUCCESS] Modular processing - Appointments summary:', {

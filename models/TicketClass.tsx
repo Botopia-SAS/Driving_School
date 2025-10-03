@@ -16,6 +16,7 @@ export interface ITicketClass extends Document {
     citation_ticket?: string;
     course_country?: string;
   }[];
+  students_cancelled?: mongoose.Schema.Types.ObjectId[];
   studentRequests?: {
     studentId: mongoose.Schema.Types.ObjectId;
     requestDate: Date;
@@ -39,6 +40,13 @@ const TicketClassSchema = new Schema<ITicketClass>(
     students: [
       {
         type: mongoose.Schema.Types.Mixed,
+        required: false
+      }
+    ],
+    students_cancelled: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
         required: false
       }
     ],

@@ -81,9 +81,16 @@ function RegisterOnlineContent() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestedTicketClass, setRequestedTicketClass] = useState<TicketClass | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [showCancellationPaymentModal, setShowCancellationPaymentModal] = useState(false);
+  const [cancellationData, setCancellationData] = useState<{
+    ticketClassId: string;
+    userId: string;
+    cancellationFee: number;
+    message: string;
+  } | null>(null);
   
   // Estados para el modal de reserva
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor'>('online');
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor' | 'redeem'>('online');
   const [isOnlinePaymentLoading, setIsOnlinePaymentLoading] = useState(false);
   const [isProcessingBooking, setIsProcessingBooking] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -140,7 +147,43 @@ function RegisterOnlineContent() {
       }
       return;
     }
-    
+
+    if (paymentMethod === 'redeem') {
+      // REDIMIR: Reservar usando crédito de clase cancelada
+      setIsProcessingBooking(true);
+      try {
+        const res = await fetch('/api/ticketclasses/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticketClassId: selectedTicketClass._id,
+            studentId: userId, // Usar studentId en lugar de userId
+            classId: selectedTicketClass.classInfo?._id,
+            date: selectedTicketClass.date,
+            start: selectedTicketClass.hour,
+            end: selectedTicketClass.endHour,
+            paymentMethod: 'redeem' // Indicar que es redención
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to redeem class');
+        }
+
+        setIsBookingModalOpen(false);
+        setSelectedTicketClass(null);
+        setConfirmationMessage('Class redeemed successfully! You have been enrolled.');
+        setShowConfirmation(true);
+      } catch (error) {
+        console.error('❌ Error redeeming class:', error);
+        alert(`Error redeeming class: ${error.message || 'Please try again.'}`);
+      } finally {
+        setIsProcessingBooking(false);
+      }
+      return;
+    }
+
     if (paymentMethod === 'online') {
       // AGREGAR AL CARRITO: Agregar al carrito y poner en studentRequests
       setIsOnlinePaymentLoading(true);
@@ -302,6 +345,22 @@ function RegisterOnlineContent() {
       });
 
       const data = await response.json();
+
+      // Check if payment is required (status 402)
+      if (response.status === 402 && data.requiresPayment) {
+        // Close current modal and show payment modal
+        setShowUnbookConfirm(false);
+
+        // Store cancellation data and show payment modal
+        setCancellationData({
+          ticketClassId: data.ticketClassId,
+          userId: data.userId,
+          cancellationFee: data.cancellationFee,
+          message: data.message
+        });
+        setShowCancellationPaymentModal(true);
+        return;
+      }
 
       if (response.ok) {
         setConfirmationMessage(`Successfully unenrolled from ${classToUnbook.classInfo?.title || 'the class'}!`);
@@ -539,6 +598,7 @@ function RegisterOnlineContent() {
                             className="border border-gray-300 p-1 cursor-pointer min-w-[80px] w-[80px] bg-blue-500 text-white hover:bg-red-500"
                             rowSpan={rowSpan}
                             onClick={() => {
+                              // Show confirmation modal first
                               setClassToUnbook(overlappingClass as TicketClass);
                               setShowUnbookConfirm(true);
                             }}
@@ -1043,7 +1103,7 @@ function RegisterOnlineContent() {
               className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
               onClick={handleUnbookClass}
             >
-              Unenroll
+              Accept & Cancel
             </button>
           </div>
         </div>
@@ -1147,6 +1207,7 @@ function RegisterOnlineContent() {
         isOnlinePaymentLoading={isOnlinePaymentLoading}
         isProcessingBooking={isProcessingBooking}
         onConfirm={handleConfirm}
+        userId={userId}
       />
       
       {/* Modal de contacto para pago local */}
@@ -1193,6 +1254,138 @@ function RegisterOnlineContent() {
         }}
         onLoginSuccess={handleLoginSuccess}
       />
+
+      {/* Cancellation Payment Modal */}
+      {showCancellationPaymentModal && cancellationData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+          onClick={() => setShowCancellationPaymentModal(false)}
+        >
+          <div
+            className="relative bg-white text-black rounded-lg shadow-2xl border border-[#e0e0e0] flex flex-col"
+            style={{
+              minWidth: '400px',
+              maxWidth: '400px',
+              width: '400px',
+              minHeight: '300px'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Botón de cierre */}
+            <button
+              onClick={() => setShowCancellationPaymentModal(false)}
+              className="absolute top-3 right-3 p-2 z-[9999] transition-all duration-300 bg-red-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Close modal"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-gray-600 hover:text-gray-900"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            <div className="p-6 text-center w-full">
+              <div className="mb-4 mt-4">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4">
+                  <svg className="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold mb-4 text-yellow-600">Cancellation Fee Required</h2>
+                <div className="bg-yellow-50 p-4 rounded-lg mb-4">
+                  <p className="text-gray-700 mb-3">{cancellationData.message}</p>
+                  <p className="text-2xl font-bold text-yellow-600 mb-2">${cancellationData.cancellationFee}</p>
+                  <p className="text-sm text-gray-600">
+                    You are cancelling within 48 hours of the class start time. A cancellation fee is required.
+                  </p>
+                </div>
+                {classToUnbook && (
+                  <div className="bg-gray-50 p-3 rounded-lg mb-4 text-left text-sm">
+                    <p className="mb-1"><strong>Class:</strong> {classToUnbook.classInfo?.title || getClassTypeDisplay(classToUnbook.type)}</p>
+                    <p className="mb-1"><strong>Date:</strong> {formatDateForDisplay(classToUnbook.date)}</p>
+                    <p className="mb-1"><strong>Time:</strong> {formatTime(classToUnbook.hour)} - {formatTime(classToUnbook.endHour)}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-center gap-3">
+                <button
+                  className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
+                  onClick={() => {
+                    setShowCancellationPaymentModal(false);
+                    setCancellationData(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
+                  onClick={async () => {
+                    // Create order and redirect to Elavon for payment
+                    try {
+                      console.log('💳 Creating cancellation order for ticket class:', cancellationData.ticketClassId);
+
+                      // Create order with cancellation details
+                      const orderResponse = await fetch('/api/orders/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          userId: cancellationData.userId,
+                          total: cancellationData.cancellationFee,
+                          orderType: 'ticket_class_cancellation',
+                          appointments: [{
+                            ticketClassId: cancellationData.ticketClassId,
+                            classType: 'ticket_class_cancellation',
+                            date: classToUnbook?.date,
+                            start: classToUnbook?.hour,
+                            end: classToUnbook?.endHour,
+                            amount: cancellationData.cancellationFee
+                          }]
+                        })
+                      });
+
+                      if (!orderResponse.ok) {
+                        throw new Error('Failed to create cancellation order');
+                      }
+
+                      const orderData = await orderResponse.json();
+                      console.log('✅ Cancellation order created:', orderData);
+
+                      // Redirect directly to Elavon payment
+                      const orderId = orderData.order._id || orderData.order.orderNumber;
+
+                      // Call /api/payments/redirect to get Elavon URL
+                      const redirectResponse = await fetch(`/api/payments/redirect?userId=${cancellationData.userId}&orderId=${orderId}`);
+                      const redirectData = await redirectResponse.json();
+
+                      if (redirectData.redirectUrl) {
+                        console.log('✅ Redirecting to Elavon:', redirectData.redirectUrl);
+                        window.location.href = redirectData.redirectUrl; // Direct to Elavon
+                      } else {
+                        throw new Error('No redirect URL received');
+                      }
+
+                    } catch (error) {
+                      console.error('❌ Error creating cancellation order:', error);
+                      alert('Error processing cancellation payment. Please try again.');
+                    }
+                  }}
+                >
+                  Pay Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

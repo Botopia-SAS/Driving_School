@@ -31,6 +31,12 @@ export async function processTicketClasses(appointments: Appointment[], userId: 
   let allProcessed = true;
   for (const appointment of appointments) {
     try {
+      // Skip if this is a cancellation - it's handled by processCancellationOrder
+      if (appointment.classType === 'ticket_class_cancellation') {
+        console.log('⏭️ Skipping ticket class cancellation - already processed by processCancellationOrder');
+        continue;
+      }
+
       // Use the new specific route for ticket classes
       const updateResponse = await fetch('/api/ticketclasses/update-status', {
         method: 'POST',
@@ -174,10 +180,13 @@ export async function processCancellationOrder(appointments: Appointment[], orde
 
     // Determine the correct endpoint based on classType
     let endpoint = '/api/booking/process-cancellation-payment'; // Default for driving test
-    
+
     if (appointment.classType === 'cancel_driving_lesson') {
       endpoint = '/api/driving-lessons/process-paid-cancellation';
       console.log('🚙 Using driving lesson cancellation endpoint');
+    } else if (appointment.classType === 'ticket_class_cancellation') {
+      endpoint = '/api/ticketclasses/complete-paid-cancellation';
+      console.log('🎫 Using ticket class cancellation endpoint');
     } else {
       console.log('🚗 Using driving test cancellation endpoint');
     }
@@ -188,12 +197,14 @@ export async function processCancellationOrder(appointments: Appointment[], orde
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         studentId: userId, // For driving lessons
-        userId: userId,    // For driving tests (backward compatibility)
+        userId: userId,    // For driving tests and ticket classes
         instructorId: appointment.instructorId,
         date: appointment.date,
         start: appointment.start,
         end: appointment.end,
         slotId: appointment.slotId,
+        ticketClassId: appointment.ticketClassId, // For ticket classes
+        paymentId: orderId,
         orderId
       })
     });
