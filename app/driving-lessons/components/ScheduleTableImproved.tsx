@@ -11,9 +11,11 @@ interface Instructor {
   photo?: string;
   email?: string;
   schedule_driving_lesson?: ScheduleEntry[];
+  canTeachDrivingLesson?: boolean;
 }
 
 interface ScheduleEntry {
+  _id?: string; // Slot ID from database
   date: string;
   start: string;
   end: string;
@@ -160,7 +162,8 @@ export default function ScheduleTableImproved({
       instructorsWithSSE.forEach((instructor) => {
         const userBookings = (instructor.schedule_driving_lesson || []).filter(slot =>
           slot.studentId && slot.studentId.toString() === userId &&
-          (slot.status === 'booked' || slot.status === 'scheduled' || slot.paid)
+          (slot.status === 'booked' || slot.status === 'scheduled' || slot.paid) &&
+          slot.status !== 'cancelled' // Exclude cancelled slots
         );
         if (userBookings.length > 0) {
           console.log(`🔍 [USER BOOKINGS DEBUG] Found ${userBookings.length} bookings for instructor ${instructor._id}:`, userBookings);
@@ -280,10 +283,12 @@ export default function ScheduleTableImproved({
 
     instructorsToShow.forEach(instructor => {
       if (instructor.schedule_driving_lesson && instructor.schedule_driving_lesson.length > 0) {
-        // Group schedule by date
+        // Group schedule by date (exclude cancelled slots)
         const scheduleByDate: { [date: string]: ScheduleEntry[] } = {};
 
-        instructor.schedule_driving_lesson.forEach(lesson => {
+        instructor.schedule_driving_lesson
+          .filter(lesson => lesson.status !== 'cancelled') // NEVER include cancelled slots
+          .forEach(lesson => {
           if (!scheduleByDate[lesson.date]) {
             scheduleByDate[lesson.date] = [];
           }
@@ -534,12 +539,13 @@ export default function ScheduleTableImproved({
                       );
                     });
                     
-                    // Add back user's own bookings so they can see them
+                    // Add back user's own bookings so they can see them (but NOT cancelled)
                     if (userId) {
                       instructorsWithSSE.forEach((instructor) => {
                         const userBookings = (instructor.schedule_driving_lesson || []).filter(slot =>
                           slot.studentId && slot.studentId.toString() === userId &&
                           (slot.status === 'booked' || slot.status === 'scheduled' || slot.paid) &&
+                          slot.status !== 'cancelled' && // NEVER show cancelled slots
                           slot.date === dateString &&
                           timeToMinutes(slot.start) <= timeToMinutes(block.start) &&
                           timeToMinutes(slot.end) > timeToMinutes(block.start)
@@ -555,11 +561,6 @@ export default function ScheduleTableImproved({
                           }
                         });
                       });
-                    }
-                    
-                    // Debug: Log when no slots found
-                    if (slotsAtTime.length === 0 && !hasDrivingTestConflict) {
-                      console.log(`🔍 No slots found for ${dateString} at ${block.start}-${block.end}`);
                     }
                     
                     // Handle multiple instructors in the same time block
@@ -749,7 +750,6 @@ export default function ScheduleTableImproved({
                     }
                     
                     // Always show something - if no slot, show "-"
-                    console.log(`✅ Showing "-" for ${dateString} at ${block.start}-${block.end}`);
                     return (
                       <td key={date.toDateString()} className="border border-gray-300 py-1 bg-gray-50 text-black min-w-[80px] w-[80px] text-center text-xs">-</td>
                     );

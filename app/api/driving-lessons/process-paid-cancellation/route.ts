@@ -81,10 +81,24 @@ export async function POST(request: NextRequest) {
     let scheduleType: string | null = null;
 
     // Check in driving lesson schedule
+    // IMPORTANT: Use slotId if provided to avoid finding wrong slot when multiple slots exist at same time
     if (instructor.schedule_driving_lesson) {
-      foundSlot = instructor.schedule_driving_lesson.find((slot: ScheduleSlot) =>
-        slot.date === date && slot.start === start && slot.end === end
-      );
+      if (slotId) {
+        // Use slotId for precise matching
+        foundSlot = instructor.schedule_driving_lesson.find((slot: ScheduleSlot) =>
+          slot._id === slotId
+        );
+        console.log('🔍 [DRIVING LESSON PAID CANCEL] Searching by slotId:', slotId, 'Found:', !!foundSlot);
+      } else {
+        // Fallback to date/time matching (also match studentId to avoid conflicts)
+        foundSlot = instructor.schedule_driving_lesson.find((slot: ScheduleSlot) =>
+          slot.date === date &&
+          slot.start === start &&
+          slot.end === end &&
+          slot.studentId === studentId
+        );
+        console.log('🔍 [DRIVING LESSON PAID CANCEL] Searching by date/time/studentId. Found:', !!foundSlot);
+      }
       if (foundSlot) scheduleType = 'schedule_driving_lesson';
     }
 
@@ -132,7 +146,9 @@ export async function POST(request: NextRequest) {
       classType: foundSlot.classType || 'driving lesson',
       studentName: null,
       paid: false,
-      amount: foundSlot.amount || 90,
+      pickupLocation: '',
+      dropoffLocation: '',
+      selectedProduct: ''
     };
 
     // Add the new available slot to the schedule
@@ -157,15 +173,29 @@ export async function POST(request: NextRequest) {
 
     if (user && user.driving_lesson_bookings) {
       // Find the booking to move
-      const bookingIndex = user.driving_lesson_bookings.findIndex((booking: Record<string, unknown>) =>
-        booking.instructorId?.toString() === instructorId &&
-        booking.date === date &&
-        booking.start === start &&
-        booking.end === end
-      );
+      // IMPORTANT: Try to find by slotId first (most precise), then fallback to date/time matching
+      let bookingIndex = -1;
+
+      if (slotId) {
+        bookingIndex = user.driving_lesson_bookings.findIndex((booking: Record<string, unknown>) =>
+          booking.slotId?.toString() === slotId
+        );
+        console.log('🔍 [DRIVING LESSON PAID CANCEL] Searching by slotId:', slotId, 'Found index:', bookingIndex);
+      }
+
+      // Fallback to date/time/instructor matching if not found by slotId
+      if (bookingIndex === -1) {
+        bookingIndex = user.driving_lesson_bookings.findIndex((booking: Record<string, unknown>) =>
+          booking.instructorId?.toString() === instructorId &&
+          booking.date === date &&
+          booking.start === start &&
+          booking.end === end
+        );
+        console.log('🔍 [DRIVING LESSON PAID CANCEL] Searching by date/time/instructor. Found index:', bookingIndex);
+      }
 
       console.log('🔍 [DRIVING LESSON PAID CANCEL] Looking for booking to move:', {
-        instructorId, date, start, end, bookingIndex
+        slotId, instructorId, date, start, end, bookingIndex
       });
 
       if (bookingIndex !== -1) {

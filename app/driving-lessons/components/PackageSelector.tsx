@@ -25,6 +25,7 @@ interface Instructor {
   photo?: string;
   email?: string;
   schedule_driving_lesson?: ScheduleEntry[];
+  canTeachDrivingLesson?: boolean;
 }
 
 interface ScheduleEntry {
@@ -113,7 +114,12 @@ export default function PackageSelector({
           Instructors
         </h3>
         <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 justify-center">
-          {instructors.map((instructor) => {
+          {instructors.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-gray-500 text-sm">No instructors available for driving lessons</p>
+            </div>
+          ) : (
+            instructors.map((instructor) => {
             const isSelected = selectedInstructorForSchedule?._id === instructor._id;
 
             return (
@@ -143,7 +149,8 @@ export default function PackageSelector({
                 <h4 className="font-semibold text-sm text-gray-800 truncate capitalize">{instructor.name}</h4>
               </div>
             );
-          })}
+          })
+          )}
         </div>
         
         {/* Show count when many instructors */}

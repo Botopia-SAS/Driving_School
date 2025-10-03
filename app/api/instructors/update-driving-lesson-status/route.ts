@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
 
             if (slot) {
               bookingsToAdd.push({
-                slotId: `${slot.date}-${slot.start}-${slot.end}`,
+                slotId: slot._id.toString(), // Use the actual slot _id from instructor's schedule
                 instructorId: instructorId,
                 instructorName: instructor.name,
                 date: slot.date,
