@@ -79,6 +79,7 @@ function DrivingLessonsContent() {
   const [selectedHours, setSelectedHours] = useState(0);
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
   const [initialLoading, setInitialLoading] = useState(true);
+  const [isProcessingSlots, setIsProcessingSlots] = useState(false);
   
   // Estados para manejo de autenticación y slots pendientes
   const [pendingSlot, setPendingSlot] = useState<{
@@ -150,52 +151,47 @@ function DrivingLessonsContent() {
     }
   };
 
-  // Use SSE hook for real-time schedule updates for all instructors
-  const instructorIds = React.useMemo(() => 
-    instructors.map(instructor => instructor._id), 
-    [instructors]
-  );
-  
-  // Only use SSE when we have instructors and they're not empty
+  // Use SSE hook for real-time schedule updates for selected instructor only
   const {
     schedules,
-    getScheduleForInstructor,
     forceRefresh
-  } = useAllDrivingLessonsSSE(instructorIds.length > 0 ? instructorIds : []);
+  } = useAllDrivingLessonsSSE(
+    selectedInstructorForSchedule ? [selectedInstructorForSchedule._id] : []
+  );
 
   // Automatically process SSE schedule updates and update instructors state
   useEffect(() => {
-    if (!schedules || schedules.size === 0) {
-      console.log('⚠️ SSE schedules Map is empty or null');
+    if (!selectedInstructorForSchedule || !schedules || schedules.size === 0) {
+      console.log('⚠️ No selected instructor or SSE schedules Map is empty');
       return;
     }
 
-    console.log('📡 SSE schedules Map updated, size:', schedules.size);
+    console.log('📡 SSE schedules Map updated for selected instructor:', selectedInstructorForSchedule.name);
     console.log('📡 SSE schedules data:', Array.from(schedules.entries()).map(([id, schedule]) => ({
       instructorId: id,
       slotsCount: Array.isArray(schedule) ? schedule.length : 0
     })));
 
-    // Update instructors with SSE schedule data
+    // Update only the selected instructor with SSE schedule data
     setInstructors(prevInstructors => {
-      console.log('🔄 Updating instructors state with SSE data...');
-      const updated = prevInstructors.map(instructor => {
-        const sseSchedule = schedules.get(instructor._id);
+      console.log('🔄 Updating instructors state with SSE data for selected instructor...');
+      return prevInstructors.map(instructor => {
+        if (instructor._id === selectedInstructorForSchedule._id) {
+          const sseSchedule = schedules.get(instructor._id);
 
-        if (sseSchedule && Array.isArray(sseSchedule)) {
-          console.log(`✅ Updating instructor ${instructor.name} with ${sseSchedule.length} slots from SSE`);
-          // Update this instructor's schedule with SSE data
-          return {
-            ...instructor,
-            schedule_driving_lesson: sseSchedule as ScheduleEntry[]
-          };
+          if (sseSchedule && Array.isArray(sseSchedule)) {
+            console.log(`✅ Updating instructor ${instructor.name} with ${sseSchedule.length} slots from SSE`);
+            return {
+              ...instructor,
+              schedule_driving_lesson: sseSchedule as ScheduleEntry[]
+            };
+          }
         }
 
         return instructor;
       });
-      return updated;
     });
-  }, [schedules]);
+  }, [schedules, selectedInstructorForSchedule]);
 
   // Helper functions - removed unused updateSlotsTopending and pad functions
 
@@ -476,6 +472,36 @@ function DrivingLessonsContent() {
       return;
     }
 
+    setIsProcessingSlots(true);
+
+    // Actualizar visualmente los slots a "pending" inmediatamente
+    if (selectedInstructorForSchedule) {
+      setInstructors(prevInstructors => {
+        return prevInstructors.map(instructor => {
+          if (instructor._id === selectedInstructorForSchedule._id && instructor.schedule_driving_lesson) {
+            const updatedSchedule = instructor.schedule_driving_lesson.map(slot => {
+              const slotKey = `${slot.date}-${slot.start}-${slot.end}`;
+              if (selectedSlots.has(slotKey) && slot.status === 'available') {
+                return {
+                  ...slot,
+                  status: 'pending' as const,
+                  studentId: userId,
+                  studentName: user?.name || 'Unknown'
+                };
+              }
+              return slot;
+            });
+            
+            return {
+              ...instructor,
+              schedule_driving_lesson: updatedSchedule
+            };
+          }
+          return instructor;
+        });
+      });
+    }
+
     // REDEEM: Use cancelled slot to book new driving lesson
     if (paymentMethod === 'redeem') {
       if (cancelledSlots.length === 0) {
@@ -667,16 +693,46 @@ function DrivingLessonsContent() {
           });
 
           // Force refresh SSE to update calendar immediately
-          if (forceRefresh) {
-            forceRefresh(); // Refresh all instructors since package can involve multiple instructors
+          if (forceRefresh && selectedInstructorForSchedule) {
+            forceRefresh(selectedInstructorForSchedule._id);
           }
           
           // Package added to cart silently - no alert needed
 
         } catch (error) {
           console.error('❌ Error adding to cart:', error);
+          
+          // Revertir los slots a su estado original si hubo error agregando al carrito
+          if (selectedInstructorForSchedule) {
+            setInstructors(prevInstructors => {
+              return prevInstructors.map(instructor => {
+                if (instructor._id === selectedInstructorForSchedule._id && instructor.schedule_driving_lesson) {
+                  const revertedSchedule = instructor.schedule_driving_lesson.map(slot => {
+                    const slotKey = `${slot.date}-${slot.start}-${slot.end}`;
+                    if (selectedSlots.has(slotKey) && slot.status === 'pending' && slot.studentId === userId) {
+                      return {
+                        ...slot,
+                        status: 'available' as const,
+                        studentId: undefined,
+                        studentName: undefined
+                      };
+                    }
+                    return slot;
+                  });
+                  
+                  return {
+                    ...instructor,
+                    schedule_driving_lesson: revertedSchedule
+                  };
+                }
+                return instructor;
+              });
+            });
+          }
+          
+          setIsProcessingSlots(false);
           alert(`Error adding to cart: ${error.message || 'Please try again.'}`);
-          return; // Don't continue with the rest of the function
+          throw error; // Re-throw para que el modal maneje el loading
         }
       } else {
         // Pay at location: show success modal like Driving Test
@@ -689,12 +745,44 @@ function DrivingLessonsContent() {
       // Clear selections after successful request
       setSelectedSlots(new Set());
       setSelectedHours(0);
+      setIsProcessingSlots(false);
 
       // SSE will automatically update the schedule, no manual refresh needed
       
     } catch (error) {
       console.error('Error creating schedule request:', error);
+      
+      // Revertir los slots a su estado original si hubo error
+      if (selectedInstructorForSchedule) {
+        setInstructors(prevInstructors => {
+          return prevInstructors.map(instructor => {
+            if (instructor._id === selectedInstructorForSchedule._id && instructor.schedule_driving_lesson) {
+              const revertedSchedule = instructor.schedule_driving_lesson.map(slot => {
+                const slotKey = `${slot.date}-${slot.start}-${slot.end}`;
+                if (selectedSlots.has(slotKey) && slot.status === 'pending' && slot.studentId === userId) {
+                  return {
+                    ...slot,
+                    status: 'available' as const,
+                    studentId: undefined,
+                    studentName: undefined
+                  };
+                }
+                return slot;
+              });
+              
+              return {
+                ...instructor,
+                schedule_driving_lesson: revertedSchedule
+              };
+            }
+            return instructor;
+          });
+        });
+      }
+      
+      setIsProcessingSlots(false);
       alert('Error submitting schedule request. Please try again.');
+      throw error; // Re-throw para que el modal maneje el loading
     }
   };
 
@@ -810,7 +898,6 @@ function DrivingLessonsContent() {
           instructors={instructors}
           selectedInstructorForSchedule={selectedInstructorForSchedule}
           onInstructorSelect={setSelectedInstructorForSchedule}
-          getScheduleForInstructor={getScheduleForInstructor}
         />
 
         {/* Right Side - Schedule Table Improved */}
@@ -842,6 +929,7 @@ function DrivingLessonsContent() {
           }}
           onCancelPendingSlot={handleCancelPendingSlot}
           onCancelBookedSlot={handleCancelBookedSlot}
+          isProcessingSlots={isProcessingSlots}
           key={`schedule-${Date.now()}`}
         />
       </div>

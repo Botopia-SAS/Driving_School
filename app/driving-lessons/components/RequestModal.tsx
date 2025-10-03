@@ -27,7 +27,7 @@ interface RequestModalProps {
   selectedProduct: Product | null;
   selectedHours: number;
   cancelledSlots?: { slotId: string; date: string; start: string; end: string; cancelledAt: string; }[];
-  onRequestSchedule: (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local' | 'redeem') => void;
+  onRequestSchedule: (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local' | 'redeem') => Promise<void>;
 }
 
 export default function RequestModal({
@@ -43,6 +43,7 @@ export default function RequestModal({
   const [dropoffLocation, setDropoffLocation] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'local' | 'redeem'>('online');
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Reset state when modal opens
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function RequestModal({
     }
   };
 
-  const handleRequestSchedule = () => {
+  const handleRequestSchedule = async () => {
     if (!pickupLocation.trim() || !dropoffLocation.trim()) {
       alert("Please fill in both pickup and dropoff locations.");
       return;
@@ -100,13 +101,18 @@ export default function RequestModal({
       return;
     }
 
-    onRequestSchedule(pickupLocation, dropoffLocation, paymentMethod);
-    onClose();
-    // Reset form
-    setPickupLocation("");
-    setDropoffLocation("");
-    setPaymentMethod('online');
-    setTermsAccepted(false);
+    setIsLoading(true);
+    try {
+      await onRequestSchedule(pickupLocation, dropoffLocation, paymentMethod);
+      onClose();
+      // Reset form
+      setPickupLocation("");
+      setDropoffLocation("");
+      setPaymentMethod('online');
+      setTermsAccepted(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -251,7 +257,7 @@ export default function RequestModal({
           </button>
           <button
             className={`px-4 py-1.5 rounded-lg font-semibold transition-colors text-xs min-w-[120px] ${
-              pickupLocation.trim() && dropoffLocation.trim() && termsAccepted
+              pickupLocation.trim() && dropoffLocation.trim() && termsAccepted && !isLoading
                 ? paymentMethod === 'online' 
                   ? "bg-green-600 text-white hover:bg-green-700"
                   : paymentMethod === 'redeem'
@@ -260,14 +266,20 @@ export default function RequestModal({
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
             onClick={handleRequestSchedule}
-            disabled={!pickupLocation.trim() || !dropoffLocation.trim() || !termsAccepted}
+            disabled={!pickupLocation.trim() || !dropoffLocation.trim() || !termsAccepted || isLoading}
           >
-            {paymentMethod === 'online' 
-              ? 'Add to Cart & Checkout' 
-              : paymentMethod === 'redeem'
-                ? 'Redeem Credit & Book'
-                : 'Request Schedule'
-            }
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                Processing...
+              </div>
+            ) : (
+              paymentMethod === 'online' 
+                ? 'Add to Cart & Checkout' 
+                : paymentMethod === 'redeem'
+                  ? 'Redeem Credit & Book'
+                  : 'Request Schedule'
+            )}
           </button>
         </div>
       </div>
