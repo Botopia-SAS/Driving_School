@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import TicketClass from "@/models/TicketClass";
+import User from "@/models/User";
+import mongoose from "mongoose";
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    
+
     const body = await req.json();
-    console.log("📝 Creating ticket class request:", body);
 
     const { 
       studentId, 
@@ -70,7 +71,86 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create student request
+    // If redeeming, mark one cancelled class as redeemed and add directly to students
+    if (paymentMethod === 'redeem') {
+      const user = await User.findById(studentId);
+      if (!user || !user.ticketclass_cancelled || user.ticketclass_cancelled.length === 0) {
+        return NextResponse.json(
+          { error: "No cancelled classes available to redeem" },
+          { status: 400 }
+        );
+      }
+
+      // Find first unredeemed class
+      const unredeemedIndex = user.ticketclass_cancelled.findIndex(
+        (tc: any) => !tc.redeemed
+      );
+
+      if (unredeemedIndex === -1) {
+        return NextResponse.json(
+          { error: "No unredeemed cancelled classes available" },
+          { status: 400 }
+        );
+      }
+
+      // Mark as redeemed
+      user.ticketclass_cancelled[unredeemedIndex].redeemed = true;
+      await user.save({ validateBeforeSave: false });
+
+      // Check if student was previously cancelled from THIS SAME slot
+      const wasCancelled = ticketClass.students_cancelled?.some(
+        (id: any) => id.toString() === studentId
+      );
+
+      // Add directly to students (not studentRequests)
+      const enrolledStudent = {
+        studentId: new mongoose.Types.ObjectId(studentId),
+        enrolledAt: new Date(),
+        status: 'confirmed',
+        paymentId: 'redeemed',
+        orderId: 'redeemed'
+      };
+
+      // Combine both operations in a SINGLE update to avoid race condition with SSE
+      const updateOperation: any = {
+        $push: {
+          students: enrolledStudent
+        },
+        $set: {
+          updatedAt: new Date()
+        }
+      };
+
+      // If student was cancelled from this slot, also remove from students_cancelled
+      if (wasCancelled) {
+        updateOperation.$pull = {
+          students_cancelled: studentId
+        };
+      }
+
+      const updateResult = await TicketClass.updateOne(
+        { _id: ticketClassId },
+        updateOperation
+      );
+
+      if (updateResult.modifiedCount === 0) {
+        return NextResponse.json(
+          { error: "Failed to enroll student" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Class redeemed successfully - you are now enrolled!",
+        ticketClassId: ticketClassId,
+        studentId: studentId,
+        status: 'confirmed',
+        redeemed: true
+      });
+    }
+
+    // For non-redemption: Create student request
     const studentRequest = {
       studentId: studentId,
       requestDate: new Date(),
@@ -99,9 +179,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log("✅ Ticket class request created successfully:", ticketClassId);
-    console.log("📊 Student request added:", studentRequest);
 
     return NextResponse.json({
       success: true,

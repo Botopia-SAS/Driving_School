@@ -131,9 +131,32 @@ export async function GET(req: NextRequest) {
         //console.log("[API][redirect] Orden no encontrada, redirigiendo a home");
         return NextResponse.redirect(`${BASE_URL}/?error=order-not-found`);
       }
-      items = orderToUse.items;
+
+      // Build items with proper description based on orderType
+      const orderType = orderToUse.orderType || 'general';
+      const description = orderType === 'drivings' ? 'drivings' :
+                         orderType === 'driving_test' ? 'driving test' :
+                         orderType === 'driving_lesson' ? 'driving lesson' :
+                         orderType === 'ticket_class' ? 'ticket class' :
+                         orderType === 'ticket_class_cancellation' ? 'cancelation ticket' :
+                         'driving services';
+
+      items = orderToUse.items && orderToUse.items.length > 0
+        ? orderToUse.items.map(item => ({
+            ...item,
+            description: description
+          }))
+        : [{
+            id: orderToUse._id.toString(),
+            title: orderType === 'ticket_class_cancellation' ? 'Ticket Class Cancellation Fee' : 'Service',
+            name: orderType === 'ticket_class_cancellation' ? 'Ticket Class Cancellation Fee' : 'Service',
+            price: orderToUse.total || 0,
+            quantity: 1,
+            description: description
+          }];
+
       total = orderToUse.total;
-      //console.log("[API][redirect] Usando orden existente", { items, total });
+      console.log("[API][redirect] Usando orden existente", { orderType, description, items, total });
     } else {
       //console.log("[API][redirect] Buscando carrito para usuario:", userId);
       

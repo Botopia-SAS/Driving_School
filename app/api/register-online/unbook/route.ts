@@ -48,15 +48,6 @@ export async function POST(request: NextRequest) {
     const hoursDifference = (classDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     const isWithin48Hours = hoursDifference <= 48;
 
-    console.log('🕐 Cancellation time check:', {
-      classDate: dateStr,
-      classTime: timeStr,
-      classDateTime: classDateTime.toISOString(),
-      now: now.toISOString(),
-      hoursDifference,
-      isWithin48Hours
-    });
-
     // If within 48 hours, require payment
     if (isWithin48Hours) {
       return NextResponse.json({
@@ -70,36 +61,24 @@ export async function POST(request: NextRequest) {
     }
 
     // FREE CANCELLATION (>48 hours)
-    console.log('✅ Free cancellation - more than 48 hours before class');
-
-    console.log('🔍 Students array before removal:', JSON.stringify(ticketClass.students, null, 2));
-    console.log('🔍 Looking for userId:', userId);
-
     // Find student index
     const studentIndex = ticketClass.students.findIndex(
       (student: any) => {
-        console.log('🔍 Checking student:', student);
         if (typeof student === 'string') {
-          console.log('  - String match:', student === userId);
           return student === userId;
         } else if (student.studentId) {
-          console.log('  - Object match:', student.studentId.toString() === userId);
           return student.studentId.toString() === userId;
         }
         return false;
       }
     );
 
-    console.log('🔍 Found student at index:', studentIndex);
-
     if (studentIndex === -1) {
       return NextResponse.json({ error: 'Student not found in class' }, { status: 404 });
     }
 
     // Remove student from students array using splice
-    const removedStudent = ticketClass.students.splice(studentIndex, 1);
-    console.log('✅ Removed student:', removedStudent);
-    console.log('✅ Students array after removal:', ticketClass.students);
+    ticketClass.students.splice(studentIndex, 1);
 
     // Add student to students_cancelled array
     if (!ticketClass.students_cancelled) {
@@ -131,7 +110,6 @@ export async function POST(request: NextRequest) {
       });
 
       await user.save({ validateBeforeSave: false });
-      console.log('✅ Added cancelled class to user.ticketclass_cancelled');
     }
 
     return NextResponse.json({

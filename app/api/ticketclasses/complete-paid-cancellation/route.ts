@@ -20,8 +20,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('💳 Processing paid cancellation:', { ticketClassId, userId, paymentId });
-
     // Find the ticket class
     const ticketClass = await TicketClass.findById(ticketClassId).populate('classId');
     if (!ticketClass) {
@@ -43,34 +41,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User is not enrolled in this class' }, { status: 400 });
     }
 
-    console.log('🔍 Students array before removal:', JSON.stringify(ticketClass.students, null, 2));
-    console.log('🔍 Looking for userId:', userId);
-
     // Find student index
     const studentIndex = ticketClass.students.findIndex(
       (student: any) => {
-        console.log('🔍 Checking student:', student);
         if (typeof student === 'string') {
-          console.log('  - String match:', student === userId);
           return student === userId;
         } else if (student.studentId) {
-          console.log('  - Object match:', student.studentId.toString() === userId);
           return student.studentId.toString() === userId;
         }
         return false;
       }
     );
 
-    console.log('🔍 Found student at index:', studentIndex);
-
     if (studentIndex === -1) {
       return NextResponse.json({ error: 'Student not found in class' }, { status: 404 });
     }
 
     // Remove student from students array using splice
-    const removedStudent = ticketClass.students.splice(studentIndex, 1);
-    console.log('✅ Removed student:', removedStudent);
-    console.log('✅ Students array after removal:', ticketClass.students);
+    ticketClass.students.splice(studentIndex, 1);
 
     // Add student to students_cancelled array
     if (!ticketClass.students_cancelled) {
@@ -79,7 +67,6 @@ export async function POST(request: NextRequest) {
     ticketClass.students_cancelled.push(userId);
 
     await ticketClass.save();
-    console.log('✅ Removed student from class and added to students_cancelled');
 
     // Add to user.ticketclass_cancelled for redemption
     const user = await User.findById(userId);
@@ -103,7 +90,6 @@ export async function POST(request: NextRequest) {
       });
 
       await user.save({ validateBeforeSave: false });
-      console.log('✅ Added cancelled class to user.ticketclass_cancelled');
     }
 
     return NextResponse.json({

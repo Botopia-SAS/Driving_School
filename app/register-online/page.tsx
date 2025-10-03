@@ -90,7 +90,7 @@ function RegisterOnlineContent() {
   } | null>(null);
   
   // Estados para el modal de reserva
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor'>('online');
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor' | 'redeem'>('online');
   const [isOnlinePaymentLoading, setIsOnlinePaymentLoading] = useState(false);
   const [isProcessingBooking, setIsProcessingBooking] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -147,7 +147,43 @@ function RegisterOnlineContent() {
       }
       return;
     }
-    
+
+    if (paymentMethod === 'redeem') {
+      // REDIMIR: Reservar usando crédito de clase cancelada
+      setIsProcessingBooking(true);
+      try {
+        const res = await fetch('/api/ticketclasses/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticketClassId: selectedTicketClass._id,
+            studentId: userId, // Usar studentId en lugar de userId
+            classId: selectedTicketClass.classInfo?._id,
+            date: selectedTicketClass.date,
+            start: selectedTicketClass.hour,
+            end: selectedTicketClass.endHour,
+            paymentMethod: 'redeem' // Indicar que es redención
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to redeem class');
+        }
+
+        setIsBookingModalOpen(false);
+        setSelectedTicketClass(null);
+        setConfirmationMessage('Class redeemed successfully! You have been enrolled.');
+        setShowConfirmation(true);
+      } catch (error) {
+        console.error('❌ Error redeeming class:', error);
+        alert(`Error redeeming class: ${error.message || 'Please try again.'}`);
+      } finally {
+        setIsProcessingBooking(false);
+      }
+      return;
+    }
+
     if (paymentMethod === 'online') {
       // AGREGAR AL CARRITO: Agregar al carrito y poner en studentRequests
       setIsOnlinePaymentLoading(true);
@@ -561,45 +597,10 @@ function RegisterOnlineContent() {
                             key={date.toDateString()}
                             className="border border-gray-300 p-1 cursor-pointer min-w-[80px] w-[80px] bg-blue-500 text-white hover:bg-red-500"
                             rowSpan={rowSpan}
-                            onClick={async () => {
-                              // First, check if payment is required by calling the endpoint
-                              try {
-                                const response = await fetch('/api/register-online/unbook', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    ticketClassId: overlappingClass._id,
-                                    userId: userId,
-                                  }),
-                                });
-
-                                const data = await response.json();
-
-                                // Check if payment is required (status 402)
-                                if (response.status === 402 && data.requiresPayment) {
-                                  // Show payment modal directly
-                                  setClassToUnbook(overlappingClass as TicketClass);
-                                  setCancellationData({
-                                    ticketClassId: data.ticketClassId,
-                                    userId: data.userId,
-                                    cancellationFee: data.cancellationFee,
-                                    message: data.message
-                                  });
-                                  setShowCancellationPaymentModal(true);
-                                } else if (response.ok) {
-                                  // Free cancellation - show confirmation
-                                  setConfirmationMessage(`Successfully unenrolled from ${overlappingClass.classInfo?.title || 'the class'}!`);
-                                  setShowConfirmation(true);
-                                } else {
-                                  // Error
-                                  setConfirmationMessage(data.error || 'Failed to unenroll from class');
-                                  setShowConfirmation(true);
-                                }
-                              } catch (error) {
-                                console.error('Error checking cancellation:', error);
-                                setConfirmationMessage('An error occurred while processing cancellation');
-                                setShowConfirmation(true);
-                              }
+                            onClick={() => {
+                              // Show confirmation modal first
+                              setClassToUnbook(overlappingClass as TicketClass);
+                              setShowUnbookConfirm(true);
                             }}
                             title="Click to unenroll from this class"
                           >
@@ -1102,7 +1103,7 @@ function RegisterOnlineContent() {
               className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
               onClick={handleUnbookClass}
             >
-              Unenroll
+              Accept & Cancel
             </button>
           </div>
         </div>
@@ -1206,6 +1207,7 @@ function RegisterOnlineContent() {
         isOnlinePaymentLoading={isOnlinePaymentLoading}
         isProcessingBooking={isProcessingBooking}
         onConfirm={handleConfirm}
+        userId={userId}
       />
       
       {/* Modal de contacto para pago local */}

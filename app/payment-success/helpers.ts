@@ -31,6 +31,12 @@ export async function processTicketClasses(appointments: Appointment[], userId: 
   let allProcessed = true;
   for (const appointment of appointments) {
     try {
+      // Skip if this is a cancellation - it's handled by processCancellationOrder
+      if (appointment.classType === 'ticket_class_cancellation') {
+        console.log('⏭️ Skipping ticket class cancellation - already processed by processCancellationOrder');
+        continue;
+      }
+
       // Use the new specific route for ticket classes
       const updateResponse = await fetch('/api/ticketclasses/update-status', {
         method: 'POST',
