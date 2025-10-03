@@ -101,15 +101,20 @@ export default function BookNowPage() {
     instructorName: string;
   }[]>([]);
 
-  // Function to check if a slot is already in the cart
-  const isSlotInCart = (instructorId: string, date: string, start: string, end: string) => {
-    return cart.some(item =>
-      item.classType === 'driving test' &&
-      item.instructorId === instructorId &&
-      item.date === date &&
-      item.start === start &&
-      item.end === end
-    );
+  // Function to check if a slot is already in the cart - now supports slot ID check
+  const isSlotInCart = (instructorId: string, date: string, start: string, end: string, slotId?: string) => {
+    return cart.some(item => {
+      // First check by slotId if available (more reliable)
+      if (slotId && item.slotId) {
+        return item.slotId === slotId && item.classType === 'driving test';
+      }
+      // Fallback to date/time check
+      return item.classType === 'driving test' &&
+        item.instructorId === instructorId &&
+        item.date === date &&
+        item.start === start &&
+        item.end === end;
+    });
   };
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -505,8 +510,28 @@ export default function BookNowPage() {
                         return blockStartMin >= slotStartMin && blockStartMin < slotEndMin;
                       });
 
-                      // Priorizar slots que NO están cancelados
-                      slot = matchingSlots.find(s => s.status !== 'cancelled') || matchingSlots[0] || null;
+                      // Priorizar slots basado en el usuario y estado:
+                      // 1. Si hay un slot booked del usuario actual, usarlo
+                      // 2. Si no, usar slot available/free
+                      // 3. Si no, usar slot pending del usuario actual
+                      // 4. Evitar slots cancelled
+                      const userBookedSlot = matchingSlots.find(s => 
+                        (s.status === 'booked' || s.status === 'scheduled') && 
+                        s.studentId && 
+                        userId && 
+                        s.studentId.toString() === userId
+                      );
+                      const userPendingSlot = matchingSlots.find(s => 
+                        s.status === 'pending' && 
+                        s.studentId && 
+                        userId && 
+                        s.studentId.toString() === userId
+                      );
+                      const availableSlot = matchingSlots.find(s => 
+                        (s.status === 'available' || s.status === 'free') && !s.booked
+                      );
+                      
+                      slot = userBookedSlot || availableSlot || userPendingSlot || matchingSlots.find(s => s.status !== 'cancelled') || null;
                     }
                     
                     // Filter out slots that should be hidden (cancelled, other students' bookings)
@@ -533,8 +558,8 @@ export default function BookNowPage() {
                       
                       // Slot disponible para reservar
                       if ((slot.status === 'free' || slot.status === 'available') && !slot.booked) {
-                        // Check if this slot is already in the cart
-                        const slotInCart = isSlotInCart(selectedInstructor?._id || '', dateString, slot.start, slot.end);
+                        // Check if this slot is already in the cart - now using slot ID for better accuracy
+                        const slotInCart = isSlotInCart(selectedInstructor?._id || '', dateString, slot.start, slot.end, slot._id);
                         
                         return (
                           <td key={date.toDateString()} 
@@ -550,9 +575,10 @@ export default function BookNowPage() {
                                   return;
                                 }
                                 
-                                const slotData = { 
-                                  start: slot.start, 
-                                  end: slot.end, 
+                                const slotData = {
+                                  _id: slot._id, // ID del slot en el instructor
+                                  start: slot.start,
+                                  end: slot.end,
                                   date: dateString,
                                   amount: slot.amount,
                                   instructorName: selectedInstructor?.name,
@@ -599,6 +625,15 @@ export default function BookNowPage() {
                               className="border border-gray-300 py-1 bg-blue-500 text-white font-bold cursor-pointer hover:bg-blue-600 min-w-[80px] w-[80px]"
                               title="Click to cancel this booking"
                               onClick={() => {
+                                console.log('🎯 [CANCEL] Selected BOOKED slot to cancel:', {
+                                  slotId: slot._id,
+                                  status: slot.status,
+                                  date: dateString,
+                                  start: slot.start,
+                                  end: slot.end,
+                                  studentId: slot.studentId,
+                                  booked: slot.booked
+                                });
                                 setSlotToCancel({ dateString, slot });
                                 setShowCancelConfirm(true);
                               }}
@@ -637,9 +672,10 @@ export default function BookNowPage() {
 
   // Estado para controlar el modal de reserva y el slot seleccionado
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<{ 
-    start: string, 
-    end: string, 
+  const [selectedSlot, setSelectedSlot] = useState<{
+    _id?: string, // ID del slot en el instructor
+    start: string,
+    end: string,
     date: string,
     amount?: number,
     instructorName?: string,
@@ -752,11 +788,12 @@ export default function BookNowPage() {
                     body: JSON.stringify({
             userId,
               instructorId: selectedSlot.instructorId,
+              slotId: selectedSlot._id, // Enviar el ID real del slot
               date: selectedSlot.date,
               start: selectedSlot.start,
               end: selectedSlot.end,
                       classType: 'driving test',
-              amount: selectedSlot.amount || 50,
+              amount: selectedSlot.amount || 150,
               paymentMethod: 'online' // Para pago online
                     }),
                   });
@@ -775,16 +812,17 @@ export default function BookNowPage() {
 
           // Step 2: Add to local cart context
           await addToCart({
-            id: `driving_test_${selectedSlot.instructorId}_${selectedSlot.date}_${selectedSlot.start}`,
+            id: selectedSlot._id || `driving_test_${selectedSlot.instructorId}_${selectedSlot.date}_${selectedSlot.start}`, // Use real slot ID or fallback
             title: 'Driving Test',
             price: selectedSlot.amount || 50,
             quantity: 1,
-                      instructorId: selectedSlot.instructorId,
+            instructorId: selectedSlot.instructorId,
             instructorName: selectedInstructor?.name || 'Unknown Instructor',
-                      date: selectedSlot.date,
-                      start: selectedSlot.start,
-                      end: selectedSlot.end,
-            classType: 'driving test'
+            date: selectedSlot.date,
+            start: selectedSlot.start,
+            end: selectedSlot.end,
+            classType: 'driving test',
+            slotId: selectedSlot._id // Store the real slot ID
           });
 
                     setIsBookingModalOpen(false);
@@ -829,7 +867,7 @@ export default function BookNowPage() {
                         currency: 'USD',
                         content_ids: [selectedSlot.instructorId],
                         contents: [{
-                          id: `driving_test_${selectedSlot.instructorId}_${selectedSlot.date}_${selectedSlot.start}`,
+                          id: selectedSlot._id, // Use real slot ID
                           quantity: 1
                         }]
                       });
@@ -1281,6 +1319,15 @@ export default function BookNowPage() {
             if (paymentMethod) {
               if (paymentMethod === 'online') {
                 // PAID CANCELLATION - Pay Online: Create order and redirect to Stripe
+                console.log('💳 [PAID CANCEL] Creating cancellation order with slotId:', {
+                  slotId: slotToCancel.slot._id,
+                  status: slotToCancel.slot.status,
+                  date: slotToCancel.dateString,
+                  start: slotToCancel.slot.start,
+                  end: slotToCancel.slot.end,
+                  studentId: slotToCancel.slot.studentId
+                });
+                
                 const orderRes = await fetch('/api/booking/create-cancellation-order', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -1318,6 +1365,15 @@ export default function BookNowPage() {
             }
 
             // FREE CANCELLATION - Process immediately
+            console.log('🆓 [FREE CANCEL] Sending cancellation request with slotId:', {
+              slotId: slotToCancel.slot._id,
+              status: slotToCancel.slot.status,
+              date: slotToCancel.dateString,
+              start: slotToCancel.slot.start,
+              end: slotToCancel.slot.end,
+              studentId: slotToCancel.slot.studentId
+            });
+            
             const res = await fetch('/api/booking/cancel', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

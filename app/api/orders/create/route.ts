@@ -63,9 +63,13 @@ export async function POST(req: NextRequest) {
 
     // Create the order
     console.log('📝 Creating order with appointments:', appointments);
+    console.log('📝 Appointments slotIds:', appointments.map(apt => ({ slotId: apt.slotId, classType: apt.classType })));
     const mappedAppointments = appointments.map((apt: AppointmentData) => {
+      const finalSlotId = apt.slotId || `${apt.date}-${apt.start}-${apt.end}`;
+      console.log(`📝 Mapping appointment: original slotId=${apt.slotId}, final slotId=${finalSlotId}`);
+      
       const mapped: AppointmentData & { status: string } = {
-        slotId: apt.slotId || `${apt.date}-${apt.start}-${apt.end}`,
+        slotId: finalSlotId,
         instructorId: apt.instructorId,
         instructorName: apt.instructorName,
         date: apt.date,

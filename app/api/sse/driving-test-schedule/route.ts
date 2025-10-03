@@ -136,11 +136,18 @@ async function sendInitialData(controller: ReadableStreamDefaultController, enco
     }
 
     const schedule = instructor.schedule_driving_test || [];
-    console.log(`📡 Sending initial driving test schedule for instructor ${instructorId} (${connectionId}):`, schedule.length, 'slots');
+
+    // Asegurar que cada slot tenga _id
+    const scheduleWithIds = schedule.map((slot: any) => ({
+      ...slot.toObject ? slot.toObject() : slot,
+      _id: slot._id ? slot._id.toString() : `${slot.date}_${slot.start}_${slot.end}`
+    }));
+
+    console.log(`📡 Sending initial driving test schedule for instructor ${instructorId} (${connectionId}):`, scheduleWithIds.length, 'slots');
 
     const data = `data: ${JSON.stringify({
       type: 'initial',
-      schedule: schedule,
+      schedule: scheduleWithIds,
       instructorId: instructorId
     })}\n\n`;
 
@@ -180,11 +187,18 @@ async function sendScheduleUpdate(controller: ReadableStreamDefaultController, e
     }
 
     const schedule = instructor.schedule_driving_test || [];
-    console.log(`📡 Sending driving test schedule update for instructor ${instructorId} (${connectionId}):`, schedule.length, 'slots');
+
+    // Asegurar que cada slot tenga _id
+    const scheduleWithIds = schedule.map((slot: any) => ({
+      ...slot.toObject ? slot.toObject() : slot,
+      _id: slot._id ? slot._id.toString() : `${slot.date}_${slot.start}_${slot.end}`
+    }));
+
+    console.log(`📡 Sending driving test schedule update for instructor ${instructorId} (${connectionId}):`, scheduleWithIds.length, 'slots');
 
     const data = `data: ${JSON.stringify({
       type: 'update',
-      schedule: schedule,
+      schedule: scheduleWithIds,
       instructorId: instructorId
     })}\n\n`;
 

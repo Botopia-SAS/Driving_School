@@ -112,10 +112,10 @@ function CheckoutSuccessOverlay({
       aria-modal="true"
       aria-labelledby={headingId}
       tabIndex={-1}
-      className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-auto transition-all duration-1000 bg-[#009047] ${className}`}
+      className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-auto transition-all duration-300 bg-[#009047] ${className}`}
       data-testid={testId}
       style={{
-        transitionProperty: "background-color,backdrop-filter",
+        transitionProperty: "background-color,backdrop-filter,opacity,transform",
         transitionTimingFunction: "cubic-bezier(0.77,0,0.175,1)",
       }}
     >
@@ -198,14 +198,24 @@ function CheckoutSuccessOverlay({
             </div>
           </div>
 
-          {/* Continue button */}
+          {/* Continue button - Enhanced with immediate feedback */}
           <button
             ref={closeBtnRef}
             type="button"
             onClick={() => {
+              // Immediate visual feedback
+              const btn = closeBtnRef.current;
+              if (btn) {
+                btn.style.transform = 'scale(0.95)';
+                btn.style.backgroundColor = '#f0fff0';
+                setTimeout(() => {
+                  btn.style.transform = 'scale(1)';
+                }, 100);
+              }
+              // Execute close handler
               if (onClose) onClose();
             }}
-            className="mt-6 px-8 py-4 rounded-xl bg-white text-[#009047] text-lg font-bold shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#009047] transition-all hover:bg-[#e6ffe6] hover:scale-105 transform"
+            className="mt-6 px-8 py-4 rounded-xl bg-white text-[#009047] text-lg font-bold shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#009047] transition-all duration-150 hover:bg-[#e6ffe6] hover:scale-105 transform active:scale-95"
             data-testid="checkout-success-continue"
             style={{ boxShadow: "0 4px 24px #00904733" }}
           >

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import Order from '@/models/Order';
-import Cart from '@/models/Cart';
 
 const EC2_URL = "https://botopiapagosatldriving.xyz";
 
@@ -95,9 +94,9 @@ export async function POST(req: NextRequest) {
     });
     console.log('📝 Orden creada:', createdOrder);
 
-    // Vaciar el carrito del usuario en la base de datos
-    const cartDeleteResult = await Cart.deleteOne({ userId });
-    console.log('🗑️ Resultado de borrar carrito:', cartDeleteResult);
+    // ❌ NO LIMPIAR EL CARRITO AQUÍ - Solo limpiar después del pago exitoso
+    // El carrito se limpiará en payment-success después de confirmar el pago
+    console.log('� Orden creada para Elavon, carrito mantenido para el checkout');
 
     return NextResponse.json({ token });
 
