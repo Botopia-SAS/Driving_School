@@ -53,6 +53,7 @@ interface CartItem {
   amount?: number;
   pickupLocation?: string;
   dropoffLocation?: string;
+  slotId?: string; // Add slotId for driving tests and lessons
   // For ticket classes
   ticketClassId?: string;
 }

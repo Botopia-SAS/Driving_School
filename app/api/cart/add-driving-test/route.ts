@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     const {
       userId,
       instructorId,
+      slotId, // ID del slot en el instructor (opcional)
       date,
       start,
       end,
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     console.log('🛒 Adding driving test to cart:', {
       userId,
       instructorId,
+      slotId,
       date,
       start,
       end,
@@ -56,30 +58,47 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-    
+
     console.log(`✅ Instructor found: ${instructor.name}`);
     console.log(`🔍 Instructor has ${instructor.schedule_driving_test?.length || 0} driving test slots`);
 
-    // Buscar el slot específico en schedule_driving_test
-    // Priorizar slots que NO están cancelados
-    const matchingSlots = instructor.schedule_driving_test?.filter((s: {
-      date: string;
-      start: string;
-      end: string;
-      status: string;
-      booked?: boolean;
-      studentId?: string;
-    }) =>
-      s.date === date && s.start === start && s.end === end
-    ) || [];
+    let slot;
 
-    console.log(`🔍 Found ${matchingSlots.length} matching slots for ${date} ${start}-${end}`);
-    matchingSlots.forEach((s, i) => {
-      console.log(`  Slot ${i + 1}: status=${s.status}, studentId=${s.studentId}`);
-    });
+    // Si tenemos slotId, buscar por ID primero
+    if (slotId) {
+      console.log(`🔍 Searching for slot by ID: ${slotId}`);
+      slot = instructor.schedule_driving_test?.find((s: { _id: { toString: () => string } }) =>
+        s._id.toString() === slotId
+      );
 
-    // Priorizar slots disponibles sobre los cancelados
-    const slot = matchingSlots.find(s => s.status !== 'cancelled') || matchingSlots[0];
+      if (slot) {
+        console.log(`✅ Found slot by ID: ${slotId}`);
+      } else {
+        console.warn(`⚠️ Slot not found by ID: ${slotId}, falling back to date/time search`);
+      }
+    }
+
+    // Si no se encontró por ID, buscar por fecha/hora
+    if (!slot) {
+      const matchingSlots = instructor.schedule_driving_test?.filter((s: {
+        date: string;
+        start: string;
+        end: string;
+        status: string;
+        booked?: boolean;
+        studentId?: string;
+      }) =>
+        s.date === date && s.start === start && s.end === end
+      ) || [];
+
+      console.log(`🔍 Found ${matchingSlots.length} matching slots for ${date} ${start}-${end}`);
+      matchingSlots.forEach((s, i) => {
+        console.log(`  Slot ${i + 1}: status=${s.status}, studentId=${s.studentId}`);
+      });
+
+      // Priorizar slots disponibles sobre los cancelados
+      slot = matchingSlots.find(s => s.status !== 'cancelled') || matchingSlots[0];
+    }
 
     if (!slot) {
       console.error(`❌ Slot not found for ${date} ${start}-${end}`);
@@ -126,19 +145,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Crear el item del carrito - SOLO campos necesarios para driving test
+    // Crear el item del carrito - TODOS los campos necesarios para el checkout
+    const slotIdString = slot._id.toString();
     const cartItem = {
+      itemId: slotIdString, // ID único del item (evitar usar 'id' por conflictos con MongoDB)
+      id: slotIdString, // Mantener 'id' para compatibilidad con payment gateway
+      slotId: slotIdString, // ID del slot en el instructor
       instructorId: instructorId,
       instructorName: instructor.name,
       instructorPhoto: instructor.photo || "",
-      slotId: slot._id.toString(),
       date: date,
       start: start,
       end: end,
       classType: classType || "driving test",
-      amount: amount || 50,
+      title: "Driving Test", // Título del servicio
+      price: amount || 150, // Precio (usar price en vez de amount para consistencia)
+      amount: amount || 150, // Mantener amount por compatibilidad
+      quantity: 1, // Cantidad siempre 1 para driving tests
+      description: "Driving test appointment",
       addedAt: new Date()
     };
+
+    console.log('📦 Cart item to be added:', {
+      itemId: cartItem.itemId,
+      id: cartItem.id,
+      slotId: cartItem.slotId,
+      slotIdFromSlot: slotIdString,
+      allEqual: cartItem.itemId === slotIdString && cartItem.id === slotIdString && cartItem.slotId === slotIdString
+    });
 
     // Verificar si ya existe en el carrito
     const existingCartItem = user.cart?.find((item: {
@@ -161,11 +195,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Agregar al carrito del usuario usando findByIdAndUpdate
-    await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $push: { cart: cartItem } },
-      { runValidators: false }
+      { new: true, runValidators: false }
     );
+
+    // Verificar lo que se guardó realmente
+    const savedCartItem = updatedUser?.cart?.[updatedUser.cart.length - 1];
+    console.log('✅ Cart item saved to DB:', {
+      itemId: savedCartItem?.itemId,
+      id: savedCartItem?.id,
+      slotId: savedCartItem?.slotId,
+      originalItemId: cartItem.itemId,
+      originalId: cartItem.id,
+      originalSlotId: cartItem.slotId,
+      itemIdMatch: savedCartItem?.itemId === cartItem.itemId,
+      idMatch: savedCartItem?.id === cartItem.id,
+      slotIdMatch: savedCartItem?.slotId === cartItem.slotId
+    });
 
     // Actualizar el slot a status "pending" - SOLO los campos necesarios para driving test
     slot.status = 'pending';

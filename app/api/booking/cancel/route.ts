@@ -3,14 +3,14 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Instructor, { ScheduleSlot } from '@/models/Instructor';
 import User from '@/models/User';
 import { broadcastScheduleUpdate } from '@/lib/sse-driving-test-broadcast';
-import mongoose from 'mongoose';
+
 
 export async function POST(request: Request) {
   try {
     await connectToDatabase();
-    const { studentId, instructorId, date, start, end } = await request.json();
+    const { studentId, instructorId, date, start, end, slotId, classType } = await request.json();
     
-    // console.log('🔥 Cancel booking request:', { studentId, instructorId, date, start, end, slotId, classType });
+    console.log('🔥 [CANCEL API] Cancel booking request:', { studentId, instructorId, date, start, end, slotId, classType });
     
     if (!studentId || !instructorId || !date || !start || !end) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -28,28 +28,64 @@ export async function POST(request: Request) {
     let foundSlot: ScheduleSlot | null = null;
     let scheduleType: string | null = null;
 
-    // Check in driving test schedule - find the slot that belongs to this student
-    if (instructor.schedule_driving_test) {
-      foundSlot = instructor.schedule_driving_test.find((slot: ScheduleSlot) =>
-        slot.date === date &&
-        slot.start === start &&
-        slot.end === end &&
-        slot.studentId?.toString() === studentId &&
-        (slot.status === 'booked' || slot.status === 'scheduled' || slot.status === 'pending')
-      );
-      if (foundSlot) scheduleType = 'schedule_driving_test';
+    console.log('🔍 [CANCEL API] Searching for slot with:', { slotId, date, start, end, studentId });
+
+    // 🎯 PRIORITY 1: If slotId is provided, use it for precise matching
+    if (slotId) {
+      console.log('🎯 [CANCEL API] Searching by slotId:', slotId);
+      
+      // Check in driving test schedule first
+      if (instructor.schedule_driving_test) {
+        foundSlot = instructor.schedule_driving_test.find((slot: ScheduleSlot) =>
+          slot._id?.toString() === slotId &&
+          slot.studentId?.toString() === studentId
+        );
+        if (foundSlot) {
+          scheduleType = 'schedule_driving_test';
+          console.log('✅ [CANCEL API] Found slot by ID in driving test schedule');
+        }
+      }
+
+      // Check in regular schedule if not found
+      if (!foundSlot && instructor.schedule) {
+        foundSlot = instructor.schedule.find((slot: ScheduleSlot) =>
+          slot._id?.toString() === slotId &&
+          slot.studentId?.toString() === studentId
+        );
+        if (foundSlot) {
+          scheduleType = 'schedule';
+          console.log('✅ [CANCEL API] Found slot by ID in regular schedule');
+        }
+      }
     }
 
-    // Check in regular schedule if not found
-    if (!foundSlot && instructor.schedule) {
-      foundSlot = instructor.schedule.find((slot: ScheduleSlot) =>
-        slot.date === date &&
-        slot.start === start &&
-        slot.end === end &&
-        slot.studentId?.toString() === studentId &&
-        (slot.status === 'booked' || slot.status === 'scheduled' || slot.status === 'pending')
-      );
-      if (foundSlot) scheduleType = 'schedule';
+    // 🔄 FALLBACK: If not found by slotId, search by date/time (legacy)
+    if (!foundSlot) {
+      console.log('🔄 [CANCEL API] Slot not found by ID, falling back to date/time search');
+      
+      // Check in driving test schedule - find the slot that belongs to this student
+      if (instructor.schedule_driving_test) {
+        foundSlot = instructor.schedule_driving_test.find((slot: ScheduleSlot) =>
+          slot.date === date &&
+          slot.start === start &&
+          slot.end === end &&
+          slot.studentId?.toString() === studentId &&
+          (slot.status === 'booked' || slot.status === 'scheduled' || slot.status === 'pending')
+        );
+        if (foundSlot) scheduleType = 'schedule_driving_test';
+      }
+
+      // Check in regular schedule if not found
+      if (!foundSlot && instructor.schedule) {
+        foundSlot = instructor.schedule.find((slot: ScheduleSlot) =>
+          slot.date === date &&
+          slot.start === start &&
+          slot.end === end &&
+          slot.studentId?.toString() === studentId &&
+          (slot.status === 'booked' || slot.status === 'scheduled' || slot.status === 'pending')
+        );
+        if (foundSlot) scheduleType = 'schedule';
+      }
     }
     
     if (!foundSlot) {
@@ -154,7 +190,7 @@ export async function POST(request: Request) {
         });
 
         if (user && user.driving_test_bookings) {
-          console.log('🔍 All bookings:', user.driving_test_bookings.map((b: any) => ({
+          console.log('🔍 All bookings:', user.driving_test_bookings.map((b: { slotId?: string; date: string; start: string; end: string }) => ({
             slotId: b.slotId?.toString(),
             date: b.date,
             start: b.start,
@@ -170,7 +206,7 @@ export async function POST(request: Request) {
 
           // Find the booking to move by matching date, start, end (more reliable than just slotId)
           const bookingIndex = user.driving_test_bookings.findIndex(
-            (b: any) =>
+            (b: { slotId?: string; date: string; start: string; end: string }) =>
               b.date === date &&
               b.start === start &&
               b.end === end

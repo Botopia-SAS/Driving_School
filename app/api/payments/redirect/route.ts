@@ -169,10 +169,22 @@ export async function GET(req: NextRequest) {
       
       if (user && user.cart && user.cart.length > 0) {
         console.log("[API][redirect] Carrito encontrado en usuario:", user.cart.length, "items");
-        
+
+        // Log detallado de cada item ANTES de filtrar
+        user.cart.forEach((item, index) => {
+          console.log(`[API][redirect] RAW Cart item ${index}:`, {
+            id: item.id,
+            slotId: item.slotId,
+            classType: item.classType,
+            price: item.price,
+            amount: item.amount,
+            title: item.title
+          });
+        });
+
         // Filtrar solo items válidos para el pago (que tengan price O amount como número)
-        const validItems = user.cart.filter(item => 
-          item && 
+        const validItems = user.cart.filter(item =>
+          item &&
           ((typeof item.price === 'number' && !isNaN(item.price) && item.price > 0) ||
            (typeof item.amount === 'number' && !isNaN(item.amount) && item.amount > 0)) &&
           (item.id || item.classType) &&
@@ -226,20 +238,23 @@ export async function GET(req: NextRequest) {
         } else if (hasDrivingLessons) {
           preOrderType = 'driving_lesson';
         }
-        
+
         // Asegurar que todos los items tengan la estructura correcta
-        items = validItems.map(item => ({
-          id: item.id || `driving_test_${item.instructorId}_${item.date}_${item.start}`,
-          title: item.title || item.classType || 'Driving Test',
-          price: Number(item.price || item.amount || 0),
-          quantity: Number(item.quantity || 1),
-          description: preOrderType === 'drivings' ? 'drivings' :
-                      preOrderType === 'classes' ? 'classes' :
-                      preOrderType === 'ticket_class_cancellation' ? 'ticketclass cancellation' :
-                      (item.description || item.packageDetails ||
-                      (item.classType === 'driving test' ? 'Driving test appointment' : 'Driving lesson package')),
-          ...item // Mantener otros campos como packageDetails, selectedSlots, etc.
-        }));
+        items = validItems.map(item => {
+          const baseItem = {
+            id: item.id || item.slotId || `item_${Date.now()}_${Math.random()}`,
+            title: item.title || item.classType || 'Driving Test',
+            price: Number(item.price || item.amount || 0),
+            quantity: Number(item.quantity || 1),
+            description: preOrderType === 'drivings' ? 'drivings' :
+                        preOrderType === 'classes' ? 'classes' :
+                        preOrderType === 'ticket_class_cancellation' ? 'ticketclass cancellation' :
+                        (item.description || item.packageDetails ||
+                        (item.classType === 'driving test' ? 'Driving test appointment' : 'Driving lesson package')),
+            ...item // Mantener otros campos como packageDetails, selectedSlots, slotId, etc.
+          };
+          return baseItem;
+        });
         
         total = items.reduce((sum, item) => {
           const itemTotal = item.price * item.quantity;
@@ -379,15 +394,19 @@ export async function GET(req: NextRequest) {
                 title: item.title
               });
               if (item.classType === 'driving test') {
+                // Use the real slotId from cart, don't generate a fake one
+                if (!item.slotId) {
+                  console.error(`[API][redirect] GET - ⚠️ Driving test item missing slotId:`, item);
+                }
                 appointments.push({
-                  slotId: item.slotId || `${item.date}-${item.start}-${item.end}`, // Use real slotId from cart
+                  slotId: item.slotId, // MUST use real slotId from cart
                   instructorId: item.instructorId,
                   instructorName: item.instructorName,
                   date: item.date,
                   start: item.start,
                   end: item.end,
                   classType: 'driving test',
-                  amount: item.price || 50,
+                  amount: item.price || item.amount || 50,
                   status: 'pending'
                 });
               } else if (item.classType === 'driving lesson' || item.packageDetails) {
@@ -512,11 +531,9 @@ export async function GET(req: NextRequest) {
           finalOrderId = createdOrder._id.toString();
         }
         
-        // Limpiar carrito del usuario (para driving-lessons)
-        if (user.cart && user.cart.length > 0) {
-          await User.findByIdAndUpdate(userId, { cart: [] }, { runValidators: false });
-          console.log("[API][redirect] Carrito del usuario vaciado");
-        }
+        // ❌ NO LIMPIAR EL CARRITO AQUÍ - Solo limpiar después del pago exitoso
+        // El carrito se limpiará en payment-success después de confirmar el pago
+        console.log("[API][redirect] GET - Orden creada, carrito mantenido para el checkout");
       }
     } else if (orderToUse) {
       finalOrderId = orderToUse._id.toString();
@@ -740,41 +757,27 @@ export async function POST(req: NextRequest) {
         
         // Procesar cada item del carrito
         console.log(`[API][redirect] Processing ${cartItems.length} cart items for appointments:`);
-        cartItems.forEach((item, index) => {
+        for (let index = 0; index < cartItems.length; index++) {
+          const item = cartItems[index];
           console.log(`[API][redirect] Processing item ${index}:`, {
             classType: item.classType,
             ticketClassId: item.ticketClassId,
             id: item.id,
             title: item.title
           });
-          
+
           if (item.classType === 'driving test') {
-            // Get the actual slot _id from the instructor's schedule
-            let actualSlotId = item.slotId || `${item.date || 'unknown'}-${item.start || 'unknown'}-${item.end || 'unknown'}`;
+            // Use the real slotId from cart (already corrected in frontend)
+            const slotId = item.slotId || `${item.date || 'unknown'}-${item.start || 'unknown'}-${item.end || 'unknown'}`;
             
-            if (item.instructorId) {
-              try {
-                const instructor = await Instructor.findById(item.instructorId);
-                if (instructor && instructor.schedule_driving_test) {
-                  const matchingSlot = instructor.schedule_driving_test.find((slot: any) =>
-                    slot.date === item.date &&
-                    slot.start === item.start &&
-                    slot.end === item.end &&
-                    slot.studentId === userId
-                  );
-                  
-                  if (matchingSlot && matchingSlot._id) {
-                    actualSlotId = matchingSlot._id;
-                    console.log(`[API][redirect] POST - Found actual slot _id: ${actualSlotId}`);
-                  }
-                }
-              } catch (error) {
-                console.warn(`[API][redirect] POST - Could not get actual slot _id:`, error);
-              }
+            if (!item.slotId) {
+              console.error(`[API][redirect] POST - ⚠️ Driving test item missing slotId:`, item);
             }
+
+            console.log(`[API][redirect] POST - Using slotId from cart: ${slotId}`);
             
             appointments.push({
-              slotId: actualSlotId,
+              slotId: slotId,
               instructorId: item.instructorId || '',
               instructorName: item.instructorName || '',
               date: item.date || '',
@@ -789,7 +792,7 @@ export async function POST(req: NextRequest) {
             if (item.slotDetails && Array.isArray(item.slotDetails) && item.slotDetails.length > 0) {
               // Crear un appointment por cada slot del paquete
               const amountPerSlot = Math.round((item.price || 50) / item.slotDetails.length);
-              
+
               item.slotDetails.forEach(slot => {
                 appointments.push({
                   slotId: slot.slotId,
@@ -830,11 +833,11 @@ export async function POST(req: NextRequest) {
               start: item.start,
               end: item.end
             });
-            
+
             // Para ticket class, el slotId debe ser específico del slot seleccionado
             // Crear un slotId único basado en la fecha y hora seleccionada
             const ticketSlotId = `${item.ticketClassId}_${item.date}_${item.start}_${item.end}`;
-            
+
             appointments.push({
               slotId: ticketSlotId, // ← Usar slotId específico para el slot de ticket class
               ticketClassId: item.ticketClassId, // ← ID de la ticket class (para buscar en TicketClass collection)
@@ -849,12 +852,12 @@ export async function POST(req: NextRequest) {
               amount: item.price || 50,
               status: 'pending'
             });
-            
+
             console.log(`[API][redirect] POST - Created ticket appointment with slotId: ${ticketSlotId}`);
           } else {
             console.log(`[API][redirect] POST - ⚠️ Unknown classType:`, item.classType, 'for item:', item.id);
           }
-        });
+        }
         
         // orderType ya se determinó arriba con la lógica de prioridad
         console.log(`[API][redirect] 🎯 Final appointments created: ${appointments.length}`);
@@ -933,16 +936,15 @@ export async function POST(req: NextRequest) {
       };
       
       console.log(`[API][redirect] POST - Creating order with ${appointments.length} appointments and orderNumber: ${orderNumberStr}`);
+      console.log(`[API][redirect] POST - Appointments slotIds:`, appointments.map(apt => ({ slotId: apt.slotId, classType: apt.classType })));
       
       const createdOrder = await Order.create(orderData);
       console.log("[API][redirect] Orden creada:", createdOrder._id);
       finalOrderId = createdOrder._id.toString();
       
-      // Limpiar carrito del usuario
-      if (user.cart && user.cart.length > 0) {
-        await User.findByIdAndUpdate(userId, { cart: [] }, { runValidators: false });
-        console.log("[API][redirect] Carrito del usuario vaciado");
-      }
+      // ❌ NO LIMPIAR EL CARRITO AQUÍ - Solo limpiar después del pago exitoso
+      // El carrito se limpiará en payment-success después de confirmar el pago
+      console.log("[API][redirect] Orden creada, carrito mantenido para el checkout");
     } else if (orderToUse) {
       finalOrderId = orderToUse._id.toString();
       // Si ya existe la orden, usar su total

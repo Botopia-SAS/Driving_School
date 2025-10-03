@@ -14,7 +14,7 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CheckoutSuccessOverlay from "./components/CheckoutSuccessOverlay";
 import { useCart } from "../context/CartContext";
 import { useForceCartClear } from "../../hooks/useForceCartClear";
@@ -25,17 +25,31 @@ export default function SuccessCheckoutPage() {
   const { clearCart } = useCart();
   const { forceCartClear } = useForceCartClear();
 
+  // Set body background to green for full immersive experience
+  useEffect(() => {
+    const originalBg = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#009047';
+    
+    // Cleanup when component unmounts
+    return () => {
+      document.body.style.backgroundColor = originalBg;
+    };
+  }, []);
+
   /**
    * Handles overlay closure and redirection to home page
-   * - Smoothly closes the animation
-   * - Cleans the shopping cart completely
-   * - Redirects user to the home page
+   * - Immediately closes the animation for faster UX
+   * - Cleans the shopping cart completely in background
+   * - Redirects user to the home page instantly
    */
   const handleClose = async () => {
+    console.log("🎉 User clicked Continue - processing...");
+    
+    // Set open to false immediately for instant UI response
     setOpen(false);
 
-    // Small delay before redirecting to allow closing animation to finish
-    setTimeout(async () => {
+    // Start cart cleanup in background (non-blocking)
+    const cleanupPromise = (async () => {
       try {
         // Method 1: Use context clearCart (improved version)
         await clearCart();
@@ -59,15 +73,19 @@ export default function SuccessCheckoutPage() {
         } catch (backupError) {
           console.error("❌ Backup cart clear also failed:", backupError);
         }
-      } finally {
-        // Redirect to home page regardless of cleanup success
-        router.push("/");
       }
-    }, 300);
+    })();
+
+    // Redirect immediately without waiting for cleanup
+    console.log("🏠 Redirecting to home immediately...");
+    router.push("/");
+    
+    // Cleanup continues in background
+    cleanupPromise.catch(console.error);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#009047] overflow-hidden">
+    <div className="fixed inset-0 w-full h-full bg-[#009047] flex items-center justify-center overflow-hidden">
       <CheckoutSuccessOverlay
         open={open}
         onClose={handleClose}
