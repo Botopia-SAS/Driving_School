@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     console.log('✅ [DRIVING TEST UPDATE] Found instructor:', instructor.name);
 
     // Prepare update fields
-    const setFields: Record<string, any> = {
+    const setFields: Record<string, string | boolean | Date> = {
       status,
     };
     
@@ -68,8 +68,23 @@ export async function POST(req: NextRequest) {
 
     // Strategy 1: Update by slotId directly (most common case)
     if (slotsToUpdate.length > 0) {
+      // First, let's see what slots exist BEFORE update
+      const beforeInstructor = await Instructor.findById(instructorId);
+      if (beforeInstructor && beforeInstructor.schedule_driving_test) {
+        console.log(`🔍 [DRIVING TEST UPDATE] SLOTS BEFORE UPDATE:`, 
+          beforeInstructor.schedule_driving_test.map((slot) => ({
+            _id: slot._id,
+            status: slot.status,
+            paid: slot.paid,
+            date: slot.date,
+            start: slot.start,
+            end: slot.end
+          }))
+        );
+      }
+
       // Build update object with only the fields we want to update
-      const updateFields: any = {};
+      const updateFields: Record<string, string | boolean | Date> = {};
       
       // Always update status
       updateFields[`schedule_driving_test.$[slot].status`] = setFields.status;
@@ -90,17 +105,105 @@ export async function POST(req: NextRequest) {
       }
       
       console.log(`🔍 [DRIVING TEST UPDATE] Update fields:`, updateFields);
+      console.log(`🔍 [DRIVING TEST UPDATE] Looking for slots with IDs:`, slotsToUpdate);
       
-      const updateResult = await Instructor.updateOne(
-        { _id: instructorId },
-        { $set: updateFields },
-        {
-          arrayFilters: [{ "slot._id": { $in: slotsToUpdate } }]
-        }
-      );
-      totalModified += updateResult.modifiedCount;
-      console.log(`🎯 [DRIVING TEST UPDATE] Strategy 1 (by slotId): ${updateResult.modifiedCount} slots updated`);
-      console.log(`🔍 [DRIVING TEST UPDATE] Searching for slotIds:`, slotsToUpdate);
+        // Enhanced slot ID matching with multiple strategies
+        for (const slotIdToFind of slotsToUpdate) {
+          console.log(`🔍 [DRIVING TEST UPDATE] Processing individual slot: ${slotIdToFind}`);
+          let slotFound = false;
+          
+          // Strategy A: Try exact string match first
+          let updateResult = await Instructor.updateOne(
+            { _id: instructorId },
+            { $set: updateFields },
+            {
+              arrayFilters: [{ "slot._id": slotIdToFind }]
+            }
+          );
+          
+          if (updateResult.modifiedCount > 0) {
+            console.log(`✅ [DRIVING TEST UPDATE] Found slot with exact string match: ${slotIdToFind}`);
+            totalModified += updateResult.modifiedCount;
+            slotFound = true;
+            continue;
+          }
+          
+          // Strategy B: Try as ObjectId if it's a valid ObjectId format
+          if (mongoose.Types.ObjectId.isValid(slotIdToFind)) {
+            updateResult = await Instructor.updateOne(
+              { _id: instructorId },
+              { $set: updateFields },
+              {
+                arrayFilters: [{ "slot._id": new mongoose.Types.ObjectId(slotIdToFind) }]
+              }
+            );
+            
+            if (updateResult.modifiedCount > 0) {
+              console.log(`✅ [DRIVING TEST UPDATE] Found slot with ObjectId match: ${slotIdToFind}`);
+              totalModified += updateResult.modifiedCount;
+              slotFound = true;
+              continue;
+            }
+          }
+          
+          // Strategy C: Parse complex slot ID format for driving tests
+          // Format: "driving_test_{instructorId}_{date}_{time}_{timestamp}_{random}"
+          if (slotIdToFind.includes('driving_test_') && slotIdToFind.includes('_')) {
+            console.log(`🔍 [DRIVING TEST UPDATE] Parsing complex slot ID: ${slotIdToFind}`);
+            
+            const parts = slotIdToFind.split('_');
+            if (parts.length >= 5) {
+              // Extract date and time components
+              const dateFromId = parts[3]; // "2025-10-08"
+              const timeFromId = parts[4]; // "15:00" 
+              
+              console.log(`🔍 [DRIVING TEST UPDATE] Extracted: date=${dateFromId}, time=${timeFromId}`);
+              
+              // First, let's find all slots for this date and time to debug
+              const currentInstructor = await Instructor.findById(instructorId);
+              if (currentInstructor?.schedule_driving_test) {
+                const matchingSlots = currentInstructor.schedule_driving_test.filter(slot => 
+                  slot.date === dateFromId && slot.start === timeFromId
+                );
+                
+                console.log(`🔍 [DRIVING TEST UPDATE] Found ${matchingSlots.length} slots matching date/time:`, 
+                  matchingSlots.map(s => ({ 
+                    _id: s._id, 
+                    status: s.status, 
+                    date: s.date, 
+                    start: s.start,
+                    end: s.end,
+                    paid: s.paid
+                  }))
+                );
+                
+                // Try to update by date/time combination
+                updateResult = await Instructor.updateOne(
+                  { _id: instructorId },
+                  { $set: updateFields },
+                  {
+                    arrayFilters: [{ 
+                      "slot.date": dateFromId,
+                      "slot.start": timeFromId,
+                      "slot.classType": "driving_test"
+                    }]
+                  }
+                );
+                
+                if (updateResult.modifiedCount > 0) {
+                  console.log(`✅ [DRIVING TEST UPDATE] Found slot with date/time match: ${dateFromId} ${timeFromId}`);
+                  totalModified += updateResult.modifiedCount;
+                  slotFound = true;
+                  continue;
+                }
+              }
+            }
+          }
+          
+          if (!slotFound) {
+            console.log(`❌ [DRIVING TEST UPDATE] Could not find slot with ID: ${slotIdToFind}`);
+          }
+        }      console.log(`🎯 [DRIVING TEST UPDATE] Strategy 1 total: ${totalModified} slots updated`);
     }
 
     // Strategy 3: If still no updates and slotId looks like date-time format, try parsing
@@ -150,6 +253,23 @@ export async function POST(req: NextRequest) {
     if (totalModified > 0) {
       console.log(`✅ [DRIVING TEST UPDATE] Updated ${totalModified} driving test slots successfully`);
 
+      // Verify the update by fetching the instructor again
+      const verifyInstructor = await Instructor.findById(instructorId);
+      if (verifyInstructor && verifyInstructor.schedule_driving_test) {
+        const updatedSlots = verifyInstructor.schedule_driving_test
+          .filter((slot) => slotsToUpdate.includes(slot._id?.toString()) || slotsToUpdate.includes(slot._id))
+          .map((slot) => ({
+            _id: slot._id,
+            status: slot.status,
+            paid: slot.paid,
+            date: slot.date,
+            start: slot.start,
+            end: slot.end,
+            paymentId: (slot as never)['paymentId']
+          }));
+        console.log(`🔍 [DRIVING TEST UPDATE] SLOTS AFTER UPDATE:`, updatedSlots);
+      }
+
       // If status is 'booked' and userId is provided, save to User's driving_test_bookings
       if (status === 'booked' && userId) {
         try {
@@ -158,10 +278,23 @@ export async function POST(req: NextRequest) {
           // Fetch updated instructor to get slot details
           const updatedInstructor = await Instructor.findById(instructorId);
           if (updatedInstructor && updatedInstructor.schedule_driving_test) {
-            const bookingsToAdd: any[] = [];
+            interface BookingToAdd {
+              slotId: string;
+              instructorId: string;
+              instructorName: string;
+              date: string;
+              start: string;
+              end: string;
+              amount: number;
+              bookedAt: Date;
+              orderId?: string;
+              status: string;
+            }
+            
+            const bookingsToAdd: BookingToAdd[] = [];
 
             for (const slotIdToFind of slotsToUpdate) {
-              const slot = updatedInstructor.schedule_driving_test.find((s: any) =>
+              const slot = updatedInstructor.schedule_driving_test.find((s) =>
                 s._id?.toString() === slotIdToFind || s._id === slotIdToFind
               );
 
@@ -204,6 +337,25 @@ export async function POST(req: NextRequest) {
       });
     } else {
       console.log('❌ [DRIVING TEST UPDATE] No driving test slots were updated - slots not found');
+      
+      // Debug: Show all available driving test slots for this instructor
+      const debugInstructor = await Instructor.findById(instructorId);
+      if (debugInstructor?.schedule_driving_test) {
+        console.log(`🔍 [DRIVING TEST UPDATE] Available slots in instructor's schedule_driving_test:`,
+          debugInstructor.schedule_driving_test.map(slot => ({
+            _id: slot._id,
+            date: slot.date,
+            start: slot.start,
+            end: slot.end,
+            status: slot.status,
+            classType: slot.classType,
+            paid: slot.paid
+          }))
+        );
+        
+        console.log(`🔍 [DRIVING TEST UPDATE] Requested slot IDs that were not found:`, slotsToUpdate);
+      }
+      
       return NextResponse.json(
         { error: "Driving test slots not found or already updated" },
         { status: 404 }
@@ -211,9 +363,9 @@ export async function POST(req: NextRequest) {
     }
 
   } catch (error) {
-    console.error('❌ [DRIVING TEST UPDATE] Error updating driving test status:', (error as any)?.message || error);
+    console.error('❌ [DRIVING TEST UPDATE] Error updating driving test status:', error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { error: (error as any)?.message || "Internal server error" },
+      { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
     );
   }
