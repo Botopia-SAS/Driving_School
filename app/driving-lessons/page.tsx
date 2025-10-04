@@ -107,17 +107,6 @@ function DrivingLessonsContent() {
   const { addToCart } = useCart();
   const userId = user?._id || "";
 
-  // Estado para slots cancelados disponibles para redención
-  const [cancelledSlots, setCancelledSlots] = useState<{
-    slotId: string;
-    instructorId: string;
-    instructorName?: string;
-    date: string;
-    start: string;
-    end: string;
-    cancelledAt: string;
-  }[]>([]);
-
   // Función para manejar el login exitoso
   const handleLoginSuccess = (loggedInUser: { _id: string; name: string; email: string }) => {
     setShowLogin(false);
@@ -164,25 +153,16 @@ function DrivingLessonsContent() {
   // Automatically process SSE schedule updates and update instructors state
   useEffect(() => {
     if (!selectedInstructorForSchedule || !schedules || schedules.size === 0) {
-      console.log('⚠️ No selected instructor or SSE schedules Map is empty');
       return;
     }
 
-    console.log('📡 SSE schedules Map updated for selected instructor:', selectedInstructorForSchedule.name);
-    console.log('📡 SSE schedules data:', Array.from(schedules.entries()).map(([id, schedule]) => ({
-      instructorId: id,
-      slotsCount: Array.isArray(schedule) ? schedule.length : 0
-    })));
-
     // Update only the selected instructor with SSE schedule data
     setInstructors(prevInstructors => {
-      console.log('🔄 Updating instructors state with SSE data for selected instructor...');
       return prevInstructors.map(instructor => {
         if (instructor._id === selectedInstructorForSchedule._id) {
           const sseSchedule = schedules.get(instructor._id);
 
           if (sseSchedule && Array.isArray(sseSchedule)) {
-            console.log(`✅ Updating instructor ${instructor.name} with ${sseSchedule.length} slots from SSE`);
             return {
               ...instructor,
               schedule_driving_lesson: sseSchedule as ScheduleEntry[]
@@ -240,7 +220,6 @@ function DrivingLessonsContent() {
 
   // Fetch driving lesson instructors on load (basic info only, schedules come via SSE)
   const fetchInstructors = useCallback(async () => {
-    console.log('🔄 [FETCH] Starting instructor fetch...');
     try {
       const res = await fetch('/api/instructors?type=driving-lessons&includeSchedule=true', {
         method: 'GET',
@@ -249,38 +228,15 @@ function DrivingLessonsContent() {
           'Pragma': 'no-cache'
         }
       });
-      
-      console.log('📡 [FETCH] Response status:', res.status, res.statusText);
-      
+
       if (res.ok) {
         const data = await res.json();
-        console.log('🔍 [INSTRUCTORS] Raw data from API:', data);
-        console.log('🔍 [INSTRUCTORS] Total instructors received:', data.length);
-        
-        // Log cada instructor y su estado de canTeachDrivingLesson
-        data.forEach((instructor: Instructor) => {
-          console.log(`🔍 [INSTRUCTOR] ${instructor.name}:`, {
-            id: instructor._id,
-            canTeachDrivingLesson: instructor.canTeachDrivingLesson,
-            hasSchedule: !!instructor.schedule_driving_lesson
-          });
-        });
-        
-        // El API ya filtró los instructores con canTeachDrivingLesson: true
-        console.log('✅ [INSTRUCTORS] Instructors from API:', data.length);
-        console.log('✅ [INSTRUCTORS] Instructor names:', data.map((i: Instructor) => i.name));
-        
         setInstructors(data);
 
         // Select a random instructor automatically if none is selected
         if (!selectedInstructorForSchedule && data.length > 0) {
           const randomIndex = Math.floor(Math.random() * data.length);
           setSelectedInstructorForSchedule(data[randomIndex]);
-          console.log('🎯 [INSTRUCTORS] Auto-selected instructor:', data[randomIndex].name);
-        } else if (data.length === 0) {
-          console.log('⚠️ [INSTRUCTORS] No instructors available for driving lessons');
-        } else {
-          console.log('⚠️ [INSTRUCTORS] No random selection - already have selected instructor:', selectedInstructorForSchedule?.name);
         }
       } else {
         console.error('❌ [FETCH] Failed to fetch instructors:', res.status, res.statusText);
@@ -293,33 +249,6 @@ function DrivingLessonsContent() {
   useEffect(() => {
     fetchInstructors();
   }, [fetchInstructors]);
-
-  // Load cancelled slots for redemption when user is authenticated
-  useEffect(() => {
-    const loadCancelledSlots = async () => {
-      if (!user?._id) return;
-
-      try {
-        console.log('🔍 [DRIVING LESSONS] Fetching cancelled slots for user:', user._id);
-        const response = await fetch(`/api/users/${user._id}/cancelled-driving-lessons`);
-        console.log('📡 [DRIVING LESSONS] Response status:', response.status);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('📋 [DRIVING LESSONS] Loaded cancelled slots response:', data);
-          console.log('📋 [DRIVING LESSONS] Raw cancelledSlots array:', data.cancelledSlots);
-          setCancelledSlots(data.cancelledSlots || []);
-          console.log('✅ [DRIVING LESSONS] Available credits set to:', data.cancelledSlots?.length || 0);
-        } else {
-          console.warn('⚠️ [DRIVING LESSONS] Failed to load cancelled slots');
-        }
-      } catch (error) {
-        console.error('❌ [DRIVING LESSONS] Error loading cancelled slots:', error);
-      }
-    };
-
-    loadCancelledSlots();
-  }, [user?._id]);
 
   const generateCalendlyURL = (product: Product, instructor: Instructor, slot?: ScheduleEntry) => {
     const baseUrl = "https://calendly.com/your-driving-school"; // Change to your real Calendly URL
@@ -494,7 +423,7 @@ function DrivingLessonsContent() {
     setIsRequestModalOpen(true);
   };
 
-  const handleRequestScheduleWithLocations = async (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local' | 'redeem') => {
+  const handleRequestScheduleWithLocations = async (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local') => {
     if (!selectedProduct || selectedSlots.size === 0 || !userId) {
       alert('Please make sure you have selected a package and time slots, and are logged in.');
       return;
@@ -528,180 +457,6 @@ function DrivingLessonsContent() {
           return instructor;
         });
       });
-    }
-
-    // REDEEM: Use cancelled slot to book new driving lesson
-    if (paymentMethod === 'redeem') {
-      if (cancelledSlots.length === 0) {
-        // No hay slots disponibles - cerrar modal
-        setIsProcessingSlots(false);
-        return;
-      }
-
-      if (!selectedInstructorForSchedule) {
-        // No hay instructor seleccionado - cerrar modal
-        setIsProcessingSlots(false);
-        return;
-      }
-
-      try {
-        // Get first selected slot for redemption
-        const firstSlotKey = Array.from(selectedSlots)[0];
-        console.log('🔍 [REDEEM] Selected slot key:', firstSlotKey);
-        console.log('🔍 [REDEEM] Selected instructor:', selectedInstructorForSchedule.name);
-
-        // Parse the slot key - format: "2025-10-03-06:30-08:30"
-        // Split gives: ["2025", "10", "03", "06:30", "08:30"]
-        const parts = firstSlotKey.split('-');
-        const date = `${parts[0]}-${parts[1]}-${parts[2]}`; // "2025-10-03"
-        const start = parts[3]; // "06:30"
-        const end = parts[4]; // "08:30"
-
-        console.log('🔍 [REDEEM] Looking for slot:', { date, start, end });
-        console.log('🔍 [REDEEM] Instructor schedule:', selectedInstructorForSchedule.schedule_driving_lesson);
-
-        // Find the slot in the selected instructor's schedule (filter out cancelled first)
-        const validSlots = selectedInstructorForSchedule.schedule_driving_lesson?.filter(slot =>
-          slot.status !== 'cancelled'
-        ) || [];
-
-        console.log('🔍 [REDEEM] Valid slots (non-cancelled):', validSlots);
-        console.log('🔍 [REDEEM] Available slots only:', validSlots.filter(s => s.status === 'available'));
-
-        const availableSlot = validSlots.find(slot =>
-          slot.date === date &&
-          slot.start === start &&
-          slot.end === end &&
-          slot.status === 'available'
-        );
-
-        if (!availableSlot) {
-          console.log('❌ [REDEEM] Slot not found or not available');
-          console.log('❌ [REDEEM] Looking for:', { date, start, end, status: 'available' });
-          console.log('❌ [REDEEM] All valid slots:', validSlots.map(s => ({
-            date: s.date,
-            start: s.start,
-            end: s.end,
-            status: s.status,
-            _id: s._id
-          })));
-          // Slot no disponible - cerrar modal
-          setIsProcessingSlots(false);
-          return;
-        }
-
-        console.log('✅ [REDEEM] Found available slot:', availableSlot);
-
-        const res = await fetch('/api/driving-lessons/redeem-cancelled-slot', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: userId,
-            instructorId: selectedInstructorForSchedule._id,
-            date: date,
-            start: start,
-            end: end,
-            pickupLocation: pickupLocation,
-            dropoffLocation: dropoffLocation,
-            packageName: selectedProduct.title,
-            selectedProduct: selectedProduct._id
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          console.log('✅ [DRIVING LESSONS] Slot redeemed successfully:', data);
-
-          // Actualizar visualmente el slot a "booked" inmediatamente
-          setInstructors(prevInstructors => {
-            return prevInstructors.map(instructor => {
-              if (instructor._id === selectedInstructorForSchedule._id && instructor.schedule_driving_lesson) {
-                const updatedSchedule = instructor.schedule_driving_lesson.map(slot => {
-                  if (slot.date === date && slot.start === start && slot.end === end) {
-                    return {
-                      ...slot,
-                      status: 'booked' as const,
-                      studentId: userId,
-                      studentName: user?.name || 'Unknown',
-                      paid: true,
-                      paymentMethod: 'redeem'
-                    };
-                  }
-                  return slot;
-                });
-                
-                return {
-                  ...instructor,
-                  schedule_driving_lesson: updatedSchedule
-                };
-              }
-              return instructor;
-            });
-          });
-
-          // Force refresh SSE to update calendar immediately (igual que Pay Online Now)
-          if (forceRefresh && selectedInstructorForSchedule) {
-            console.log('📡 [REDEEM] Sending SSE force refresh for instructor:', selectedInstructorForSchedule.name);
-            forceRefresh(selectedInstructorForSchedule._id);
-          }
-
-          // Clear selections
-          setSelectedSlots(new Set());
-          setSelectedHours(0);
-          setIsRequestModalOpen(false);
-          setIsProcessingSlots(false); // Stop loading state
-
-          // Refresh cancelled slots
-          const slotsRes = await fetch(`/api/users/${userId}/cancelled-driving-lessons`);
-          if (slotsRes.ok) {
-            const slotsData = await slotsRes.json();
-            setCancelledSlots(slotsData.cancelledSlots || []);
-          }
-
-          // El modal se cierra automáticamente al completar las operaciones
-          return;
-        } else {
-          const error = await res.json();
-          throw new Error(error.error || 'Failed to redeem slot');
-        }
-      } catch (error) {
-        console.error('❌ [DRIVING LESSONS] Error redeeming slot:', error);
-        
-        // Revertir el estado visual si falló la redención
-        if (selectedInstructorForSchedule) {
-          setInstructors(prevInstructors => {
-            return prevInstructors.map(instructor => {
-              if (instructor._id === selectedInstructorForSchedule._id && instructor.schedule_driving_lesson) {
-                const revertedSchedule = instructor.schedule_driving_lesson.map(slot => {
-                  const slotKey = `${slot.date}-${slot.start}-${slot.end}`;
-                  if (selectedSlots.has(slotKey) && slot.status === 'pending' && slot.studentId === userId) {
-                    return {
-                      ...slot,
-                      status: 'available' as const,
-                      studentId: undefined,
-                      studentName: undefined
-                    };
-                  }
-                  return slot;
-                });
-                
-                return {
-                  ...instructor,
-                  schedule_driving_lesson: revertedSchedule
-                };
-              }
-              return instructor;
-            });
-          });
-        }
-        
-        setIsProcessingSlots(false); // Stop loading state on error
-        
-        // Solo cerrar el modal sin mostrar mensaje
-        return;
-      } finally {
-        setIsProcessingSlots(false); // Always stop loading state
-      }
     }
 
     try {
@@ -1041,7 +796,6 @@ function DrivingLessonsContent() {
         onClose={() => setIsRequestModalOpen(false)}
         selectedProduct={selectedProduct}
         selectedHours={selectedHours}
-        cancelledSlots={cancelledSlots}
         onRequestSchedule={handleRequestScheduleWithLocations}
       />
 
@@ -1222,8 +976,7 @@ function DrivingLessonsContent() {
                 );
               } else {
                 setCancellationMessage(
-                  `Driving lesson cancelled successfully! You have been credited and can redeem this for a future lesson. ` +
-                  `Look for the "Redeem Credit" option when booking your next lesson.`
+                  `Driving lesson cancelled successfully!`
                 );
               }
               

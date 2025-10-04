@@ -458,22 +458,13 @@ function RegisterOnlineContent() {
         }),
       });
 
-      const data = await response.json();
-
       if (response.ok) {
         setShowRequestModal(false);
         setRequestedTicketClass(null);
-        setConfirmationMessage('Request cancelled successfully');
-        setShowConfirmation(true);
-        // The SSE will automatically update the UI
-      } else {
-        setConfirmationMessage(data.error || 'Failed to cancel request');
-        setShowConfirmation(true);
+        // The SSE will automatically update the UI - no confirmation modal needed
       }
     } catch (error) {
       console.error('Error cancelling request:', error);
-      setConfirmationMessage('An error occurred while cancelling request');
-      setShowConfirmation(true);
     }
   };
 
@@ -1165,50 +1156,23 @@ function RegisterOnlineContent() {
                 </div>
               )}
 
-              {/* Cancellation Policy Information */}
-              {cancellationData === null ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin h-8 w-8 border-4 border-red-500 border-t-transparent rounded-full"></div>
-                  <span className="ml-3 text-gray-600">Checking cancellation policy...</span>
-                </div>
-              ) : cancellationData.requiresPayment ? (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start">
-                    <svg className="h-6 w-6 text-orange-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div className="w-full">
-                      <h3 className="text-orange-800 font-semibold mb-1">Cancellation Fee Required</h3>
-                      <p className="text-orange-700 text-sm mb-2">
-                        Cancellation within 48 hours requires a <strong className="text-orange-900">${cancellationData.cancellationFee}.00 USD</strong> fee
-                      </p>
-                      <p className="text-orange-600 text-xs">
-                        After payment, you'll receive credit to redeem for any future class.
-                      </p>
-                    </div>
+              {/* Simple Cancellation Confirmation - NO FEES for Ticket Classes */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-start">
+                  <svg className="h-6 w-6 text-blue-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 className="text-blue-800 font-semibold mb-1">Cancel Class</h3>
+                    <p className="text-blue-700 text-sm">
+                      Are you sure you want to cancel this class?
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start">
-                    <svg className="h-6 w-6 text-green-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <h3 className="text-green-800 font-semibold mb-1">Free Cancellation</h3>
-                      <p className="text-green-700 text-sm">
-                        Your class is more than 48 hours away. You can cancel without any charges and receive credit for a future class.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
 
               <p className="text-gray-600 text-sm text-center mb-4">
-                {cancellationData?.requiresPayment
-                  ? `You will be charged $${cancellationData.cancellationFee}.00 to cancel this class.`
-                  : 'Are you sure you want to cancel this class?'
-                }
+                This action cannot be undone.
               </p>
 
               {/* Action Buttons */}
@@ -1219,22 +1183,14 @@ function RegisterOnlineContent() {
                     setShowUnbookConfirm(false);
                     setCancellationData(null);
                   }}
-                  disabled={cancellationData === null}
                 >
                   Keep Class
                 </button>
                 <button
-                  className={`flex-1 px-6 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${
-                    cancellationData === null
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : cancellationData.requiresPayment
-                        ? 'bg-orange-500 text-white hover:bg-orange-600'
-                        : 'bg-red-500 text-white hover:bg-red-600'
-                  }`}
-                  disabled={cancellationData === null}
+                  className="flex-1 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-all duration-200 font-medium text-sm"
                   onClick={handleUnbookClass}
                 >
-                  {cancellationData?.requiresPayment ? 'Pay & Cancel' : 'Yes, Cancel Class'}
+                  Yes, Cancel Class
                 </button>
               </div>
             </div>
@@ -1280,46 +1236,57 @@ function RegisterOnlineContent() {
                 </svg>
               </button>
 
-              <div className="p-6 text-center w-full">
-                <div className="mb-4 mt-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="p-6 text-black">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-3">
                     <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-                  <h2 className="text-lg font-semibold mb-3 text-green-600">Request Submitted Successfully!</h2>
-          </div>
-          
-          {requestedTicketClass && (
-                <div className="bg-green-50 p-3 rounded mb-3 text-left text-sm">
-                  <p className="mb-1"><strong>Class:</strong> {requestedTicketClass.classInfo?.title || getClassTypeDisplay(requestedTicketClass.type)}</p>
-                  <p className="mb-1"><strong>Date:</strong> {formatDateForDisplay(requestedTicketClass.date)}</p>
-                  <p className="mb-1"><strong>Time:</strong> {formatTime(requestedTicketClass.hour)} - {formatTime(requestedTicketClass.endHour)}</p>
-            </div>
-          )}
-          
-              <div className="bg-blue-50 p-3 rounded mb-4">
-                <p className="text-blue-800 text-sm font-medium mb-1">To complete enrollment, contact:</p>
-                <p className="text-lg font-bold text-blue-900">(561) 330-7007</p>
-          </div>
-          
-              <p className="text-gray-600 mb-4 text-sm">Your request is pending approval. Our team will contact you soon.</p>
-          
-              <div className="flex justify-center gap-2">
-            <button
-                  className="bg-red-500 text-white px-4 py-1.5 rounded text-sm hover:bg-red-600"
-              onClick={handleCancelRequest}
-            >
-              Cancel Request
-            </button>
-            <button
-                  className="bg-green-500 text-white px-4 py-1.5 rounded text-sm hover:bg-green-600"
-              onClick={() => setShowRequestModal(false)}
-            >
-              OK
-            </button>
-          </div>
-        </div>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </div>
+                  <h2 className="text-xl font-bold text-green-600">Request Submitted Successfully!</h2>
+                </div>
+
+                {requestedTicketClass && (
+                  <div className="bg-green-50 p-4 rounded-lg mb-4">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-600 text-xs mb-1">Class</p>
+                        <p className="font-semibold">{requestedTicketClass.classInfo?.title || getClassTypeDisplay(requestedTicketClass.type)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600 text-xs mb-1">Time</p>
+                        <p className="font-semibold">{formatTime(requestedTicketClass.hour)} - {formatTime(requestedTicketClass.endHour)}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-gray-600 text-xs mb-1">Date</p>
+                        <p className="font-semibold">{formatDateForDisplay(requestedTicketClass.date)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-blue-50 p-4 rounded-lg mb-4 text-center">
+                  <p className="text-blue-800 text-sm font-medium mb-2">To complete enrollment, contact:</p>
+                  <p className="text-2xl font-bold text-blue-900">(561) 330-7007</p>
+                </div>
+
+                <p className="text-gray-600 text-center mb-4 text-sm">Your request is pending approval. Our team will contact you soon.</p>
+
+                <div className="flex justify-center gap-3">
+                  <button
+                    className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600 transition-colors font-medium"
+                    onClick={handleCancelRequest}
+                  >
+                    Cancel Request
+                  </button>
+                  <button
+                    className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors font-medium"
+                    onClick={() => setShowRequestModal(false)}
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
           </div>
         </div>
       )}

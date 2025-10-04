@@ -91,16 +91,6 @@ export default function BookNowPage() {
   const { addToCart, cart } = useCart();
   const userId = user?._id || "";
 
-  // State for cancelled slots available for redemption
-  const [cancelledSlots, setCancelledSlots] = useState<{
-    slotId: string;
-    date: string;
-    start: string;
-    end: string;
-    amount: number;
-    instructorName: string;
-  }[]>([]);
-
   // Function to check if a slot is already in the cart - now supports slot ID check
   const isSlotInCart = (instructorId: string, date: string, start: string, end: string, slotId?: string) => {
     return cart.some(item => {
@@ -176,31 +166,6 @@ export default function BookNowPage() {
     fetchLocations();
   }, []);
 
-  // Fetch user's cancelled slots for redemption
-  useEffect(() => {
-    async function fetchCancelledSlots() {
-      if (!userId) {
-        setCancelledSlots([]);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/users/${userId}/cancelled-slots`);
-        if (!res.ok) {
-          console.error('Failed to fetch cancelled slots');
-          return;
-        }
-        const data = await res.json();
-        setCancelledSlots(data.cancelledSlots || []);
-        // console.log('✅ Fetched cancelled slots:', data.cancelledSlots?.length || 0);
-      } catch (error) {
-        console.error('❌ Error fetching cancelled slots:', error);
-      }
-    }
-
-    fetchCancelledSlots();
-  }, [userId]);
-
   // Process SSE schedule data
   useEffect(() => {
     if (!selectedInstructorId) {
@@ -213,9 +178,7 @@ export default function BookNowPage() {
 
       // Add timeout to prevent infinite loading
       const loadingTimeout = setTimeout(() => {
-        // console.log('⚠️ SSE loading timeout reached for instructor:', selectedInstructorId);
         setIsLoadingSchedule(false);
-        // Optional: show error message to user
       }, 10000); // 10 second timeout
 
       return () => clearTimeout(loadingTimeout);
@@ -625,15 +588,6 @@ export default function BookNowPage() {
                               className="border border-gray-300 py-1 bg-blue-500 text-white font-bold cursor-pointer hover:bg-blue-600 min-w-[80px] w-[80px]"
                               title="Click to cancel this booking"
                               onClick={() => {
-                                console.log('🎯 [CANCEL] Selected BOOKED slot to cancel:', {
-                                  slotId: slot._id,
-                                  status: slot.status,
-                                  date: dateString,
-                                  start: slot.start,
-                                  end: slot.end,
-                                  studentId: slot.studentId,
-                                  booked: slot.booked
-                                });
                                 setSlotToCancel({ dateString, slot });
                                 setShowCancelConfirm(true);
                               }}
@@ -681,7 +635,7 @@ export default function BookNowPage() {
     instructorName?: string,
     instructorId?: string
   } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor' | 'redeem'>('online');
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor'>('online');
   
   // Estados para el flujo de pago local
   const [showContactModal, setShowContactModal] = useState(false);
@@ -696,86 +650,6 @@ export default function BookNowPage() {
                 return;
               }
               if (!selectedSlot?.instructorId || !selectedSlot) return;
-
-              // REDEEM: Use cancelled slot to book new slot
-              if (paymentMethod === 'redeem') {
-                setIsProcessingBooking(true);
-                try {
-                  const res = await fetch('/api/booking/redeem-cancelled-slot', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      userId,
-                      instructorId: selectedSlot.instructorId,
-                      date: selectedSlot.date,
-                      start: selectedSlot.start,
-                      end: selectedSlot.end,
-                    }),
-                  });
-
-                  if (res.ok) {
-                    const data = await res.json();
-
-                    // Update local state immediately
-                    if (selectedInstructor?.schedule) {
-                      const updatedSchedule = selectedInstructor.schedule.map(day => {
-                        if (day.date === selectedSlot.date) {
-                          return {
-                            ...day,
-                            slots: day.slots.map(slot => {
-                              if (slot.start === selectedSlot.start && slot.end === selectedSlot.end) {
-                                return {
-                                  ...slot,
-                                  status: 'booked' as const,
-                                  studentId: userId,
-                                  booked: true,
-                                  paid: true
-                                };
-                              }
-                              return slot;
-                            })
-                          };
-                        }
-                        return day;
-                      });
-
-                      setSelectedInstructor({
-                        ...selectedInstructor,
-                        schedule: updatedSchedule
-                      });
-                    }
-
-                    // Refresh cancelled slots
-                    const slotsRes = await fetch(`/api/users/${userId}/cancelled-slots`);
-                    if (slotsRes.ok) {
-                      const slotsData = await slotsRes.json();
-                      setCancelledSlots(slotsData.cancelledSlots || []);
-                    }
-
-                    // Force refresh SSE
-                    if (forceRefresh) {
-                      forceRefresh();
-                    }
-
-                    setIsBookingModalOpen(false);
-                    setSelectedSlot(null);
-                    setIsProcessingBooking(false);
-
-                    // Show success message
-                    setCancellationMessage(`Successfully redeemed cancelled slot! Your driving test is now booked for ${selectedSlot.date} at ${selectedSlot.start}-${selectedSlot.end}. Remaining cancelled slots: ${data.remainingCancelledSlots}`);
-                    setShowCancellation(true);
-                  } else {
-                    const errorData = await res.json();
-                    setIsProcessingBooking(false);
-                    alert(`Could not redeem slot: ${errorData.error || 'Please try again.'}`);
-                  }
-                } catch (error) {
-                  console.error('❌ Error redeeming cancelled slot:', error);
-                  setIsProcessingBooking(false);
-                  alert('Error redeeming slot. Please try again.');
-                }
-                return;
-              }
 
               if (paymentMethod === 'online') {
         // PAGO ONLINE: Agregar al carrito directamente y marcar slot como pending
@@ -904,7 +778,6 @@ export default function BookNowPage() {
 
                   // Force refresh SSE to update calendar from server
                   if (forceRefresh) {
-                    // console.log("🔄 Forcing SSE refresh after local payment reservation");
                     forceRefresh();
                   }
 
@@ -933,7 +806,6 @@ export default function BookNowPage() {
         setPaymentMethod={setPaymentMethod}
         isProcessingBooking={isProcessingBooking}
         onConfirm={handleConfirm}
-        cancelledSlots={cancelledSlots}
       />
     );
   };
@@ -1319,15 +1191,6 @@ export default function BookNowPage() {
             if (paymentMethod) {
               if (paymentMethod === 'online') {
                 // PAID CANCELLATION - Pay Online: Create order and redirect to Stripe
-                console.log('💳 [PAID CANCEL] Creating cancellation order with slotId:', {
-                  slotId: slotToCancel.slot._id,
-                  status: slotToCancel.slot.status,
-                  date: slotToCancel.dateString,
-                  start: slotToCancel.slot.start,
-                  end: slotToCancel.slot.end,
-                  studentId: slotToCancel.slot.studentId
-                });
-                
                 const orderRes = await fetch('/api/booking/create-cancellation-order', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -1365,15 +1228,6 @@ export default function BookNowPage() {
             }
 
             // FREE CANCELLATION - Process immediately
-            console.log('🆓 [FREE CANCEL] Sending cancellation request with slotId:', {
-              slotId: slotToCancel.slot._id,
-              status: slotToCancel.slot.status,
-              date: slotToCancel.dateString,
-              start: slotToCancel.slot.start,
-              end: slotToCancel.slot.end,
-              studentId: slotToCancel.slot.studentId
-            });
-            
             const res = await fetch('/api/booking/cancel', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1451,15 +1305,7 @@ export default function BookNowPage() {
                 });
               }
 
-              // Refresh cancelled slots to update counter
-              const slotsRes = await fetch(`/api/users/${userId}/cancelled-slots`);
-              if (slotsRes.ok) {
-                const slotsData = await slotsRes.json();
-                setCancelledSlots(slotsData.cancelledSlots || []);
-              }
-
               // Force refresh SSE to update calendar from server
-              // console.log("🔄 Forcing SSE refresh after cancellation");
               if (forceRefresh) {
                 forceRefresh();
               }

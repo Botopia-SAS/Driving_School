@@ -26,15 +26,7 @@ interface RequestModalProps {
   onClose: () => void;
   selectedProduct: Product | null;
   selectedHours: number;
-  cancelledSlots?: { 
-    slotId: string; 
-    date: string; 
-    start: string; 
-    end: string; 
-    cancelledAt: string; 
-    duration?: number;
-  }[];
-  onRequestSchedule: (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local' | 'redeem') => Promise<void>;
+  onRequestSchedule: (pickupLocation: string, dropoffLocation: string, paymentMethod: 'online' | 'local') => Promise<void>;
 }
 
 export default function RequestModal({
@@ -42,43 +34,21 @@ export default function RequestModal({
   onClose,
   selectedProduct,
   selectedHours,
-  cancelledSlots = [],
   onRequestSchedule
 }: RequestModalProps) {
   // Google Maps states
   const [pickupLocation, setPickupLocation] = useState<string>("");
   const [dropoffLocation, setDropoffLocation] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'local' | 'redeem'>('online');
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'local'>('online');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Calculate current package duration for filtering cancelled slots
-  const currentPackageDuration = selectedProduct?.duration || selectedHours;
-  
-  // Filter cancelled slots to only show ones matching current package duration
-  const availableCreditsForDuration = cancelledSlots?.filter(slot => {
-    // Calculate slot duration from start/end times if duration not provided directly
-    if ('duration' in slot) {
-      return slot.duration === currentPackageDuration;
-    }
-    
-    if (!slot.start || !slot.end) return false;
-    const [startHour, startMin] = slot.start.split(':').map(Number);
-    const [endHour, endMin] = slot.end.split(':').map(Number);
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    const slotDuration = (endMinutes - startMinutes) / 60;
-    return slotDuration === currentPackageDuration;
-  }) || [];
-  
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setTermsAccepted(false);
-      console.log('🎯 [REQUEST MODAL] Modal opened with cancelled slots:', cancelledSlots);
-      console.log('🎯 [REQUEST MODAL] Cancelled slots count:', cancelledSlots?.length || 0);
     }
-  }, [isOpen, cancelledSlots]);
+  }, [isOpen]);
   const pickupAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const dropoffAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   
@@ -180,7 +150,7 @@ export default function RequestModal({
                 type="radio"
                 value="online"
                 checked={paymentMethod === 'online'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local' | 'redeem')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local')}
                 className="mr-2 text-green-600 focus:ring-green-500"
               />
               <div>
@@ -188,13 +158,13 @@ export default function RequestModal({
                 <div className="text-xs text-gray-600">Add to cart and pay securely online</div>
               </div>
             </label>
-            
+
             <label className="flex items-center p-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer">
               <input
                 type="radio"
                 value="local"
                 checked={paymentMethod === 'local'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local' | 'redeem')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local')}
                 className="mr-2 text-blue-600 focus:ring-blue-500"
               />
               <div>
@@ -202,25 +172,6 @@ export default function RequestModal({
                 <div className="text-xs text-gray-600">Complete payment when you arrive</div>
               </div>
             </label>
-            
-            {/* Redeem Credit Option - Only show if user has credits for this duration */}
-            {availableCreditsForDuration && availableCreditsForDuration.length > 0 && (
-              <label className="flex items-center p-2 border border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all cursor-pointer">
-                <input
-                  type="radio"
-                  value="redeem"
-                  checked={paymentMethod === 'redeem'}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'local' | 'redeem')}
-                  className="mr-2 text-purple-600 focus:ring-purple-500"
-                />
-                <div>
-                  <div className="font-semibold text-purple-600 text-xs">
-                    Redeem Credit ({availableCreditsForDuration.length} available for {currentPackageDuration}h)
-                  </div>
-                  <div className="text-xs text-gray-600">Use a cancelled lesson credit at no charge</div>
-                </div>
-              </label>
-            )}
           </div>
         </div>
 
@@ -286,11 +237,9 @@ export default function RequestModal({
           <button
             className={`px-4 py-1.5 rounded-lg font-semibold transition-colors text-xs min-w-[120px] ${
               pickupLocation.trim() && dropoffLocation.trim() && termsAccepted && !isLoading
-                ? paymentMethod === 'online' 
+                ? paymentMethod === 'online'
                   ? "bg-green-600 text-white hover:bg-green-700"
-                  : paymentMethod === 'redeem'
-                    ? "bg-purple-600 text-white hover:bg-purple-700"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
             onClick={handleRequestSchedule}
@@ -302,11 +251,9 @@ export default function RequestModal({
                 Processing...
               </div>
             ) : (
-              paymentMethod === 'online' 
-                ? 'Add to Cart & Checkout' 
-                : paymentMethod === 'redeem'
-                  ? 'Redeem Credit & Book'
-                  : 'Request Schedule'
+              paymentMethod === 'online'
+                ? 'Add to Cart & Checkout'
+                : 'Request Schedule'
             )}
           </button>
         </div>

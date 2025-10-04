@@ -5,17 +5,6 @@ import Modal from "@/components/Modal";
 import { formatDateForDisplay } from "@/utils/dateFormat";
 import TermsCheckbox from "@/components/TermsCheckbox";
 
-interface CancelledTicketClass {
-  ticketClassId: string;
-  className: string;
-  locationId: string;
-  date: string;
-  hour: string;
-  duration: string;
-  cancelledAt: Date;
-  redeemed: boolean;
-}
-
 interface TicketClassBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -34,8 +23,8 @@ interface TicketClassBookingModalProps {
     };
   } | null;
   classPrice: number | null;
-  paymentMethod: 'online' | 'instructor' | 'redeem';
-  setPaymentMethod: (method: 'online' | 'instructor' | 'redeem') => void;
+  paymentMethod: 'online' | 'instructor';
+  setPaymentMethod: (method: 'online' | 'instructor') => void;
   isOnlinePaymentLoading: boolean;
   isProcessingBooking: boolean;
   onConfirm: () => void;
@@ -55,40 +44,15 @@ export default function TicketClassBookingModal({
   userId
 }: TicketClassBookingModalProps) {
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [cancelledClasses, setCancelledClasses] = useState<CancelledTicketClass[]>([]);
-  const [loadingCancelled, setLoadingCancelled] = useState(false);
 
-  // Load cancelled classes when modal opens
+  // Reset terms when modal opens
   useEffect(() => {
-    if (isOpen && userId) {
+    if (isOpen) {
       setTermsAccepted(false);
-      loadCancelledClasses();
     }
-  }, [isOpen, userId]);
-
-  const loadCancelledClasses = async () => {
-    if (!userId) return;
-
-    setLoadingCancelled(true);
-    try {
-      const response = await fetch(`/api/users/${userId}`);
-      if (response.ok) {
-        const userData = await response.json();
-        const unredeemed = userData.user?.ticketclass_cancelled?.filter(
-          (tc: CancelledTicketClass) => !tc.redeemed
-        ) || [];
-        setCancelledClasses(unredeemed);
-      }
-    } catch (error) {
-      console.error('Error loading cancelled classes:', error);
-    } finally {
-      setLoadingCancelled(false);
-    }
-  };
+  }, [isOpen]);
 
   if (!selectedTicketClass) return null;
-
-  const hasUnredeemedClasses = cancelledClasses.length > 0;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -96,35 +60,35 @@ export default function TicketClassBookingModal({
         <h2 className="text-xl font-bold mb-4 text-blue-600">Book Class</h2>
         
         <div className="bg-blue-50 p-4 rounded-lg mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
             <div>
-              <p className="mb-2">
-                <strong>Class:</strong> {selectedTicketClass.classInfo?.title || 'Unknown Class'}
-              </p>
-              <p className="mb-2">
-                <strong>Instructor:</strong> {selectedTicketClass.instructorInfo?.name || 'TBD'}
-              </p>
-              <p className="mb-2">
-                <strong>Date:</strong> {formatDateForDisplay(selectedTicketClass.date)}
-              </p>
-              <p className="mb-2">
-                <strong>Time:</strong> {selectedTicketClass.hour} - {selectedTicketClass.endHour}
-              </p>
-              <p className="mb-2">
-                <strong>Price:</strong> <span className="text-green-600 font-bold">${classPrice || 'TBD'}</span>
-              </p>
+              <p className="text-sm text-gray-600">Class</p>
+              <p className="font-semibold">{selectedTicketClass.classInfo?.title || 'Unknown Class'}</p>
             </div>
-            
+
             <div>
-              <p className="mb-2">
-                <strong>Duration:</strong> {selectedTicketClass.endHour && selectedTicketClass.hour ? 
-                  `${Math.abs(new Date(`2000-01-01T${selectedTicketClass.endHour}`).getTime() - new Date(`2000-01-01T${selectedTicketClass.hour}`).getTime()) / (1000 * 60 * 60)} hours` : 
+              <p className="text-sm text-gray-600">Duration</p>
+              <p className="font-semibold">
+                {selectedTicketClass.endHour && selectedTicketClass.hour ?
+                  `${Math.abs(new Date(`2000-01-01T${selectedTicketClass.endHour}`).getTime() - new Date(`2000-01-01T${selectedTicketClass.hour}`).getTime()) / (1000 * 60 * 60)} hours` :
                   'TBD'
                 }
               </p>
-              <p className="text-sm text-blue-600">
-                <strong>Class Type:</strong> Ticket Class
-              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-600">Date</p>
+              <p className="font-semibold">{formatDateForDisplay(selectedTicketClass.date)}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-600">Time</p>
+              <p className="font-semibold">{selectedTicketClass.hour} - {selectedTicketClass.endHour}</p>
+            </div>
+
+            <div className="col-span-2">
+              <p className="text-sm text-gray-600">Price</p>
+              <p className="text-green-600 font-bold text-lg">${classPrice || 'TBD'}</p>
             </div>
           </div>
         </div>
@@ -139,7 +103,7 @@ export default function TicketClassBookingModal({
                 name="paymentMethod"
                 value="online"
                 checked={paymentMethod === 'online'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor')}
                 className="mr-2"
               />
               <span className="text-green-600 font-medium">Add to Cart</span>
@@ -151,29 +115,12 @@ export default function TicketClassBookingModal({
                 name="paymentMethod"
                 value="instructor"
                 checked={paymentMethod === 'instructor'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor')}
                 className="mr-2"
               />
               <span className="text-blue-600 font-medium">Pay at Location</span>
               <span className="text-sm text-gray-500 ml-2">(Pay when you arrive)</span>
             </label>
-            {hasUnredeemedClasses && (
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="redeem"
-                  checked={paymentMethod === 'redeem'}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
-                  className="mr-2"
-                />
-                <span className="text-purple-600 font-medium">Redeem Cancelled Class</span>
-                <span className="text-sm text-gray-500 ml-2">({cancelledClasses.length} available)</span>
-              </label>
-            )}
-            {loadingCancelled && (
-              <p className="text-sm text-gray-500 italic">Loading cancelled classes...</p>
-            )}
           </div>
         </div>
 
@@ -201,8 +148,6 @@ export default function TicketClassBookingModal({
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : paymentMethod === 'online'
                 ? 'bg-green-500 hover:bg-green-600 text-white'
-                : paymentMethod === 'redeem'
-                ? 'bg-purple-500 hover:bg-purple-600 text-white'
                 : 'bg-blue-500 hover:bg-blue-600 text-white'
             }`}
             onClick={onConfirm}
@@ -220,8 +165,6 @@ export default function TicketClassBookingModal({
               </span>
             ) : paymentMethod === 'online' ? (
               'Add to Cart'
-            ) : paymentMethod === 'redeem' ? (
-              'Redeem & Book'
             ) : (
               'Reserve & Pay Later'
             )}
