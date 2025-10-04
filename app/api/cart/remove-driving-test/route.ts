@@ -140,23 +140,34 @@ export async function POST(req: NextRequest) {
     // Save cart using findByIdAndUpdate
     await User.findByIdAndUpdate(userId, { cart: user.cart }, { runValidators: false });
 
-    // Free the slot - set status back to available and clean student info
-    // For driving test, only keep essential fields
-    const slotRecord = slot as Record<string, unknown>;
-    slotRecord.status = 'available';
-    slotRecord.studentId = null;
-    slotRecord.studentName = null;
-    slotRecord.paid = false;
+    // ⚠️ CRITICAL: Only free the slot if it's NOT already booked and paid
+    // If the slot is already 'booked' and paid=true, DON'T free it!
+    const slotWithPaid = slot as { status: string; paid?: boolean; [key: string]: unknown };
+    console.log(`🔍 [REMOVE DRIVING TEST] Slot current status: ${slot.status}, paid: ${slotWithPaid.paid}`);
+    
+    if (slot.status === 'booked' && slotWithPaid.paid === true) {
+      console.log(`🚫 [REMOVE DRIVING TEST] Slot is already BOOKED and PAID - NOT freeing it!`);
+      // Don't free the slot - it's already confirmed and paid
+    } else {
+      console.log(`✅ [REMOVE DRIVING TEST] Freeing slot - status: ${slot.status}, paid: ${slotWithPaid.paid}`);
+      // Free the slot - set status back to available and clean student info
+      // For driving test, only keep essential fields
+      const slotRecord = slot as Record<string, unknown>;
+      slotRecord.status = 'available';
+      slotRecord.studentId = null;
+      slotRecord.studentName = null;
+      slotRecord.paid = false;
 
-    // DELETE fields that don't belong to driving test slots
-    delete slotRecord.booked;
-    delete slotRecord.reservedAt;
-    delete slotRecord.paymentMethod;
-    delete slotRecord.orderId;
-    delete slotRecord.orderNumber;
-    delete slotRecord.pickupLocation;
-    delete slotRecord.dropoffLocation;
-    delete slotRecord.selectedProduct;
+      // DELETE fields that don't belong to driving test slots
+      delete slotRecord.booked;
+      delete slotRecord.reservedAt;
+      delete slotRecord.paymentMethod;
+      delete slotRecord.orderId;
+      delete slotRecord.orderNumber;
+      delete slotRecord.pickupLocation;
+      delete slotRecord.dropoffLocation;
+      delete slotRecord.selectedProduct;
+    }
     
     await instructor.save();
 

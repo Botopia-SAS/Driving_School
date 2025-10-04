@@ -388,6 +388,10 @@ export const usePaymentSuccess = () => {
                         slotsUpdated: true
                       });
 
+                      // ⏰ Wait a moment for database operations to complete before clearing cart
+                      console.log("⏰ Waiting 2 seconds to ensure all slot updates are saved...");
+                      await new Promise(resolve => setTimeout(resolve, 2000));
+
                       // Limpiar carrito
                       clearCart();
                       await clearCartCompletely();
@@ -660,6 +664,10 @@ export const usePaymentSuccess = () => {
                   
                   if (allProcessed) {
                     console.log(`✅ ALL APPOINTMENTS PROCESSED SUCCESSFULLY - Now clearing cart`);
+                    
+                    // ⏰ Wait a moment for database operations to complete before clearing cart
+                    console.log("⏰ Waiting 2 seconds to ensure all slot updates are saved...");
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                     
                     // ✅ AFTER slots are updated to 'booked', now clear cart
                     // The cart clearing logic will skip slots that are already 'booked'
