@@ -19,8 +19,8 @@ export async function GET(
       );
     }
 
-    const location = await Location.findById(id).lean();
-    
+    const location = await Location.findById(id).populate('instructors').lean();
+
     if (!location) {
       return NextResponse.json(
         { error: "Location not found" },

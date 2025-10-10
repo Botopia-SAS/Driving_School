@@ -43,49 +43,17 @@ const LocationDetailPage: React.FC = () => {
       .catch((err) => console.error("Error loading phone:", err));
   }, []);
 
-  const fetchInstructorsDetails = async (instructorIds: string[]) => {
-    if (!instructorIds || instructorIds.length === 0) {
-      return [];
-    }
-
-    try {
-      const instructorDetails = await Promise.all(
-        instructorIds.map(async (id) => {
-          const res = await fetch(`/api/instructors/${id}`);
-
-          if (!res.ok) {
-            return { _id: id, name: "Unknown Instructor", photo: "/default-avatar.png" };
-          }
-
-          const contentType = res.headers.get("content-type");
-          if (!contentType || !contentType.includes("application/json")) {
-            return { _id: id, name: "Unknown Instructor", photo: "/default-avatar.png" };
-          }
-
-          return await res.json();
-        })
-      );
-
-      return instructorDetails;
-    } catch (error) {
-      console.error("❌ Error fetching instructors:", error);
-      return [];
-    }
-  };
-
   useEffect(() => {
     const fetchLocationDetail = async () => {
       try {
         const res = await fetch(`/api/locations/${id}`);
         const data = await res.json();
 
-        if (data.instructors && data.instructors.length > 0) {
-          const instructorIds = data.instructors.map((instructor: Instructor) => instructor._id);
-          const instructorsData = await fetchInstructorsDetails(instructorIds);
-          setLocationData({ ...data, instructorsDetails: instructorsData });
-        } else {
-          setLocationData({ ...data, instructorsDetails: [] });
-        }
+        console.log("📍 Location data:", data);
+        console.log("📍 Instructors:", data.instructors);
+
+        // Los instructores ya vienen populados desde la API
+        setLocationData({ ...data, instructorsDetails: data.instructors || [] });
       } catch (error) {
         console.error("❌ Error fetching location details:", error);
       } finally {
