@@ -5,6 +5,44 @@ import React from "react";
 const Termspage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-10">
+      <button
+        onClick={() => window.close()}
+        style={{
+          position: "fixed",
+          top: 16,
+          left: 16,
+          zIndex: 1000,
+          padding: "8px 18px 8px 12px",
+          background: "#fff",
+          border: "2px solid #27ae60",
+          borderRadius: 6,
+          cursor: "pointer",
+          color: "#27ae60",
+          fontWeight: 600,
+          fontSize: 16,
+          display: "flex",
+          alignItems: "center",
+          boxShadow: "0 2px 8px 0 rgba(39,174,96,0.08)",
+        }}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 20 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ marginRight: 8 }}
+        >
+          <path
+            d="M12.5 15L8 10L12.5 5"
+            stroke="#27ae60"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Back
+      </button>
       <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-5xl border border-gray-300 text-black mt-28">
         <h1 className="text-5xl font-extrabold text-[#222] leading-tight">
           <span className="text-[#0056b3]">TERMS OF</span>
@@ -12,9 +50,9 @@ const Termspage = () => {
         </h1>
 
         <p className="mb-4 mt-8">
-          By using this website (&quot;Service&quot;) you are agreeing to be bound by the
-          following terms and conditions (&quot;Terms of Service&quot;) with Affordable
-          Driving Traffic School - EIN 00..
+          By using this website (&quot;Service&quot;) you are agreeing to be
+          bound by the following terms and conditions (&quot;Terms of
+          Service&quot;) with Affordable Driving Traffic School - EIN 00..
         </p>
         <p className="mb-4">
           Affordable Driving Traffic School reserves the right to update and
@@ -63,11 +101,11 @@ const Termspage = () => {
         </p>
         <p className="mb-4">
           We teach students defensive driving. Their ability to learn within one
-          of our driving test may vary depending on the student's abilities. It is
-          understood that upon the signing of this contract, the lessons for our
-          driving test must be completed within 60 days. <br /> Safety is essential!
-          Therefore, freeway driving is not mandatory and is at the instructor's
-          discretion.
+          of our driving test may vary depending on the student's abilities. It
+          is understood that upon the signing of this contract, the lessons for
+          our driving test must be completed within 60 days. <br /> Safety is
+          essential! Therefore, freeway driving is not mandatory and is at the
+          instructor's discretion.
           <br /> There will not be any mobile phone usage or texting while
           student is in control of the car, including stopped at traffic lights.
           <br />
@@ -122,8 +160,8 @@ const Termspage = () => {
         </p>
         <ul className="list-disc ml-6">
           <li>
-            Accounts registered by &quot;bots&quot; or other automated methods are not
-            permitted and will be removed.
+            Accounts registered by &quot;bots&quot; or other automated methods
+            are not permitted and will be removed.
           </li>
           <li>
             You are responsible for all activity that occurs from your account.

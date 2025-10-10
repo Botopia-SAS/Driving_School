@@ -1,8 +1,47 @@
+"use client";
 import React from "react";
 
 const Policypage = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-6 py-12">
+      <button
+        onClick={() => window.close()}
+        style={{
+          position: "fixed",
+          top: 16,
+          left: 16,
+          zIndex: 1000,
+          padding: "8px 18px 8px 12px",
+          background: "#fff",
+          border: "2px solid #27ae60",
+          borderRadius: 6,
+          cursor: "pointer",
+          color: "#27ae60",
+          fontWeight: 600,
+          fontSize: 16,
+          display: "flex",
+          alignItems: "center",
+          boxShadow: "0 2px 8px 0 rgba(39,174,96,0.08)",
+        }}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 20 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ marginRight: 8 }}
+        >
+          <path
+            d="M12.5 15L8 10L12.5 5"
+            stroke="#27ae60"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Back
+      </button>
       <div className="bg-white shadow-md rounded-lg p-8 max-w-4xl w-full border border-gray-300 mt-28">
         <h1 className="text-5xl font-extrabold text-[#222] leading-tight">
           <span className="text-[#27ae60]">PRIVACY</span>
