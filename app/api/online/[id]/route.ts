@@ -4,12 +4,12 @@ import OnlineCourses from "@/models/OnlineCourses";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-
-    const course = await OnlineCourses.findById(params.id);
+    const { id } = await params;
+    const course = await OnlineCourses.findById(id);
 
     if (!course) {
       return NextResponse.json(

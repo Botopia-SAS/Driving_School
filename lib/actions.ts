@@ -45,7 +45,7 @@ export function useHandleAction() {
       const responseData = await res.json();
 
       if (responseData.url) {
-        // ✅ Redirigir directamente a Stripe Checkout
+  // Stripe Checkout eliminado
         window.location.href = responseData.url;
       } else {
         console.error("❌ Error creando la sesión de Checkout:", responseData);
