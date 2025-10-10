@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { FaTimes } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 
 const ClassesPage: React.FC = () => {
@@ -24,7 +23,6 @@ const ClassesPage: React.FC = () => {
 
   const [classList, setClassList] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -107,7 +105,7 @@ const ClassesPage: React.FC = () => {
                 <div className="px-6 pb-6 flex flex-col gap-3">
                   {/* 📌 BOTÓN "VIEW MORE" (Blanco con borde azul y letra azul) */}
                   <button
-                    onClick={() => setSelectedClass(cls)}
+                    onClick={() => router.push(`/Classes/${cls._id}`)}
                     className="w-full border-2 border-[#0056b3] text-[#0056b3] font-semibold py-2 rounded-lg hover:bg-[#0056b3] hover:text-white transition duration-300 shadow-sm"
                   >
                     View More
@@ -128,83 +126,6 @@ const ClassesPage: React.FC = () => {
           !loading && <p className="text-center text-gray-500 text-lg">No classes available.</p>
         )}
       </div>
-
-      {/* 📌 POPUP DETALLE DE LA CLASE */}
-      {selectedClass && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <motion.div
-            className="bg-white p-10 rounded-lg shadow-2xl w-full max-w-4xl relative max-h-[90vh] overflow-y-auto"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
-              onClick={() => setSelectedClass(null)}
-            >
-              <FaTimes size={24} />
-            </button>
-
-            {/* 📌 IMAGEN EN EL POPUP */}
-            {selectedClass.image && (
-              <Image
-                src={selectedClass.image}
-                alt={selectedClass.title}
-                width={600}
-                height={300}
-                className="rounded-lg object-cover w-full mb-4"
-              />
-            )}
-
-            <h2 className="text-2xl font-bold text-gray-900">{selectedClass.title}</h2>
-
-            {/* 📌 TAMBIÉN CONOCIDO COMO */}
-            {(selectedClass.alsoKnownAs?.length ?? 0) > 0 && (
-              <div className="mb-4 mt-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Also known as:</h3>
-                <ul className="list-disc pl-5 text-gray-700">
-                  {selectedClass.alsoKnownAs?.map((item, index) => (
-                    <li key={index} className="mb-1">{item}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <p className="text-lg text-gray-700 mt-2 leading-relaxed">{selectedClass.overview}</p>
-
-            {/* 📌 PRECIO Y DURACIÓN */}
-            <div className="flex gap-4 mt-4">
-              {selectedClass.price && (
-                <span className="text-lg font-semibold text-green-600">Price: ${selectedClass.price}</span>
-              )}
-              {selectedClass.length && (
-                <span className="text-lg font-semibold text-blue-600">Duration: {selectedClass.length} hours</span>
-              )}
-            </div>
-
-            {/* 📌 UPCOMING SECTION */}
-            {selectedClass.contact && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-lg text-gray-700 leading-relaxed">
-                  📆 <strong>Upcoming {selectedClass.title}:</strong>
-                  <br />
-                  <span className="text-xl font-bold text-blue-600">{selectedClass.contact}</span>
-                </p>
-              </div>
-            )}
-
-            <div className="mt-6">
-              {/* 📌 BOTÓN DE ACCIÓN (Azul - Full Width) */}
-              <button
-                onClick={() => router.push(`/register-online?classId=${selectedClass._id}`)}
-                className="w-full bg-[#0056b3] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#004494] transition text-center"
-              >
-                Register Now
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </section>
   );
 };

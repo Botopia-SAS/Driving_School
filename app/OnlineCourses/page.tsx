@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { FaTimes } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 const OnlineCoursesPage: React.FC = () => {
+  const router = useRouter();
+
   interface Course {
     _id: string;
     image?: string;
@@ -16,7 +18,6 @@ const OnlineCoursesPage: React.FC = () => {
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -96,7 +97,7 @@ const OnlineCoursesPage: React.FC = () => {
                 <div className="px-6 pb-6 flex flex-col gap-3">
                   {/* 📌 BOTÓN "VIEW MORE" (Blanco con borde azul y letra azul) */}
                   <button
-                    onClick={() => setSelectedCourse(course)}
+                    onClick={() => router.push(`/OnlineCourses/${course._id}`)}
                     className="w-full border-2 border-[#0056b3] text-[#0056b3] font-semibold py-2 rounded-lg hover:bg-[#0056b3] hover:text-white transition duration-300 shadow-sm"
                   >
                     View More
@@ -123,63 +124,6 @@ const OnlineCoursesPage: React.FC = () => {
           !loading && <p className="text-center text-gray-500 text-lg">No courses available.</p>
         )}
       </div>
-
-      {/* 📌 POPUP DETALLE DEL CURSO */}
-      {selectedCourse && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <motion.div
-            className="bg-white p-10 rounded-lg shadow-2xl w-full max-w-2xl relative"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
-              onClick={() => setSelectedCourse(null)}
-            >
-              <FaTimes size={24} />
-            </button>
-
-            {/* 📌 IMAGEN EN EL POPUP */}
-            {selectedCourse.image && (
-              <Image
-                src={selectedCourse.image}
-                alt={selectedCourse.title}
-                width={600}
-                height={300}
-                className="rounded-lg object-cover w-full mb-4"
-              />
-            )}
-
-            <h2 className="text-2xl font-bold text-gray-900">{selectedCourse.title}</h2>
-            <p className="text-lg text-gray-700 mt-2 leading-relaxed">{selectedCourse.description}</p>
-
-            <div className="flex justify-between mt-6">
-              {/* 📌 VER DETALLES (Blanco con borde azul y letra azul) */}
-              <a
-                href="/Classes"
-                className="border-2 border-[#0056b3] text-[#0056b3] font-semibold px-6 py-3 rounded-lg hover:bg-[#0056b3] hover:text-white transition text-center"
-              >
-                View Details
-              </a>
-
-              {/* 📌 BOTÓN DE ACCIÓN (Azul) */}
-              <a
-                href={
-                  selectedCourse.buttonLabel === "Start Course"
-                    ? "https://home.uceusa.com/registration/StudentInfo.aspx?cid=3&host=adtrafficschool.com&pid=328&language=en&g=fac80251-e113-4906-8d99-c77d4e8cad51"
-                    : "/Location"
-                }
-                target={selectedCourse.buttonLabel === "Start Course" ? "_blank" : "_self"}
-                rel="noopener noreferrer"
-                className="bg-[#0056b3] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#004494] transition text-center"
-              >
-                {selectedCourse.buttonLabel || "Start Course"}
-              </a>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </section>
   );
 };
