@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       start(controller) {
         let isClosed = false;
         let client: any = null;
-        
+
         const closeConnection = () => {
           if (!isClosed) {
             isClosed = true;
@@ -43,35 +43,38 @@ export async function GET(request: Request) {
           addClient(client);
 
           // Enviar un evento inicial
-          controller.enqueue(`data: ${JSON.stringify({ type: "init", cart: [] })}\n\n`);
+          controller.enqueue(
+            `data: ${JSON.stringify({ type: "init", cart: [] })}\n\n`
+          );
 
           // Limpiar al cerrar conexión - solo un event listener
-          request.signal.addEventListener("abort", closeConnection);
-
-          // Handle connection errors
-          request.signal.addEventListener("error", (error) => {
-            console.error("SSE connection error:", error);
+          request.signal.addEventListener("abort", () => {
+            // AbortSignal may carry a reason in newer runtimes
+            try {
+              const reason = (request.signal as any)?.reason;
+              if (reason)
+                console.log("SSE connection aborted, reason:", reason);
+            } catch {}
             closeConnection();
           });
-
         } catch (error) {
           console.error("Error in SSE stream setup:", error);
           closeConnection();
         }
-      }
+      },
     });
 
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Cache-Control"
-      }
+        "Access-Control-Allow-Headers": "Cache-Control",
+      },
     });
   } catch (error) {
     console.error("Error in cart updates SSE:", error);
     return new Response("Internal Server Error", { status: 500 });
   }
-} 
+}
