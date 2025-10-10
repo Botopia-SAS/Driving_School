@@ -105,6 +105,19 @@ function RegisterOnlineContent() {
   const { user, setUser } = useAuth();
   const { addToCart } = useCart();
   const userId = user?._id || "";
+  const [phoneNumber, setPhoneNumber] = useState("(561) 330-7007");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
 
   // Función para manejar el login exitoso
   const handleLoginSuccess = (loggedInUser: { _id: string; name: string; email: string }) => {
@@ -1300,7 +1313,7 @@ function RegisterOnlineContent() {
           
               <div className="bg-blue-50 p-3 rounded mb-4">
                 <p className="text-blue-800 text-sm font-medium mb-1">To complete enrollment, contact:</p>
-                <p className="text-lg font-bold text-blue-900">(561) 330-7007</p>
+                <p className="text-lg font-bold text-blue-900">{phoneNumber}</p>
           </div>
           
               <p className="text-gray-600 mb-4 text-sm">Your request is pending approval. Our team will contact you soon.</p>
@@ -1358,7 +1371,7 @@ function RegisterOnlineContent() {
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
               <h3 className="text-lg font-semibold text-yellow-800 mb-2">📞 Contact Information</h3>
-              <p className="text-yellow-700 text-lg font-bold">Call us at: (561) 330-7007</p>
+              <p className="text-yellow-700 text-lg font-bold">Call us at: {phoneNumber}</p>
               <p className="text-yellow-600 text-sm mt-2">
                 Please call to complete your payment and confirm your class enrollment.
               </p>

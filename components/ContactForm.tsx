@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 const ContactPage = () => {
@@ -18,6 +18,19 @@ const ContactPage = () => {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("(561) 969-0150");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
 
   // Check if all required fields are filled
   const isFormValid = () => {
@@ -364,7 +377,7 @@ const ContactPage = () => {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-lg">(561) 969-0150</p>
+                <p className="font-semibold text-lg">{phoneNumber}</p>
                 <p className="text-blue-100 text-sm">Primary Phone</p>
               </div>
             </div>

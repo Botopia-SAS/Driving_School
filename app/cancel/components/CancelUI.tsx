@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { CancelState } from "../hooks/useCancelPayment";
 
 interface CancelUIProps {
@@ -6,6 +6,20 @@ interface CancelUIProps {
 }
 
 export const CancelUI: React.FC<CancelUIProps> = ({ state }) => {
+  const [phoneNumber, setPhoneNumber] = useState("(561) 330-7007");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full">
@@ -138,7 +152,7 @@ export const CancelUI: React.FC<CancelUIProps> = ({ state }) => {
                   Please contact our support team:
                 </p>
                 <p className="text-sm font-bold text-red-800">
-                  📞 (561) 330-7007
+                  📞 {phoneNumber}
                 </p>
               </div>
 

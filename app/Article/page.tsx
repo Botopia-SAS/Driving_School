@@ -1,25 +1,39 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-// Simulación de artículos obtenidos dinámicamente
-const articles = [
-  {
-    id: 1,
-    title: "Information for Nervous Drivers and Parents",
-    author: "Nelson",
-    category: "Driving Lessons",
-    image: "/Articulos/Article1.png", // Cambia a la imagen correspondiente
-    link: "/Article/Information-for-Nervous-Drivers-and-Parents",
-    contact: "561 735 1615",
-    email: "info@drivingschoolpalmbeach.com",
-  },
-  // Puedes agregar más artículos aquí
-];
-
 const ArticlesPage = () => {
+  const [phoneNumber, setPhoneNumber] = useState("561 735 1615");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.displayNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
+
+  // Simulación de artículos obtenidos dinámicamente
+  const articles = [
+    {
+      id: 1,
+      title: "Information for Nervous Drivers and Parents",
+      author: "Nelson",
+      category: "Driving Lessons",
+      image: "/Articulos/Article1.png",
+      link: "/Article/Information-for-Nervous-Drivers-and-Parents",
+      contact: phoneNumber,
+      email: "info@drivingschoolpalmbeach.com",
+    },
+    // Puedes agregar más artículos aquí
+  ];
+
   return (
     <section className="bg-white min-h-screen pt-40 px-6 md:px-12 lg:px-24">
       <div className="max-w-7xl mx-auto">

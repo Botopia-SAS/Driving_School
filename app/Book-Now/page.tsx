@@ -90,6 +90,19 @@ export default function BookNowPage() {
   const { user, setUser } = useAuth();
   const { addToCart, cart } = useCart();
   const userId = user?._id || "";
+  const [phoneNumber, setPhoneNumber] = useState("(561) 330-7007");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
 
   // State for cancelled slots available for redemption
   const [cancelledSlots, setCancelledSlots] = useState<{
@@ -1232,7 +1245,7 @@ export default function BookNowPage() {
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
               <h3 className="text-lg font-semibold text-yellow-800 mb-2">📞 Contact Information</h3>
-              <p className="text-yellow-700 text-lg font-bold">Call us at: (561) 330-7007</p>
+              <p className="text-yellow-700 text-lg font-bold">Call us at: {phoneNumber}</p>
               <p className="text-yellow-600 text-sm mt-2">
                 Please call to complete your payment and confirm your driving test appointment.
               </p>

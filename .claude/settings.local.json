@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npm run build:*)",
       "Bash(curl:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npm run seed:phone:*)",
+      "Bash(npm run cleanup:phone:*)"
     ],
     "deny": [],
     "ask": []

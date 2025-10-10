@@ -12,22 +12,20 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, children
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 md:p-8"
       onClick={onClose}
       style={{
         margin: '0',
-        padding: '0',
         boxSizing: 'border-box'
       }}
     >
-      <div 
-        className="relative bg-white text-black rounded-2xl shadow-2xl border border-gray-300 max-h-[95vh] flex flex-col mx-4 sm:mx-6 md:mx-8"
+      <div
+        className="relative bg-white text-black rounded-3xl shadow-2xl border border-gray-300 max-h-[90vh] flex flex-col w-full"
         style={{
-          width: '95vw',
           maxWidth: '1200px',
           minWidth: '320px',
-          overflow: 'visible',
+          overflow: 'hidden',
           margin: '0',
           padding: '0',
           boxSizing: 'border-box'

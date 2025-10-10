@@ -51,6 +51,19 @@ export default function RequestModal({
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'local' | 'redeem'>('online');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("(561) 330-7007");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
 
   // Calculate current package duration for filtering cancelled slots
   const currentPackageDuration = selectedProduct?.duration || selectedHours;
@@ -258,7 +271,7 @@ export default function RequestModal({
           <div className="bg-white p-2 rounded-lg border border-blue-300">
             <div className="text-center">
               <p className="text-blue-800 font-semibold text-xs">
-                Call us: <span className="text-sm font-bold text-blue-900">(561) 330-7007</span>
+                Call us: <span className="text-sm font-bold text-blue-900">{phoneNumber}</span>
               </p>
               <p className="text-blue-600 text-xs">
                 Our team is ready to help you complete your booking.

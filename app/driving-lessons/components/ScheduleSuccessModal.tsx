@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 
 interface SlotInfo {
@@ -24,6 +24,20 @@ export default function ScheduleSuccessModal({
   price,
   slot
 }: ScheduleSuccessModalProps) {
+  const [phoneNumber, setPhoneNumber] = useState("(561) 330-7007");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="p-6 max-w-md mx-auto">
@@ -53,7 +67,7 @@ export default function ScheduleSuccessModal({
             Contact Information
           </div>
           <div className="text-center">
-            <div className="text-yellow-900 font-bold">Call us at: (561) 330-7007</div>
+            <div className="text-yellow-900 font-bold">Call us at: {phoneNumber}</div>
             <div className="text-yellow-700 text-sm">Please call to complete your payment and confirm your driving lesson.</div>
           </div>
         </div>

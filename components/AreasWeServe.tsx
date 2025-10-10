@@ -28,6 +28,19 @@ const AreasWeServe = () => {
   const [areas, setAreas] = useState<Area[]>([]);
   const [selectedZone, setSelectedZone] = useState<Area | null>(null);
   const router = useRouter();
+  const [phoneNumber, setPhoneNumber] = useState("(561) 969-0150");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
 
   const fetchInstructorsDetails = async (instructorIds: string[]) => {
     if (!instructorIds || instructorIds.length === 0) {
@@ -197,54 +210,62 @@ const AreasWeServe = () => {
       {/* MODAL */}
       {selectedZone && (
         <LocationModal isOpen={selectedZone !== null} onClose={() => setSelectedZone(null)}>
-          <div className="p-6 max-h-[75vh] overflow-y-auto">
+          <div
+            className="p-6 md:p-8 overflow-y-auto custom-scrollbar"
+            style={{
+              maxHeight: 'calc(90vh - 2rem)',
+              paddingRight: '1rem'
+            }}
+          >
             <h2 className="text-2xl font-extrabold text-gray-900 text-center mt-2 mb-4 tracking-tight">
               {selectedZone?.title}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <p className="text-base text-gray-700 whitespace-pre-line leading-relaxed">{selectedZone?.description}</p>
-              <div className="p-4 bg-gray-50 rounded-2xl shadow-md border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">Location Info</h3>
-                <div className="space-y-3">
-                  <p className="flex items-center gap-2 text-gray-800 text-base">
-                    <span className="inline-block w-5 h-5"><svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" stroke="#1A7F5A" strokeWidth="2"/><path d="M10 4C7.23858 4 5 6.23858 5 9C5 12.75 10 17 10 17C10 17 15 12.75 15 9C15 6.23858 12.7614 4 10 4Z" fill="#1A7F5A"/><circle cx="10" cy="9" r="2" fill="white"/></svg></span>
-                    <strong>Phone:</strong>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedZone(null);
-                        router.push('/contact');
-                      }}
-                      className="text-blue-700 hover:underline font-medium cursor-pointer bg-transparent border-none p-0"
-                    >
-                      (561) 969-0150
-                    </button>
-                  </p>
-                  <p className="flex items-center gap-2 text-gray-800 text-base">
-                    <span className="inline-block w-5 h-5"><svg width="20" height="20" fill="none" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="2" fill="#1A7F5A"/><rect x="2" y="4" width="16" height="12" rx="2" stroke="#1A7F5A" strokeWidth="2"/><path d="M2 4L10 12L18 4" stroke="white" strokeWidth="2"/></svg></span>
-                    <strong>Email:</strong>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedZone(null);
-                        router.push('/contact');
-                      }}
-                      className="text-blue-700 hover:underline font-medium cursor-pointer bg-transparent border-none p-0"
-                    >
-                      drivingtrafficschool@gmail.com
-                    </button>
-                  </p>
-                </div>
-                <div className="border-t pt-4 mt-4">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3 flex items-center gap-2">Opening Hours</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-2 gap-2 text-gray-800 text-base">
-                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
-                      <div key={day} className="flex justify-between border-b pb-1">
-                        <span className="font-semibold">{day}:</span>
-                        <span className="text-right">8:00am - 8:00pm</span>
-                      </div>
-                    ))}
-                  </div>
+
+            {/* Descripción - Ancho completo */}
+            <p className="text-base text-gray-700 whitespace-pre-line leading-relaxed mb-6 text-center">{selectedZone?.description}</p>
+
+            {/* Location Info - Ancho completo */}
+            <div className="p-4 bg-gray-50 rounded-2xl shadow-md border border-gray-100 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center justify-center gap-2">Location Info</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <p className="flex items-center gap-2 text-gray-800 text-base justify-center md:justify-start">
+                  <span className="inline-block w-5 h-5"><svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" stroke="#1A7F5A" strokeWidth="2"/><path d="M10 4C7.23858 4 5 6.23858 5 9C5 12.75 10 17 10 17C10 17 15 12.75 15 9C15 6.23858 12.7614 4 10 4Z" fill="#1A7F5A"/><circle cx="10" cy="9" r="2" fill="white"/></svg></span>
+                  <strong>Phone:</strong>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedZone(null);
+                      router.push('/contact');
+                    }}
+                    className="text-blue-700 hover:underline font-medium cursor-pointer bg-transparent border-none p-0"
+                  >
+                    {phoneNumber}
+                  </button>
+                </p>
+                <p className="flex items-center gap-2 text-gray-800 text-base justify-center md:justify-start">
+                  <span className="inline-block w-5 h-5"><svg width="20" height="20" fill="none" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="2" fill="#1A7F5A"/><rect x="2" y="4" width="16" height="12" rx="2" stroke="#1A7F5A" strokeWidth="2"/><path d="M2 4L10 12L18 4" stroke="white" strokeWidth="2"/></svg></span>
+                  <strong>Email:</strong>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedZone(null);
+                      router.push('/contact');
+                    }}
+                    className="text-blue-700 hover:underline font-medium cursor-pointer bg-transparent border-none p-0"
+                  >
+                    drivingtrafficschool@gmail.com
+                  </button>
+                </p>
+              </div>
+              <div className="border-t pt-4 mt-4">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3 text-center">Opening Hours</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-gray-800 text-base">
+                  {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
+                    <div key={day} className="flex justify-between border-b pb-1">
+                      <span className="font-semibold">{day}:</span>
+                      <span className="text-right">8:00am - 8:00pm</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -264,10 +285,11 @@ const AreasWeServe = () => {
             </div>
             <div className="mt-6">
               <h3 className="text-xl font-semibold text-gray-900 text-center mb-3">Instructors</h3>
-                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 {Array.isArray(selectedZone?.instructorsDetails) &&
-                   selectedZone.instructorsDetails.map((instructor: Instructor, index) => (
-                                                                 <div key={instructor._id || `instructor-${index}`} className="text-center p-3 border rounded-xl shadow-sm bg-white flex flex-col items-center h-[200px]">
+              <div className="flex justify-center">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 justify-items-center max-w-4xl">
+                  {Array.isArray(selectedZone?.instructorsDetails) &&
+                    selectedZone.instructorsDetails.map((instructor: Instructor, index) => (
+                      <div key={instructor._id || `instructor-${index}`} className="text-center p-3 border rounded-xl shadow-sm bg-white flex flex-col items-center h-[200px]">
                         <div className="w-24 h-24 relative flex-shrink-0 mb-2">
                          <Image
                            src={instructor.photo || '/default-avatar.png'}
@@ -296,10 +318,11 @@ const AreasWeServe = () => {
                         >
                          <span>Book</span>
                          <span>{instructor.name ? instructor.name.split(" ")[0] : "No Name"}</span>
-                       </button>
-                     </div>
-                   ))}
-               </div>
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
             </div>
           </div>
         </LocationModal>

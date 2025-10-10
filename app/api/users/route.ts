@@ -5,11 +5,16 @@ import mongoose from 'mongoose';
 import nodemailer from 'nodemailer';
 import AuthCode from '@/models/AuthCode';
 import bcrypt from 'bcryptjs';
+import { getMainPhone } from '@/lib/getPhone';
 
 // Handler para crear usuario (POST)
 export async function POST(req: Request) {
   await connectDB();
   const data = await req.json();
+
+  // Obtener número de teléfono desde la base de datos
+  const phoneData = await getMainPhone();
+  const footerPhone = phoneData.phoneNumber;
   //console.log("Nuevo usuario recibido:", data);
 
   // Si viene un código, es para verificar y crear el usuario
@@ -138,7 +143,7 @@ export async function POST(req: Request) {
           </div>
           <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 8px;">Affordable Driving<br/>Traffic School</div>
           <div style="margin-bottom: 8px; font-size: 1rem;">
-            West Palm Beach, FL | <a href="mailto:info@drivingschoolpalmbeach.com" style="color: #fff; text-decoration: underline;">info@drivingschoolpalmbeach.com</a> | 561 330 7007
+            West Palm Beach, FL | <a href="mailto:info@drivingschoolpalmbeach.com" style="color: #fff; text-decoration: underline;">info@drivingschoolpalmbeach.com</a> | ${footerPhone}
           </div>
           <div style="font-size: 12px; color: #ccc;">&copy; ${new Date().getFullYear()} Powered By Botopia Technology S.A.S</div>
         </div>

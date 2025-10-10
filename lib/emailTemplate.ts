@@ -6,6 +6,7 @@ interface EmailTemplateProps {
   subject: string;
   inquiry: string;
   images?: string[];
+  footerPhone?: string; // Número de teléfono para el footer
 }
 
 export const generateContactEmailTemplate = ({
@@ -16,6 +17,7 @@ export const generateContactEmailTemplate = ({
   subject,
   inquiry,
   images = [],
+  footerPhone = "561 330 7007", // Default value
 }: EmailTemplateProps): string => {
   const logoUrl = "https://res.cloudinary.com/dgnqk0ucm/image/upload/v1758091374/logo_1_iol4hm.png";
 
@@ -105,7 +107,7 @@ export const generateContactEmailTemplate = ({
           </div>
           <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 8px;">Affordable Driving<br/>Traffic School</div>
           <div style="margin-bottom: 8px; font-size: 1rem;">
-            West Palm Beach, FL | <a href="mailto:info@drivingschoolpalmbeach.com" style="color: #fff; text-decoration: underline;">info@drivingschoolpalmbeach.com</a> | 561 330 7007
+            West Palm Beach, FL | <a href="mailto:info@drivingschoolpalmbeach.com" style="color: #fff; text-decoration: underline;">info@drivingschoolpalmbeach.com</a> | ${footerPhone}
           </div>
           <div style="font-size: 12px; color: #ccc;">&copy; ${new Date().getFullYear()} Powered By Botopia Technology S.A.S</div>
         </div>

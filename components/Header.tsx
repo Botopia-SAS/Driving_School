@@ -22,6 +22,19 @@ const Header = () => {
   const { clearCart } = useCart();
   const [showTeacherLoading, setShowTeacherLoading] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("(561) 969-0150");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
 
   useEffect(() => {
     setIsHome(pathname === "/"); // Se actualiza correctamente en cada cambio de ruta
@@ -93,7 +106,7 @@ const Header = () => {
           href="/contact"
           className={`hidden lg:flex ${isHome ? (isScrolled ? "text-[#0056b3]" : "text-white") : "text-[#0056b3]"} font-semibold underline cursor-pointer`}
         >
-          Phone: <strong className="font-semibold">(561) 969-0150</strong>
+          Phone: <strong className="font-semibold">{phoneNumber}</strong>
         </Link>
         {/* 🛒 Carrito de Compras con color dinámico */}
         <div>

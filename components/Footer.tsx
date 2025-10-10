@@ -1,11 +1,25 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FaFacebook, FaInstagram, } from "react-icons/fa";
 
 const Footer = () => {
+  const [phoneNumber, setPhoneNumber] = useState("(561) 969-0150");
+
+  // Cargar número de teléfono desde la base de datos
+  useEffect(() => {
+    fetch("/api/phones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setPhoneNumber(data.data.phoneNumber);
+        }
+      })
+      .catch((err) => console.error("Error loading phone:", err));
+  }, []);
+
   return (
     <footer className="relative bg-[#2563eb] text-white py-12">
       <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 items-center z-10">
@@ -79,7 +93,7 @@ const Footer = () => {
             </li>
             <li>
               <a href="/contact" className="hover:text-[#27ae60] transition-all duration-300">
-                📞 (561) 969-0150
+                📞 {phoneNumber}
               </a>
             </li>
           </ul>

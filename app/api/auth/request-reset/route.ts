@@ -4,10 +4,15 @@ import User from '@/models/User';
 import { connectDB } from '@/lib/mongodb';
 import nodemailer from 'nodemailer';
 import PasswordResetCode from '@/models/PasswordResetCode';
+import { getMainPhone } from '@/lib/getPhone';
 
 export async function POST(req: NextRequest) {
   await connectDB();
   const { email } = await req.json();
+
+  // Obtener número de teléfono desde la base de datos
+  const phoneData = await getMainPhone();
+  const footerPhone = phoneData.phoneNumber;
   if (!email) {
     return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
   }
@@ -67,7 +72,7 @@ export async function POST(req: NextRequest) {
           </div>
           <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 8px;">Affordable Driving<br/>Traffic School</div>
           <div style="margin-bottom: 8px; font-size: 1rem;">
-            West Palm Beach, FL | <a href="mailto:info@drivingschoolpalmbeach.com" style="color: #fff; text-decoration: underline;">info@drivingschoolpalmbeach.com</a> | 561 330 7007
+            West Palm Beach, FL | <a href="mailto:info@drivingschoolpalmbeach.com" style="color: #fff; text-decoration: underline;">info@drivingschoolpalmbeach.com</a> | ${footerPhone}
           </div>
           <div style="font-size: 12px; color: #ccc;">&copy; ${new Date().getFullYear()} Powered By Botopia Technology S.A.S</div>
         </div>
