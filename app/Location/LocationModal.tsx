@@ -23,7 +23,7 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, children
       <div
         className="relative bg-white text-black rounded-3xl shadow-2xl border border-gray-300 max-h-[90vh] flex flex-col w-full"
         style={{
-          maxWidth: '1200px',
+          maxWidth: '960px',
           minWidth: '320px',
           overflow: 'hidden',
           margin: '0',

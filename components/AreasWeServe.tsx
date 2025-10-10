@@ -209,14 +209,25 @@ const AreasWeServe = () => {
 
       {/* MODAL */}
       {selectedZone && (
-        <LocationModal isOpen={selectedZone !== null} onClose={() => setSelectedZone(null)}>
-          <div
-            className="p-6 md:p-8 overflow-y-auto custom-scrollbar"
+        <LocationModal
+          isOpen={selectedZone !== null}
+          onClose={() => setSelectedZone(null)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl w-full max-h-[90vh] relative flex flex-col"
             style={{
-              maxHeight: 'calc(90vh - 2rem)',
-              paddingRight: '1rem'
+              margin: '0',
+              padding: '0',
+              boxSizing: 'border-box'
             }}
           >
+            <div
+              className="p-6 md:p-8 overflow-y-auto custom-scrollbar"
+              style={{
+                maxHeight: 'calc(90vh - 2rem)',
+                paddingRight: '1rem'
+              }}
+            >
             <h2 className="text-2xl font-extrabold text-gray-900 text-center mt-2 mb-4 tracking-tight">
               {selectedZone?.title}
             </h2>
@@ -224,10 +235,11 @@ const AreasWeServe = () => {
             {/* Descripción - Ancho completo */}
             <p className="text-base text-gray-700 whitespace-pre-line leading-relaxed mb-6 text-center">{selectedZone?.description}</p>
 
-            {/* Location Info - Ancho completo */}
-            <div className="p-4 bg-gray-50 rounded-2xl shadow-md border border-gray-100 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center justify-center gap-2">Location Info</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Location Info - Mismo ancho que el mapa */}
+            <div className="w-full flex justify-center mb-6">
+              <div className="w-full max-w-2xl p-4 bg-gray-50 rounded-2xl shadow-md border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center justify-center gap-2">Location Info</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <p className="flex items-center gap-2 text-gray-800 text-base justify-center md:justify-start">
                   <span className="inline-block w-5 h-5"><svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" stroke="#1A7F5A" strokeWidth="2"/><path d="M10 4C7.23858 4 5 6.23858 5 9C5 12.75 10 17 10 17C10 17 15 12.75 15 9C15 6.23858 12.7614 4 10 4Z" fill="#1A7F5A"/><circle cx="10" cy="9" r="2" fill="white"/></svg></span>
                   <strong>Phone:</strong>
@@ -263,10 +275,11 @@ const AreasWeServe = () => {
                   {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
                     <div key={day} className="flex justify-between border-b pb-1">
                       <span className="font-semibold">{day}:</span>
-                      <span className="text-right">8:00am - 8:00pm</span>
+                      <span className="text-right">8:00am - 9:00pm</span>
                     </div>
                   ))}
                 </div>
+              </div>
               </div>
             </div>
             {/* Mapa integrado dentro del modal */}
@@ -323,6 +336,7 @@ const AreasWeServe = () => {
                     ))}
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </LocationModal>

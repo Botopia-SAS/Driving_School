@@ -73,7 +73,7 @@ function Page() {
         </motion.div>
         {/* Nervous Parent or Student Section */}
         <motion.div className="mb-12" {...fadeInUp(0.15)}>
-          <Title green="Are You a Nervous" black="Parent" blue="or Student?" className="text-2xl md:text-3xl mb-8" />
+          <h1 className="text-xl md:text-2xl font-extrabold mb-8 text-center leading-tight text-black">Are You a Nervous Parent or Student?</h1>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white border-l-4 border-blue-600 rounded-xl shadow p-6">
               <h3 className="text-xl font-bold text-slate-800 mb-2">Why Choose Our Professional Instructors?</h3>
@@ -103,7 +103,7 @@ function Page() {
         </motion.div>
         {/* What Sets Us Apart Section */}
         <motion.div className="mb-16" {...fadeInUp(0.2)}>
-          <Title green="Still Feeling" black="Nervous?" blue="What Sets Us Apart" className="text-3xl md:text-4xl mb-12 text-center" />
+          <h1 className="text-2xl md:text-3xl font-extrabold mb-12 text-center leading-tight text-black">Still Feeling Nervous? What Sets Us Apart</h1>
           
           {/* Vehicle Safety Features Section */}
           <div className="mb-12">
@@ -188,7 +188,7 @@ function Page() {
         </motion.div>
         {/* Confidence Building Section */}
         <motion.div className="mb-12" {...fadeInUp(0.25)}>
-          <Title green="Building Confidence:" black="Our Proven" blue="Approach" className="text-2xl md:text-3xl mb-8" />
+          <h1 className="text-xl md:text-2xl font-extrabold mb-8 text-center leading-tight text-black">Building Confidence: Our Proven Approach</h1>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-white rounded-xl shadow p-6 text-center border-t-4 border-green-600">
               <h4 className="font-bold mb-2 text-slate-800">Patient Instruction</h4>

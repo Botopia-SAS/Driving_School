@@ -216,7 +216,7 @@ const LocationPage: React.FC = () => {
                       ].map((day, index) => (
                         <p key={index} className="flex justify-between">
                           <strong>{day}:</strong>
-                          <span>8:00am - 8:00pm</span>
+                          <span>8:00am - 9:00pm</span>
                         </p>
                       ))}
                     </div>
@@ -362,7 +362,7 @@ const LocationPage: React.FC = () => {
                             {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
                               <div key={day} className="flex justify-between border-b pb-1">
                                 <span className="font-semibold">{day}:</span>
-                                <span className="text-right">8:00am - 8:00pm</span>
+                                <span className="text-right">8:00am - 9:00pm</span>
                               </div>
                             ))}
                           </div>
