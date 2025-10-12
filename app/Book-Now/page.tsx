@@ -77,7 +77,51 @@ interface AvailableClass {
   dropoffLocation?: string;
 }
 
+import { useSearchParams } from "next/navigation";
+import { buildLegalHref } from "../utils/buildLegalHref";
+
 export default function BookNowPage() {
+  // --- Restauración de modal y scroll al volver de Terms/Privacy ---
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const modalParam = sp.get("modal");
+    // 1) Reabrir modal si viene marcado
+    if (modalParam) {
+      if (modalParam === "tos" || modalParam === "terms") {
+        setIsModalOpen(true);
+      }
+      // Si tienes otros modales, agrega lógica aquí
+    } else if ((window.history.state as any)?.modalOpen) {
+      if (
+        window.history.state.modalOpen === "tos" ||
+        window.history.state.modalOpen === "terms"
+      ) {
+        setIsModalOpen(true);
+      }
+    }
+    // 2) Restaurar scroll
+    const s = Number(sp.get("scroll") || 0);
+    if (!Number.isNaN(s) && s > 0) {
+      requestAnimationFrame(() =>
+        window.scrollTo({ top: s, behavior: "instant" as ScrollBehavior })
+      );
+    } else {
+      // try sessionStorage
+      try {
+        const ctx = JSON.parse(
+          sessionStorage.getItem("legal:context") || "null"
+        );
+        if (ctx?.scroll >= 0) {
+          requestAnimationFrame(() =>
+            window.scrollTo({
+              top: Number(ctx.scroll) || 0,
+              behavior: "instant" as ScrollBehavior,
+            })
+          );
+        }
+      } catch {}
+    }
+  }, []);
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(true);
