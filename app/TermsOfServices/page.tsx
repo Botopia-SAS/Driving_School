@@ -4,46 +4,35 @@ import React from "react";
 
 const Termspage = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-10">
-      <button
-        onClick={() => window.close()}
-        style={{
-          position: "fixed",
-          top: 16,
-          left: 16,
-          zIndex: 1000,
-          padding: "8px 18px 8px 12px",
-          background: "#fff",
-          border: "2px solid #27ae60",
-          borderRadius: 6,
-          cursor: "pointer",
-          color: "#27ae60",
-          fontWeight: 600,
-          fontSize: 16,
-          display: "flex",
-          alignItems: "center",
-          boxShadow: "0 2px 8px 0 rgba(39,174,96,0.08)",
-        }}
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 20 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ marginRight: 8 }}
+    <div className="min-h-screen bg-gray-100 px-0 md:px-4 py-0 md:py-10">
+      {/* Simulación de header (si tienes un header real, este div no es necesario) */}
+      <div className="h-20 md:h-24 w-full" />
+      {/* Botón Back debajo del header, alineado a la izquierda */}
+      <div className="w-full max-w-5xl mx-auto">
+        <button
+          onClick={() => window.close()}
+          className="ml-2 md:ml-0 mb-4 flex items-center px-4 py-2 bg-white border-2 border-green-600 rounded-md text-green-600 font-semibold text-base shadow hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-400"
         >
-          <path
-            d="M12.5 15L8 10L12.5 5"
-            stroke="#27ae60"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        Back
-      </button>
-      <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-5xl border border-gray-300 text-black mt-28">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="mr-2"
+          >
+            <path
+              d="M12.5 15L8 10L12.5 5"
+              stroke="#27ae60"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Back
+        </button>
+      </div>
+      <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-5xl mx-auto border border-gray-300 text-black">
         <h1 className="text-5xl font-extrabold text-[#222] leading-tight">
           <span className="text-[#0056b3]">TERMS OF</span>
           <span className="text-black"> SERVICE</span>
