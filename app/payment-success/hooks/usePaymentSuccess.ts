@@ -250,6 +250,28 @@ export const usePaymentSuccess = () => {
       ssl_card_short_description: searchParams?.get("ssl_card_short_description"),
     };
 
+    // 🔥 VERIFICACIÓN DIRECTA: Si ssl_result es DECLINED, redirigir inmediatamente
+    if (convergeParams.ssl_result === 'DECLINED') {
+      console.log("❌ PAGO DECLINED detectado directamente en SSL params - Redirigiendo a error-checkout");
+      console.log("👤 userId:", userId);
+      console.log("📦 orderId:", orderId);
+      console.log("📊 ssl_result:", convergeParams.ssl_result);
+      console.log("📊 ssl_result_message:", convergeParams.ssl_result_message);
+
+      // Redirigir inmediatamente a error-checkout con los parámetros SSL
+      const errorParams = new URLSearchParams();
+      if (userId) errorParams.set('ssl_custom1', `uid:${userId}`);
+      if (orderId) errorParams.set('ssl_custom2', `oid:${orderId}`);
+      if (convergeParams.ssl_txn_id) errorParams.set('ssl_txn_id', convergeParams.ssl_txn_id);
+      if (convergeParams.ssl_amount) errorParams.set('ssl_amount', convergeParams.ssl_amount);
+      if (convergeParams.ssl_result_message) errorParams.set('ssl_result_message', convergeParams.ssl_result_message);
+      
+      const errorUrl = `/error-checkout?${errorParams.toString()}`;
+      console.log('🚨 REDIRECTING TO ERROR-CHECKOUT (SSL DECLINED):', errorUrl);
+      router.push(errorUrl);
+      return;
+    }
+
     // 🔥 Si vienen parámetros de Converge, enviarlos al backend para procesar
     if (convergeParams.ssl_txn_id && !hasProcessedConvergeData.current) {
       hasProcessedConvergeData.current = true; // Marcar como procesado
@@ -284,6 +306,26 @@ export const usePaymentSuccess = () => {
           if (!orderId && backendData.orderId) {
             orderId = backendData.orderId;
             console.log("✅ orderId obtenido del backend:", orderId);
+          }
+
+          // 🔥 Si el pago fue DECLINED, redirigir a error-checkout inmediatamente
+          if (backendData.status === 'DECLINED') {
+            console.log("❌ PAGO DECLINED - Redirigiendo a error-checkout");
+            console.log("👤 userId:", userId);
+            console.log("📦 orderId:", orderId);
+            console.log("📊 backendData:", backendData);
+
+            // Redirigir inmediatamente a error-checkout con los parámetros SSL
+            const errorParams = new URLSearchParams();
+            if (userId) errorParams.set('ssl_custom1', `uid:${userId}`);
+            if (orderId) errorParams.set('ssl_custom2', `oid:${orderId}`);
+            if (convergeParams.ssl_txn_id) errorParams.set('ssl_txn_id', convergeParams.ssl_txn_id);
+            if (convergeParams.ssl_amount) errorParams.set('ssl_amount', convergeParams.ssl_amount);
+            
+            const errorUrl = `/error-checkout?${errorParams.toString()}`;
+            console.log('🚨 REDIRECTING TO ERROR-CHECKOUT (DECLINED):', errorUrl);
+            router.push(errorUrl);
+            return;
           }
 
           // 🔥 Si el pago fue APPROVED, procesar la orden COMPLETA
