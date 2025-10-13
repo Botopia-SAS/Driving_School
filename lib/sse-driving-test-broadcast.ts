@@ -26,17 +26,21 @@ export async function sendScheduleUpdate(
       return;
     }
 
+    // Combinar todos los schedules
+    const generalSchedule = instructor.get('schedule', { lean: true }) || [];
+    const drivingLessons = instructor.get('schedule_driving_lesson', { lean: true }) || [];
     const drivingTests = instructor.get('schedule_driving_test', { lean: true }) || [];
+    const combinedSchedule = [...generalSchedule, ...drivingLessons, ...drivingTests];
 
     const sseData = `data: ${JSON.stringify({
       type: 'update',
       instructorId,
-      schedule: drivingTests,
+      schedule: combinedSchedule,
       timestamp: new Date().toISOString()
     })}\n\n`;
 
     controller.enqueue(encoder.encode(sseData));
-    console.log(`✅ Sent driving test schedule update to connection ${connectionId}`);
+    console.log(`✅ Sent complete schedule update to connection ${connectionId} (${combinedSchedule.length} slots)`);
   } catch (error) {
     console.error(`❌ Error sending schedule update to ${connectionId}:`, error);
   }

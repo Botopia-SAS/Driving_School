@@ -40,10 +40,11 @@ export async function GET(req: NextRequest) {
   try {
     const instructor = await Instructor.findById(instructorId);
     if (instructor) {
-      // Combinar schedule_driving_lesson y schedule_driving_test
+      // Combinar schedule, schedule_driving_lesson y schedule_driving_test
+      const generalSchedule = instructor.get('schedule', { lean: true }) || [];
       const drivingLessons = instructor.get('schedule_driving_lesson', { lean: true }) || [];
       const drivingTests = instructor.get('schedule_driving_test', { lean: true }) || [];
-      const combinedSchedule = [...drivingLessons, ...drivingTests];
+      const combinedSchedule = [...generalSchedule, ...drivingLessons, ...drivingTests];
 
       sendEvent({ type: "initial", schedule: combinedSchedule });
     } else {
@@ -62,10 +63,11 @@ export async function GET(req: NextRequest) {
     try {
       const instructor = await Instructor.findById(instructorId);
       if (instructor) {
-        // Combinar schedule_driving_lesson y schedule_driving_test
+        // Combinar schedule, schedule_driving_lesson y schedule_driving_test
+        const generalSchedule = instructor.get('schedule', { lean: true }) || [];
         const drivingLessons = instructor.get('schedule_driving_lesson', { lean: true }) || [];
         const drivingTests = instructor.get('schedule_driving_test', { lean: true }) || [];
-        const combinedSchedule = [...drivingLessons, ...drivingTests];
+        const combinedSchedule = [...generalSchedule, ...drivingLessons, ...drivingTests];
 
         sendEvent({ type: "update", schedule: combinedSchedule });
       }

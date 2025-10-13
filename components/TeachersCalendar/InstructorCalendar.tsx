@@ -6,33 +6,43 @@ import type { Class } from './types';
 function adaptScheduleToClasses(schedule: Record<string, unknown>[]): Class[] {
   if (!Array.isArray(schedule)) return [];
   //Nueva estructura: cada objeto es un slot
-  const result = schedule.map((slot: Record<string, unknown>, idx: number) => ({
-    id: slot._id ? String(slot._id) : `${slot.date}_${slot.start}_${slot.end}_${idx}`,
-    date: String(slot.date),
-    dateObj: new Date(String(slot.date)),
-    hour: typeof slot.start === 'string' ? parseInt(slot.start.split(':')[0], 10) : 0,
-    status: (slot.status === 'canceled' ? 'cancelled' : slot.status || 'available') as Class['status'],
-    studentId: slot.studentId as string | undefined,
-    instructorId: slot.instructorId as string | undefined,
-    start: typeof slot.start === 'string' ? slot.start.padStart(5, '0') : '',
-    end: typeof slot.end === 'string' ? slot.end.padStart(5, '0') : '',
-    classType: slot.classType as string || 'driving lesson', // Default to driving lesson if not specified
-    amount: typeof slot.amount === 'number' ? slot.amount : Number(slot.amount),
-    paid: Boolean(slot.paid),
-    pickupLocation: slot.pickupLocation as string,
-    dropoffLocation: slot.dropoffLocation as string,
-    ticketClassId: slot.ticketClassId as string,
-    slots: undefined,
-  }));
+  const result = schedule.map((slot: Record<string, unknown>, idx: number) => {
+    // Normalizar el status: 'booked' y 'canceled' se convierten a 'scheduled' y 'cancelled'
+    let normalizedStatus = slot.status as string;
+    if (normalizedStatus === 'canceled') normalizedStatus = 'cancelled';
+    if (normalizedStatus === 'booked') normalizedStatus = 'scheduled';
+    
+    return {
+      id: slot._id ? String(slot._id) : `${slot.date}_${slot.start}_${slot.end}_${idx}`,
+      _id: slot._id ? String(slot._id) : undefined, // Preservar el _id original
+      date: String(slot.date),
+      dateObj: new Date(String(slot.date)),
+      hour: typeof slot.start === 'string' ? parseInt(slot.start.split(':')[0], 10) : 0,
+      status: (normalizedStatus || 'available') as Class['status'],
+      studentId: slot.studentId as string | undefined,
+      instructorId: slot.instructorId as string | undefined,
+      start: typeof slot.start === 'string' ? slot.start.padStart(5, '0') : '',
+      end: typeof slot.end === 'string' ? slot.end.padStart(5, '0') : '',
+      classType: slot.classType as string || 'driving lesson', // Default to driving lesson if not specified
+      amount: typeof slot.amount === 'number' ? slot.amount : Number(slot.amount),
+      paid: Boolean(slot.paid),
+      pickupLocation: slot.pickupLocation as string,
+      dropoffLocation: slot.dropoffLocation as string,
+      ticketClassId: slot.ticketClassId as string,
+      slots: undefined,
+    };
+  });
   console.log('Clases adaptadas para el calendario:', result); // Debug temporalmente
   return result;
 }
 
-const InstructorCalendar: React.FC<{ 
+const InstructorCalendar: React.FC<{
   schedule?: unknown[];
-  onScheduleUpdate?: () => void; 
-  studentMode?: boolean 
-}> = ({ schedule = [], onScheduleUpdate, studentMode }) => {
+  onScheduleUpdate?: () => void;
+  studentMode?: boolean;
+  instructorId?: string;
+  instructorCapabilities?: string[];
+}> = ({ schedule = [], onScheduleUpdate, studentMode, instructorId, instructorCapabilities }) => {
   const classes = adaptScheduleToClasses(schedule as Record<string, unknown>[]);
   //Si es modo estudiante, solo muestra el calendario central y el mensaje
   if (studentMode) {
@@ -48,7 +58,13 @@ const InstructorCalendar: React.FC<{
   // Modo instructor (por defecto)
   return (
     <div>
-      <CalendarView classes={classes} onScheduleUpdate={onScheduleUpdate} onClassClick={() => {}} />
+      <CalendarView
+        classes={classes}
+        onScheduleUpdate={onScheduleUpdate}
+        onClassClick={() => {}}
+        instructorId={instructorId}
+        instructorCapabilities={instructorCapabilities}
+      />
     </div>
   );
 };

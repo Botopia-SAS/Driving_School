@@ -17,6 +17,66 @@ export async function POST(req: Request) {
   const footerPhone = phoneData.phoneNumber;
   //console.log("Nuevo usuario recibido:", data);
 
+  // Si es creación directa (desde instructor), no requiere código
+  if (data.directCreate) {
+    // Verificar que el email no esté ya registrado
+    const exists = await User.findOne({ email: data.email.trim().toLowerCase() });
+    if (exists) {
+      return NextResponse.json({ error: 'Email already registered.' }, { status: 400 });
+    }
+
+    // Generar contraseña automática si no se proporciona
+    const password = data.password || Math.random().toString(36).slice(-8);
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    try {
+      const newUser = new User({
+        firstName: data.firstName,
+        middleName: data.middleName || "",
+        lastName: data.lastName,
+        email: data.email.trim().toLowerCase(),
+        phoneNumber: data.phone || data.phoneNumber || "",
+        secondaryPhoneNumber: data.secondaryPhoneNumber || "",
+        ssnLast4: data.ssnLast4 || "0000",
+        hasLicense: data.hasLicense || false,
+        licenseNumber: data.licenseNumber || "",
+        birthDate: data.birthDate || new Date().toISOString().split('T')[0],
+        streetAddress: data.streetAddress || "",
+        apartmentNumber: data.apartmentNumber || "",
+        city: data.city || "",
+        state: data.state || "",
+        zipCode: data.zipCode || "",
+        sex: data.sex || "N/A",
+        password: hashedPassword,
+        role: data.type || "user"
+      });
+
+      await newUser.save();
+
+      return NextResponse.json({
+        success: true,
+        message: 'User created successfully!',
+        _id: newUser._id.toString(),
+        id: newUser._id.toString(),
+        user: {
+          _id: newUser._id,
+          name: `${newUser.firstName} ${newUser.lastName}`,
+          email: newUser.email,
+          photo: newUser.photo || null,
+          type: 'student'
+        }
+      });
+    } catch (saveError: unknown) {
+      console.error('Error saving user:', saveError);
+      const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown error occurred';
+      return NextResponse.json({
+        error: 'Failed to create user account. Please try again.',
+        details: errorMessage
+      }, { status: 500 });
+    }
+  }
+
   // Si viene un código, es para verificar y crear el usuario
   if (data.code) {
     // Limpiar códigos expirados primero
@@ -159,7 +219,7 @@ export async function POST(req: Request) {
   return NextResponse.json({ success: true, message: 'Verification code sent to email.' });
 }
 
-// Handler para obtener usuario por ID usando query param (?id=123)
+// Handler para obtener usuario por ID o lista de estudiantes usando query param
 export const GET = async (
   req: NextRequest
 ): Promise<NextResponse> => {
@@ -167,9 +227,22 @@ export const GET = async (
     await connectDB();
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('id');
+    const type = searchParams.get('type');
+
+    // Si se solicita tipo 'student', devolver todos los estudiantes
+    if (type === 'student') {
+      const students = await User.find({ role: 'user' })
+        .select('firstName lastName email phone phoneNumber')
+        .lean();
+      return NextResponse.json(students);
+    }
+
+    // Si no hay userId, error
     if (!userId) {
       return NextResponse.json({ error: 'Missing id query param' }, { status: 400 });
     }
+
+    // Buscar usuario por ID
     let user = mongoose.Types.ObjectId.isValid(userId)
       ? await User.findById(userId).lean()
       : null;
