@@ -163,20 +163,17 @@ function RegisterOnlineContent() {
   
   // Check if a ticket class is already in the user's cart
   const isClassInCart = (ticketClass: TicketClass): boolean => {
-    const userWithCart = user as any;
-    if (!userWithCart?.cart || !Array.isArray(userWithCart.cart)) {
+    if (!cart || !Array.isArray(cart)) {
       return false;
     }
     
     // Use ticketClassId for exact matching
-    const isInCart = userWithCart.cart.some((item: any) => {
+    const isInCart = cart.some((item: any) => {
       const match = item.classType === 'ticket' && 
         item.ticketClassId === ticketClass._id;
       
-      
       return match;
     });
-    
     
     return isInCart;
   };
@@ -774,6 +771,17 @@ function RegisterOnlineContent() {
                       // User has pending request - show yellow slot with click to cancel
                       if (hasPendingRequest) {
                         const classInCart = isClassInCart(overlappingClass as TicketClass);
+                        
+                        // Debug: Log cart status for pending slots
+                        console.log('🔍 [PENDING DEBUG]', {
+                          ticketClassId: overlappingClass._id,
+                          classInCart,
+                          cartItems: cart?.map((item: any) => ({
+                            ticketClassId: item.ticketClassId,
+                            title: item.title,
+                            classType: item.classType
+                          })) || 'No cart'
+                        });
                         
                         
                         return (
