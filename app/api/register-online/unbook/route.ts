@@ -37,30 +37,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User is not enrolled in this class' }, { status: 400 });
     }
 
-    // Calculate 48-hour policy
+    // Check if class is today or in the past (same logic as frontend)
     // Handle both ISO date strings and Date objects
     const classDate = ticketClass.date instanceof Date ? ticketClass.date : new Date(ticketClass.date);
     const dateStr = classDate.toISOString().split('T')[0]; // Get YYYY-MM-DD
-    const timeStr = ticketClass.hour.includes(':') ? ticketClass.hour : `${ticketClass.hour}:00`;
+    
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    
+    // Compare date strings (YYYY-MM-DD format) - same logic as frontend
+    const isTodayOrPast = dateStr <= todayString;
 
-    const classDateTime = new Date(`${dateStr}T${timeStr}:00`);
-    const now = new Date();
-    const hoursDifference = (classDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    const isWithin48Hours = hoursDifference <= 48;
 
-    // If within 48 hours, require payment
-    if (isWithin48Hours) {
+    // If today or past, cannot cancel
+    if (isTodayOrPast) {
       return NextResponse.json({
-        requiresPayment: true,
-        message: 'Cancellation within 48 hours requires a $90 fee',
-        cancellationFee: 90,
-        hoursDifference,
+        requiresPayment: false,
+        message: 'Cannot cancel classes on the same day or classes that have already passed',
+        canCancel: false,
         ticketClassId,
         userId
-      }, { status: 402 }); // 402 Payment Required
+      });
     }
 
-    // FREE CANCELLATION (>48 hours)
+    // FREE CANCELLATION (future classes only)
     // Find student index
     const studentIndex = ticketClass.students.findIndex(
       (student: any) => {
