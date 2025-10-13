@@ -9,17 +9,20 @@ export async function GET(
 ) {
   try {
     await connectDB();
-    
+
     const { id } = await params;
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid location ID" },
-        { status: 400 }
-      );
+
+    let location;
+
+    // Primero intentar buscar por ObjectId si es válido
+    if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
+      location = await Location.findById(id).populate('instructors').lean();
     }
 
-    const location = await Location.findById(id).populate('instructors').lean();
+    // Si no se encuentra por ID, intentar buscar por slug
+    if (!location) {
+      location = await Location.findOne({ slug: id }).populate('instructors').lean();
+    }
 
     if (!location) {
       return NextResponse.json(

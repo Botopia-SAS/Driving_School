@@ -88,7 +88,7 @@ const LocationDetailPage: React.FC = () => {
           <p className="text-center text-gray-500 text-lg">Location not found.</p>
           <div className="text-center mt-6">
             <button
-              onClick={() => router.push("/Location")}
+              onClick={() => router.push("/locations")}
               className="bg-[#0056b3] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#004494] transition"
             >
               Back to Locations
@@ -104,7 +104,7 @@ const LocationDetailPage: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <button
-          onClick={() => router.push("/Location")}
+          onClick={() => router.push("/locations")}
           className="flex items-center gap-2 text-[#0056b3] hover:text-[#004494] font-semibold mb-6 transition"
         >
           <FaArrowLeft />

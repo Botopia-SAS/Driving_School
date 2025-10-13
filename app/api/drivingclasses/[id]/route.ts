@@ -9,18 +9,21 @@ export async function GET(
 ) {
   try {
     await connectDB();
-    
+
     const { id } = await params;
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid class ID" },
-        { status: 400 }
-      );
+
+    let drivingClass;
+
+    // Primero intentar buscar por ObjectId si es válido
+    if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
+      drivingClass = await Classes.findById(id).lean();
     }
 
-    const drivingClass = await Classes.findById(id).lean();
-    
+    // Si no se encuentra por ID, intentar buscar por slug
+    if (!drivingClass) {
+      drivingClass = await Classes.findOne({ slug: id }).lean();
+    }
+
     if (!drivingClass) {
       return NextResponse.json(
         { error: "Driving class not found" },

@@ -84,7 +84,7 @@ const ClassDetailPage: React.FC = () => {
           <p className="text-center text-gray-500 text-lg">Class not found.</p>
           <div className="text-center mt-6">
             <button
-              onClick={() => router.push("/Classes")}
+              onClick={() => router.push("/classes")}
               className="bg-[#0056b3] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#004494] transition"
             >
               Back to Classes
@@ -100,7 +100,7 @@ const ClassDetailPage: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <button
-          onClick={() => router.push("/Classes")}
+          onClick={() => router.push("/classes")}
           className="flex items-center gap-2 text-[#0056b3] hover:text-[#004494] font-semibold mb-6 transition"
         >
           <FaArrowLeft />

@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import LoadingSpinner from './common/LoadingSpinner';
 import { useRouter } from 'next/navigation';
-import LocationMap from "../app/Location/LocationMapHome";
-import LocationModal from "../app/Location/LocationModal";
+import LocationMap from "@/app/locations/LocationMap";
+import LocationModal from "@/app/locations/LocationModal";
 
 // Definir interfaces
 interface Instructor {

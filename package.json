@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed:phone": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/seed-phone.ts",
-    "cleanup:phone": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/cleanup-phone.ts"
+    "cleanup:phone": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/cleanup-phone.ts",
+    "generate-slugs": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/generate-slugs.ts"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.5.1",

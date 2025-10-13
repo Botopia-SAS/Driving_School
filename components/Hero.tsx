@@ -82,7 +82,7 @@ const Hero = () => {
             Book Driving Lessons
           </Link>
           <Link
-            href="/Classes"
+            href="/classes"
             className="bg-[#4CAF50] text-white text-base sm:text-lg md:text-xl px-4 sm:px-6 py-3 sm:py-4 rounded-full border-white hover:bg-[#0056b3] text-center transition-all shadow-lg hover:shadow-xl"
           >
             Book a Traffic Ticket Class

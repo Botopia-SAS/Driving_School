@@ -68,11 +68,11 @@ const Header = () => {
     { name: "Home", href: "/" },
     { name: "Lessons", href: "/Lessons" },
     //{ name: "Packages", href: "/driving-lessons" },
-    { name: "Classes", href: "/Classes" },
-    { name: "Online Courses", href: "/OnlineCourses" },
+    { name: "Classes", href: "/classes" },
+    { name: "Online Courses", href: "/online-courses" },
     { name: "Driving Test", href: "/driving_test" },
     { name: "FAQ", href: "/FAQ" },
-    { name: "Location", href: "/Location" },
+    { name: "Location", href: "/locations" },
   ];
 
   // Links para estudiantes

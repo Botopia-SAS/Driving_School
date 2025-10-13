@@ -12,6 +12,7 @@ interface Instructor {
 
 interface Zone {
   _id: string;
+  slug?: string;
   title: string;
   zone: string;
   locationImage?: string;
@@ -69,7 +70,7 @@ const LocationPage: React.FC = () => {
   }, []);
 
   const handleZoneClick = (zone: Zone) => {
-    router.push(`/Location/${zone._id}`);
+    router.push(`/locations/${zone.slug || zone._id}`);
   };
   
 

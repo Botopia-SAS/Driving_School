@@ -60,7 +60,7 @@ const OnlineCourseDetailPage: React.FC = () => {
           <p className="text-center text-gray-500 text-lg">Course not found.</p>
           <div className="text-center mt-6">
             <button
-              onClick={() => router.push("/OnlineCourses")}
+              onClick={() => router.push("/online-courses")}
               className="bg-[#0056b3] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#004494] transition"
             >
               Back to Online Courses
@@ -76,7 +76,7 @@ const OnlineCourseDetailPage: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <button
-          onClick={() => router.push("/OnlineCourses")}
+          onClick={() => router.push("/online-courses")}
           className="flex items-center gap-2 text-[#0056b3] hover:text-[#004494] font-semibold mb-6 transition"
         >
           <FaArrowLeft />
@@ -123,7 +123,7 @@ const OnlineCourseDetailPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               {/* View Details Button */}
               <button
-                onClick={() => router.push("/Classes")}
+                onClick={() => router.push("/classes")}
                 className="flex-1 border-2 border-[#0056b3] text-[#0056b3] font-semibold py-4 rounded-lg hover:bg-[#0056b3] hover:text-white transition text-center text-lg"
               >
                 View Details
@@ -134,7 +134,7 @@ const OnlineCourseDetailPage: React.FC = () => {
                 href={
                   courseData.buttonLabel === "Start Course"
                     ? "https://home.uceusa.com/registration/StudentInfo.aspx?cid=3&host=adtrafficschool.com&pid=328&language=en&g=fac80251-e113-4906-8d99-c77d4e8cad51"
-                    : "/Location"
+                    : "/locations"
                 }
                 target={courseData.buttonLabel === "Start Course" ? "_blank" : "_self"}
                 rel="noopener noreferrer"

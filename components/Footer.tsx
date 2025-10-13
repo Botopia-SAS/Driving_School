@@ -58,7 +58,7 @@ const Footer = () => {
               </Link>
             </li>
             <li>
-              <Link href="/Classes" className="hover:text-[#27ae60] transition-all duration-300 hover:drop-shadow-lg">
+              <Link href="/classes" className="hover:text-[#27ae60] transition-all duration-300 hover:drop-shadow-lg">
                 Courses
               </Link>
             </li>
@@ -82,7 +82,7 @@ const Footer = () => {
           </h3>
           <ul className="space-y-3 text-lg font-bold">
             <li>
-              <a href="/Location" className="hover:text-[#27ae60] transition-all duration-300">
+              <a href="/locations" className="hover:text-[#27ae60] transition-all duration-300">
               West Palm Beach, FL
               </a>
               </li>

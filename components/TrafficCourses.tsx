@@ -17,7 +17,7 @@ const TrafficCourses = () => {
         "And more!",
       ],
       buttonText: "View Courses",
-      link: "/Classes",
+      link: "/classes",
     },
     {
       title: "Online Learning",
@@ -29,7 +29,7 @@ const TrafficCourses = () => {
         "And more!",
       ],
       buttonText: "View Online Courses",
-      link: "/OnlineCourses",
+      link: "/online-courses",
     },
   ];
 
