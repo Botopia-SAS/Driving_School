@@ -11,6 +11,7 @@ export default function TeachersPage() {
   const { user, logout } = useAuth();
   const [rawSchedule, setRawSchedule] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
+  const [instructorCapabilities, setInstructorCapabilities] = useState<string[]>([]);
   const instructorId = user && user.type === 'instructor' ? user._id : undefined;
 
   useEffect(() => {
@@ -23,24 +24,49 @@ export default function TeachersPage() {
     }
   }, [user, router]);
 
+  // Fetch instructor capabilities
+  useEffect(() => {
+    const fetchInstructorCapabilities = async () => {
+      if (!instructorId) return;
+
+      try {
+        // Fetch from instructors API
+        const res = await fetch(`/api/teachers?id=${instructorId}`);
+        const data = await res.json();
+
+        if (data) {
+          const caps: string[] = [];
+          if (data.canTeachDrivingLesson) caps.push('canTeachDrivingLesson');
+          if (data.canTeachDrivingTest) caps.push('canTeachDrivingTest');
+          if (data.canTeachTicketClass) caps.push('canTeachTicketClass');
+          setInstructorCapabilities(caps);
+        }
+      } catch (error) {
+        console.error('Error fetching instructor capabilities:', error);
+      }
+    };
+
+    fetchInstructorCapabilities();
+  }, [instructorId]);
+
   useEffect(() => {
     if (!instructorId) {
       console.log('No instructorId, no se abre SSE');
       return;
     }
-    //console.log('Abriendo SSE para instructorId:', instructorId);
+    console.log('Abriendo SSE para instructorId:', instructorId);
     const eventSource = new EventSource(`/api/teachers/schedule-updates?id=${instructorId}`);
     eventSource.onopen = () => {
-      //console.log('SSE conexión abierta');
+      console.log('SSE conexión abierta');
     };
     eventSource.onmessage = (event) => {
-      //console.log('SSE mensaje recibido:', event.data);
+      console.log('📨 SSE mensaje recibido:', event.data);
       const data = JSON.parse(event.data);
       if (data.type === 'initial' || data.type === 'update') {
+        console.log('📊 SSE schedule actualizado, total slots:', data.schedule?.length || 0);
         setRawSchedule(data.schedule || []);
-        //console.log('SSE schedule recibido:', data.schedule);
         if (loading) setLoading(false);
-      } else if (data.type === 'error') { 
+      } else if (data.type === 'error') {
         console.error('SSE Error:', data.message);
         if (loading) setLoading(false);
       }
@@ -51,7 +77,7 @@ export default function TeachersPage() {
       eventSource.close();
     };
     return () => {
-      //console.log('Cerrando SSE');
+      console.log('Cerrando SSE');
       eventSource.close();
     };
   }, [instructorId, loading]);
@@ -86,7 +112,7 @@ export default function TeachersPage() {
   return (
     <>
       <AuthRedirector />
-      <div className="min-h-screen max-h-screen bg-gradient-to-br from-[#e8f6ef] via-[#f0f6ff] to-[#eafaf1] p-4 flex flex-col overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-[#e8f6ef] via-[#f0f6ff] to-[#eafaf1] p-4 flex flex-col md:max-h-screen md:overflow-hidden">
         {/* Header con título y botón de logout */}
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
           <div className="flex-1"></div>
@@ -120,7 +146,12 @@ export default function TeachersPage() {
         </div>
         <div className="flex-1 w-full text-black flex flex-row gap-4 min-h-0">
           <div className="flex-1 min-w-0">
-            <InstructorCalendar schedule={rawSchedule} onScheduleUpdate={() => {}} />
+            <InstructorCalendar
+              schedule={rawSchedule}
+              onScheduleUpdate={() => {}}
+              instructorId={instructorId}
+              instructorCapabilities={instructorCapabilities}
+            />
           </div>
         </div>
       </div>

@@ -9,21 +9,8 @@ export async function GET(
 ) {
   try {
     await connectDB();
-    
-    // Await params in Next.js 15
     const { id } = await params;
-
-    let course;
-
-    // Primero intentar buscar por ObjectId si es válido
-    if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
-      course = await OnlineCourses.findById(id);
-    }
-
-    // Si no se encuentra por ID, intentar buscar por slug
-    if (!course) {
-      course = await OnlineCourses.findOne({ slug: id });
-    }
+    const course = await OnlineCourses.findById(id);
 
     if (!course) {
       return NextResponse.json(

@@ -1,48 +1,75 @@
 "use client";
-import React from "react";
+
+import React, { useEffect, useState } from "react";
+import BackButton from "../../components/BackButton";
+import { useHeaderOffset } from "../../hooks/useHeaderOffset";
 
 const Policypage = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  const top = useHeaderOffset(96, 16);
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "scrollRestoration" in window.history
+    ) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    // Detectar mobile
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-6 py-12">
-      <button
-        onClick={() => window.close()}
-        style={{
-          position: "fixed",
-          top: 16,
-          left: 16,
-          zIndex: 1000,
-          padding: "8px 18px 8px 12px",
-          background: "#fff",
-          border: "2px solid #27ae60",
-          borderRadius: 6,
-          cursor: "pointer",
-          color: "#27ae60",
-          fontWeight: 600,
-          fontSize: 16,
-          display: "flex",
-          alignItems: "center",
-          boxShadow: "0 2px 8px 0 rgba(39,174,96,0.08)",
-        }}
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 20 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ marginRight: 8 }}
-        >
-          <path
-            d="M12.5 15L8 10L12.5 5"
-            stroke="#27ae60"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        Back
-      </button>
-      <div className="bg-white shadow-md rounded-lg p-8 max-w-4xl w-full border border-gray-300 mt-28">
+    <>
+      <style jsx>{`
+        .mobile-back-button {
+          position: fixed !important;
+          bottom: 24px !important;
+          left: 24px !important;
+          z-index: 9999 !important;
+          display: block !important;
+        }
+
+        .desktop-back-button {
+          display: none !important;
+        }
+
+        @media (min-width: 768px) {
+          .mobile-back-button {
+            display: none !important;
+          }
+
+          .desktop-back-button {
+            display: block !important;
+          }
+        }
+      `}</style>
+
+      <div className="min-h-screen bg-gray-100 relative">
+        {/* Botón Back para mobile - Fuera del flujo principal */}
+        <div className="mobile-back-button">
+          <BackButton className="px-3 py-2 text-base rounded-md shadow-lg" />
+        </div>
+
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start gap-4 md:gap-6 pt-40 px-4 pb-20">
+          {/* Botón Back para desktop - Sticky */}
+          <div
+            className="desktop-back-button sticky self-start shrink-0 z-40"
+            style={{ top: `${top}px` }}
+          >
+            <BackButton className="px-4 py-2 text-base rounded-md" />
+          </div>
+
+          {/* Documento de Privacy Policy */}
+          <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-5xl border border-gray-300 text-black mb-20 md:mb-8">
         <h1 className="text-5xl font-extrabold text-[#222] leading-tight">
           <span className="text-[#27ae60]">PRIVACY</span>
           <span className="text-black"> POLICY</span>
@@ -158,8 +185,10 @@ const Policypage = () => {
             for any concerns regarding your personal information.
           </p>
         </section>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

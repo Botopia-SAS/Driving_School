@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
 
 interface TermsCheckboxProps {
   isChecked: boolean;
@@ -14,6 +13,19 @@ const TermsCheckbox: React.FC<TermsCheckboxProps> = ({
   onChange,
   className = ""
 }) => {
+  // Abrir en nueva pestaña con window.open para mantener la relación window.opener
+  const openInNewTab = (path: string, modal: string) => {
+    if (typeof window === 'undefined') return;
+
+    const currentUrl = window.location.href;
+    const scrollY = window.scrollY || 0;
+    const url = `${path}?from=${encodeURIComponent(currentUrl)}&modal=${encodeURIComponent(modal)}&scroll=${scrollY}`;
+
+    // NO usar 'noopener' para mantener la relación window.opener
+    // Esto permite que window.close() funcione en la ventana hija
+    window.open(url, '_blank', 'noreferrer');
+  };
+
   return (
     <div className={`flex items-start gap-2 ${className}`}>
       <input
@@ -25,23 +37,21 @@ const TermsCheckbox: React.FC<TermsCheckboxProps> = ({
       />
       <label htmlFor="terms-checkbox" className="text-sm text-gray-700 cursor-pointer">
         I accept the{' '}
-        <Link
-          href="/TermsOfServices"
-          className="text-blue-600 hover:text-blue-800 underline"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={() => openInNewTab('/TermsOfServices', 'tos')}
+          className="text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-none p-0 font-inherit"
         >
           Terms and Conditions
-        </Link>
+        </button>
         {' '}and{' '}
-        <Link
-          href="/PrivacyPolicy"
-          className="text-blue-600 hover:text-blue-800 underline"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={() => openInNewTab('/PrivacyPolicy', 'privacy')}
+          className="text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-none p-0 font-inherit"
         >
           Privacy Policy
-        </Link>
+        </button>
       </label>
     </div>
   );

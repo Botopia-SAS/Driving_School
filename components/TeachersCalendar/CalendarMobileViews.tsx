@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Class as CalendarClass } from './types';
 import { normalizeType, blockBgColors, blockBorderColors, statusDotColors, statusCardColors, statusBorderColors } from './calendarUtils';
 
@@ -9,21 +9,65 @@ interface CalendarMobileViewsProps {
   handleTimeBlockClick: (block: CalendarClass) => void;
 }
 
+interface StudentInfo {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+}
+
 export const CalendarMobileViews: React.FC<CalendarMobileViewsProps> = ({
   view,
   selectedDate,
   classes,
   handleTimeBlockClick
 }) => {
+  const [studentsData, setStudentsData] = useState<Record<string, StudentInfo>>({});
+
+  // Obtener información de estudiantes
+  useEffect(() => {
+    const fetchStudentInfo = async () => {
+      const studentIds = classes
+        .filter(c => c.studentId)
+        .map(c => c.studentId as string)
+        .filter((id, index, self) => self.indexOf(id) === index);
+
+      const newStudentsData: Record<string, StudentInfo> = {};
+
+      await Promise.all(
+        studentIds.map(async (studentId) => {
+          if (!studentsData[studentId]) {
+            try {
+              const res = await fetch(`/api/users?id=${studentId}`);
+              const data = await res.json();
+              if (data && !data.error) {
+                newStudentsData[studentId] = data;
+              }
+            } catch (error) {
+              console.error('Error fetching student:', error);
+            }
+          }
+        })
+      );
+
+      if (Object.keys(newStudentsData).length > 0) {
+        setStudentsData(prev => ({ ...prev, ...newStudentsData }));
+      }
+    };
+
+    fetchStudentInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes]);
   // Vista móvil: semana actual estilo Google Calendar
   function renderMobileWeekView() {
     const start = new Date(selectedDate);
     start.setDate(selectedDate.getDate() - ((selectedDate.getDay() + 6) % 7));
-    const days = Array.from({ length: 7 }, (_, i) => {
+    const days = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       return d;
-    });
+    }); // Solo 6 días (lunes a sábado, sin domingo)
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -106,8 +150,15 @@ export const CalendarMobileViews: React.FC<CalendarMobileViewsProps> = ({
                           }}
                           onClick={() => handleTimeBlockClick(event)}
                         >
+                          {/* Indicador de pago en la esquina superior derecha */}
+                          {event.paid && (
+                            <div className="absolute top-2 right-2 bg-green-500 rounded-full w-6 h-6 flex items-center justify-center shadow-md" title="Paid">
+                              <span className="text-white font-bold text-sm">$</span>
+                            </div>
+                          )}
+
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between pr-8">
                               <div className="font-semibold text-sm text-gray-800">
                                 {event.classType?.replace(/\b\w/g, l => l.toUpperCase())}
                               </div>
@@ -125,12 +176,30 @@ export const CalendarMobileViews: React.FC<CalendarMobileViewsProps> = ({
                               <span className="font-mono bg-white px-2 py-1 rounded shadow-sm">
                                 {event.start} - {event.end}
                               </span>
-                              {event.studentId && (
-                                <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">
-                                  Student Assigned
-                                </span>
-                              )}
                             </div>
+
+                            {/* Información del estudiante */}
+                            {event.studentId && studentsData[event.studentId as string] && (
+                              <div className="text-sm text-gray-800 font-semibold">
+                                {studentsData[event.studentId as string].firstName} {studentsData[event.studentId as string].lastName}
+                              </div>
+                            )}
+
+                            {/* Ubicación de recogida */}
+                            {event.pickupLocation && (
+                              <div className="text-xs text-gray-700 flex items-start gap-1">
+                                <span className="font-semibold text-blue-600">📍</span>
+                                <span className="flex-1">{event.pickupLocation}</span>
+                              </div>
+                            )}
+
+                            {/* Ubicación de dejada */}
+                            {event.dropoffLocation && (
+                              <div className="text-xs text-gray-700 flex items-start gap-1">
+                                <span className="font-semibold text-green-600">🏁</span>
+                                <span className="flex-1">{event.dropoffLocation}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -222,8 +291,15 @@ export const CalendarMobileViews: React.FC<CalendarMobileViewsProps> = ({
                           }}
                           onClick={() => handleTimeBlockClick(event)}
                         >
+                          {/* Indicador de pago en la esquina superior derecha */}
+                          {event.paid && (
+                            <div className="absolute top-2 right-2 bg-green-500 rounded-full w-6 h-6 flex items-center justify-center shadow-md" title="Paid">
+                              <span className="text-white font-bold text-sm">$</span>
+                            </div>
+                          )}
+
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between pr-8">
                               <div className="font-semibold text-sm text-gray-800">
                                 {event.classType?.replace(/\b\w/g, l => l.toUpperCase())}
                               </div>
@@ -240,9 +316,27 @@ export const CalendarMobileViews: React.FC<CalendarMobileViewsProps> = ({
                             <div className="text-xs text-gray-600 font-medium">
                               {event.start} - {event.end}
                             </div>
-                            {event.studentId && (
-                              <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium inline-block">
-                                Student Assigned
+
+                            {/* Información del estudiante */}
+                            {event.studentId && studentsData[event.studentId as string] && (
+                              <div className="text-sm text-gray-800 font-semibold">
+                                {studentsData[event.studentId as string].firstName} {studentsData[event.studentId as string].lastName}
+                              </div>
+                            )}
+
+                            {/* Ubicación de recogida */}
+                            {event.pickupLocation && (
+                              <div className="text-xs text-gray-700 flex items-start gap-1">
+                                <span className="font-semibold text-blue-600">📍</span>
+                                <span className="flex-1">{event.pickupLocation}</span>
+                              </div>
+                            )}
+
+                            {/* Ubicación de dejada */}
+                            {event.dropoffLocation && (
+                              <div className="text-xs text-gray-700 flex items-start gap-1">
+                                <span className="font-semibold text-green-600">🏁</span>
+                                <span className="flex-1">{event.dropoffLocation}</span>
                               </div>
                             )}
                           </div>

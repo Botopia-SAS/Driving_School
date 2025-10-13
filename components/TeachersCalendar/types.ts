@@ -12,6 +12,7 @@ export interface TimeSlot {
 
 export interface Class {
   id: string;
+  _id?: string | MongoDBObjectId; // Agregar soporte para _id de MongoDB
   date: string | Date;
   hour: number;
   status: 'scheduled' | 'cancelled' | 'available' | 'pending' | 'booked';

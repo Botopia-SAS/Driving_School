@@ -10,19 +10,26 @@ import { CalendarWeekView } from './CalendarWeekView';
 import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarSidebars } from './CalendarSidebars';
 import { normalizeType, getVisibleDates, groupClassesByStatus } from './calendarUtils';
+import { BookingModal } from './BookingModal';
+import { EditBookingModal } from './EditBookingModal';
+import { GoogleMapsProvider } from '../GoogleMapsProvider';
 
 interface CalendarViewProps {
   classes: CalendarClass[];
   onClassClick: (classData: CalendarClass) => void;
   onScheduleUpdate?: () => void;
   hideSidebars?: boolean;
+  instructorId?: string;
+  instructorCapabilities?: string[];
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
   classes: initialClasses,
   onClassClick,
   onScheduleUpdate,
-  hideSidebars
+  hideSidebars,
+  instructorId,
+  instructorCapabilities
 }) => {
   // All hooks must be at the top level
   const [view, setView] = useState<'week' | 'month' | 'day'>('week');
@@ -37,6 +44,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [locationInfo, setLocationInfo] = useState<unknown>(null);
   const [studentsInfo, setStudentsInfo] = useState<unknown[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(false);
+
+  // Booking Modal state
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [bookingDate, setBookingDate] = useState<Date | null>(null);
+  const [bookingTime, setBookingTime] = useState<string | null>(null);
+
+  // Edit Modal state
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Derived state
   const classes = initialClasses;
@@ -68,6 +83,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       setSelectedDate(next);
     } else {
       setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
+    }
+  };
+
+  // Handle empty cell click for booking
+  const handleEmptyCellClick = (date: Date, time: string) => {
+    if (instructorId) {
+      setBookingDate(date);
+      setBookingTime(time);
+      setShowBookingModal(true);
     }
   };
 
@@ -253,6 +277,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 selectedDate={selectedDate}
                 classes={classes}
                 handleTimeBlockClick={handleTimeBlockClick}
+                handleEmptyCellClick={handleEmptyCellClick}
               />
             )
           )}
@@ -288,9 +313,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               loadingExtra={loadingExtra}
             />
           </div>
-          <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50 flex gap-3">
+            {instructorId && selectedBlock && (
+              <button
+                className="bg-[#27ae60] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1e8449] transition-all flex-1 shadow text-sm"
+                onClick={() => {
+                  setShowEditModal(true);
+                  setModalOpen(false);
+                }}
+              >
+                Edit Class
+              </button>
+            )}
             <button
-              className="bg-[#0056b3] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#27ae60] transition-all w-full shadow text-sm"
+              className="bg-[#0056b3] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#27ae60] transition-all flex-1 shadow text-sm"
               onClick={() => setModalOpen(false)}
             >
               Close
@@ -314,6 +350,36 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           <button className="bg-[#27ae60] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#0056b3]" onClick={() => handleAddClass(selectedDate, selectedDate.getHours())}>Confirm</button>
         </div>
       </Modal>
+
+      {/* Booking Modal */}
+      {instructorId && (
+        <GoogleMapsProvider>
+          <BookingModal
+            isOpen={showBookingModal}
+            onClose={() => setShowBookingModal(false)}
+            selectedDate={bookingDate}
+            selectedTime={bookingTime}
+            instructorId={instructorId}
+            instructorCapabilities={instructorCapabilities}
+            onBookingCreated={() => {
+              setShowBookingModal(false);
+              if (onScheduleUpdate) onScheduleUpdate();
+            }}
+          />
+          {selectedBlock && (
+            <EditBookingModal
+              isOpen={showEditModal}
+              onClose={() => setShowEditModal(false)}
+              booking={selectedBlock}
+              instructorId={instructorId}
+              onBookingUpdated={() => {
+                setShowEditModal(false);
+                if (onScheduleUpdate) onScheduleUpdate();
+              }}
+            />
+          )}
+        </GoogleMapsProvider>
+      )}
     </div>
   );
 };

@@ -24,10 +24,10 @@ interface Slot {
 export async function POST(request: Request) {
   try {
     await connectDB();
-    const { studentId, instructorId, date, start, end, classType } = await request.json();
-    
+    const { studentId, instructorId, date, start, end, classType, amount, paid, pickupLocation, dropoffLocation } = await request.json();
+
     // console.log('📅 Booking request:', { studentId, instructorId, date, start, end, classType });
-    
+
     if (!studentId || !instructorId || !date || !start || !end) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
@@ -41,34 +41,126 @@ export async function POST(request: Request) {
     
     // console.log(`📊 Instructor ${instructorId} has ${instructor.schedule?.length || 0} schedule slots`);
     
-    // Buscar el slot específico que coincida con fecha, hora y tipo de clase
-    const slot = instructor.schedule.find((slot: Slot) => 
-      slot.date === date && 
-      slot.start === start && 
-      slot.end === end &&
-      (classType ? slot.classType === classType : true)
+    // Buscar slots que se solapen con el horario solicitado
+    const overlappingSlot = instructor.schedule.find((slot: Slot) => {
+      if (slot.date !== date) return false;
+
+      // Verificar si hay solapamiento de horarios
+      const slotStart = slot.start;
+      const slotEnd = slot.end;
+
+      // Hay solapamiento si:
+      // - El nuevo slot empieza durante un slot existente
+      // - El nuevo slot termina durante un slot existente
+      // - El nuevo slot envuelve completamente un slot existente
+      const overlaps = (start >= slotStart && start < slotEnd) ||
+                      (end > slotStart && end <= slotEnd) ||
+                      (start <= slotStart && end >= slotEnd);
+
+      return overlaps && (slot.status === 'scheduled' || slot.booked);
+    });
+
+    if (overlappingSlot) {
+      return NextResponse.json({
+        error: 'Slot is not available - there is already a scheduled class at this time',
+        details: { existingSlot: { start: overlappingSlot.start, end: overlappingSlot.end } }
+      }, { status: 409 });
+    }
+
+    // Buscar si existe un slot exacto (libre o disponible)
+    let slot = instructor.schedule.find((slot: Slot) =>
+      slot.date === date &&
+      slot.start === start &&
+      slot.end === end
     );
-    
-    if (!slot) {
-      // console.log('❌ Slot not found:', { date, start, end, classType });
-      // console.log('Available slots:', instructor.schedule?.filter((s: any) => s.date === date).map((s: any) => ({ start: s.start, end: s.end, classType: s.classType })));
-      return NextResponse.json({ error: 'Slot not found or not available for this service type' }, { status: 404 });
+
+    // Si no existe el slot o existe pero está libre, crearlo/actualizarlo
+    if (!slot || slot.status === 'free' || slot.status === 'available') {
+      console.log('📝 Creating/updating slot:', { date, start, end, classType });
+
+      if (!slot) {
+        // Crear nuevo slot
+        const newSlot: any = {
+          _id: new mongoose.Types.ObjectId().toString(),
+          date,
+          start,
+          end,
+          status: 'scheduled',
+          booked: true,
+          studentId: new mongoose.Types.ObjectId(studentId),
+          classType,
+        };
+
+        // Agregar campos adicionales
+        if (amount !== undefined) newSlot.amount = amount;
+        if (paid !== undefined) newSlot.paid = paid;
+        if (pickupLocation) newSlot.pickupLocation = pickupLocation;
+        if (dropoffLocation) newSlot.dropoffLocation = dropoffLocation;
+
+        instructor.schedule.push(newSlot);
+      } else {
+        // Actualizar slot existente
+        slot.status = 'scheduled';
+        slot.booked = true;
+        slot.studentId = new mongoose.Types.ObjectId(studentId);
+        slot.classType = classType;
+
+        if (amount !== undefined) (slot as any).amount = amount;
+        if (paid !== undefined) (slot as any).paid = paid;
+        if (pickupLocation) (slot as any).pickupLocation = pickupLocation;
+        if (dropoffLocation) (slot as any).dropoffLocation = dropoffLocation;
+      }
+
+      instructor.markModified('schedule');
+      await instructor.save();
+
+      // Broadcast real-time update
+      try {
+        broadcastScheduleUpdate(instructorId);
+        console.log('✅ Schedule update broadcasted via SSE');
+      } catch (broadcastError) {
+        console.error('❌ Failed to broadcast schedule update:', broadcastError);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Class scheduled successfully',
+        booking: {
+          instructorId,
+          date,
+          start,
+          end,
+          classType,
+          studentId
+        }
+      });
     }
+
+    // Si llegamos aquí, el slot existe pero no está disponible
+    return NextResponse.json({
+      error: 'Slot is not available',
+      details: { status: slot.status, booked: slot.booked }
+    }, { status: 409 });
     
-    // Verificar que el slot esté disponible
-    if (slot.status !== 'free' && slot.status !== 'available') {
-      return NextResponse.json({ error: 'Slot is not available' }, { status: 409 });
-    }
-    
-    if (slot.booked) {
-      return NextResponse.json({ error: 'Slot is already booked' }, { status: 409 });
-    }
-    
-    // Marcar como reservado
+    // Marcar como reservado y agregar información adicional
     slot.status = 'scheduled';
     slot.booked = true;
     slot.studentId = new mongoose.Types.ObjectId(studentId);
-    
+
+    // Agregar campos adicionales si se proporcionan
+    if (amount !== undefined) {
+      (slot as any).amount = amount;
+    }
+    if (paid !== undefined) {
+      (slot as any).paid = paid;
+    }
+    if (pickupLocation) {
+      (slot as any).pickupLocation = pickupLocation;
+    }
+    if (dropoffLocation) {
+      (slot as any).dropoffLocation = dropoffLocation;
+    }
+
     // Marcar el documento como modificado y guardar
     instructor.markModified('schedule');
     await instructor.save();
