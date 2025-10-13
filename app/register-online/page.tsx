@@ -26,6 +26,8 @@ interface TicketClass {
   endHour: string;
   duration: string;
   date: string;
+  locationId?: string;
+  classId?: string;
   cupos: number;
   status: string;
   availableSpots: number;
@@ -33,6 +35,7 @@ interface TicketClass {
   totalSpots: number;
   userHasPendingRequest?: boolean;
   userIsEnrolled?: boolean;
+  userHasCancelled?: boolean;
   students: {
     studentId: string;
     reason?: string;
@@ -40,6 +43,7 @@ interface TicketClass {
     citation_ticket?: string;
     course_country?: string;
   }[];
+  students_cancelled?: unknown[];
   studentRequests?: {
     studentId: string;
     requestDate: string;
@@ -55,6 +59,11 @@ interface TicketClass {
     name: string;
     email: string;
     photo: string;
+  };
+  locationData?: {
+    _id: string;
+    title: string;
+    zone: string;
   };
 }
 
@@ -87,14 +96,16 @@ function RegisterOnlineContent() {
     cancellationFee?: number;
     message?: string;
     requiresPayment: boolean;
+    canCancel?: boolean;
   } | null>(null);
   
   // Estados para el modal de reserva
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor' | 'redeem'>('online');
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'instructor'>('online');
   const [isOnlinePaymentLoading, setIsOnlinePaymentLoading] = useState(false);
   const [isProcessingBooking, setIsProcessingBooking] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [selectedClassPrice, setSelectedClassPrice] = useState<number | null>(null);
+  const [isModalReady, setIsModalReady] = useState(false);
   
   // Estados para manejo de autenticación y slots pendientes
   const [pendingSlot, setPendingSlot] = useState<{
@@ -103,7 +114,7 @@ function RegisterOnlineContent() {
   } | null>(null);
 
   const { user, setUser } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, cart } = useCart();
   const userId = user?._id || "";
   const [phoneNumber, setPhoneNumber] = useState("(561) 330-7007");
 
@@ -127,15 +138,15 @@ function RegisterOnlineContent() {
     
     // Si hay un slot pendiente, proceder con la reserva
     if (pendingSlot) {
-      setSelectedTicketClass(pendingSlot.ticketClass);
       setSelectedClassPrice(pendingSlot.classPrice);
-      setIsBookingModalOpen(true);
+      loadLocationAndOpenModal(pendingSlot.ticketClass);
       setPendingSlot(null);
     }
   };
 
   // Use SSE hook for real-time updates with selectedClassId and userId
   const { ticketClasses, isLoading } = useRegisterOnlineSSE(selectedInstructorId, selectedClassId, userId);
+
 
   // Effect to handle classId from URL - automatically show calendar if classId is present
   useEffect(() => {
@@ -150,6 +161,26 @@ function RegisterOnlineContent() {
   // Helper functions
   const pad = (n: number) => n.toString().padStart(2, '0');
   
+  // Check if a ticket class is already in the user's cart
+  const isClassInCart = (ticketClass: TicketClass): boolean => {
+    const userWithCart = user as any;
+    if (!userWithCart?.cart || !Array.isArray(userWithCart.cart)) {
+      return false;
+    }
+    
+    // Use ticketClassId for exact matching
+    const isInCart = userWithCart.cart.some((item: any) => {
+      const match = item.classType === 'ticket' && 
+        item.ticketClassId === ticketClass._id;
+      
+      
+      return match;
+    });
+    
+    
+    return isInCart;
+  };
+  
   // Función para manejar la confirmación de reserva
   const handleConfirm = async () => {
     if (!userId || !selectedTicketClass) {
@@ -161,41 +192,6 @@ function RegisterOnlineContent() {
       return;
     }
 
-    if (paymentMethod === 'redeem') {
-      // REDIMIR: Reservar usando crédito de clase cancelada
-      setIsProcessingBooking(true);
-      try {
-        const res = await fetch('/api/ticketclasses/request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ticketClassId: selectedTicketClass._id,
-            studentId: userId, // Usar studentId en lugar de userId
-            classId: selectedTicketClass.classInfo?._id,
-            date: selectedTicketClass.date,
-            start: selectedTicketClass.hour,
-            end: selectedTicketClass.endHour,
-            paymentMethod: 'redeem' // Indicar que es redención
-          }),
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error || 'Failed to redeem class');
-        }
-
-        setIsBookingModalOpen(false);
-        setSelectedTicketClass(null);
-        setConfirmationMessage('Class redeemed successfully! You have been enrolled.');
-        setShowConfirmation(true);
-      } catch (error) {
-        console.error('❌ Error redeeming class:', error);
-        alert(`Error redeeming class: ${error.message || 'Please try again.'}`);
-      } finally {
-        setIsProcessingBooking(false);
-      }
-      return;
-    }
 
     if (paymentMethod === 'online') {
       // AGREGAR AL CARRITO: Agregar al carrito y poner en studentRequests
@@ -522,6 +518,35 @@ function RegisterOnlineContent() {
     return time;
   };
 
+  // Function to load location and then open modal
+  const loadLocationAndOpenModal = async (ticketClass: TicketClass) => {
+    try {
+      setIsModalReady(false);
+      setSelectedTicketClass(ticketClass);
+      
+      // If there's a locationId, load the location first
+      if (ticketClass.locationId) {
+        const response = await fetch(`/api/locations/${ticketClass.locationId}`);
+        if (response.ok) {
+          const locationData = await response.json();
+          // Store location data in the ticket class object
+          setSelectedTicketClass({
+            ...ticketClass,
+            locationData: locationData
+          });
+        }
+      }
+      
+      setIsModalReady(true);
+      setIsBookingModalOpen(true);
+    } catch (error) {
+      console.error('Error loading location:', error);
+      // Even if location fails, open modal with default data
+      setIsModalReady(true);
+      setIsBookingModalOpen(true);
+    }
+  };
+
 
   // Fetch initial data
   useEffect(() => {
@@ -670,19 +695,52 @@ function RegisterOnlineContent() {
                       // Check if current user has a pending request
                       const hasPendingRequest = overlappingClass.userHasPendingRequest;
                       
+                      // Check if current user has cancelled this class
+                      const userHasCancelled = overlappingClass.userHasCancelled;
+                      
                       // User is enrolled - show blue slot with unbook option
                       if (isUserEnrolled) {
+                        // Check if the class is today or in the past
+                        // Use string comparison to avoid timezone issues
+                        let classDateString: string;
+                        const classDateValue = overlappingClass.date as any;
+                        
+                        if (classDateValue instanceof Date) {
+                          classDateString = classDateValue.toISOString().split('T')[0]; // YYYY-MM-DD
+                        } else if (typeof classDateValue === 'string') {
+                          // Extract YYYY-MM-DD from ISO string or other formats
+                          classDateString = classDateValue.split('T')[0];
+                        } else {
+                          // Fallback: use calendar date
+                          classDateString = date.toISOString().split('T')[0];
+                        }
+                        
+                        // Get today's date in YYYY-MM-DD format
+                        const today = new Date();
+                        const todayString = today.toISOString().split('T')[0];
+                        
+                        // Compare date strings (YYYY-MM-DD format)
+                        const isTodayOrPast = classDateString <= todayString;
+                        
+                        
                         return (
                           <td
                             key={date.toDateString()}
-                            className="border border-gray-300 p-1 cursor-pointer min-w-[80px] w-[80px] bg-blue-500 text-white hover:bg-red-500"
+                            className={`border border-gray-300 p-1 min-w-[80px] w-[80px] bg-blue-500 text-white ${
+                              isTodayOrPast 
+                                ? 'cursor-not-allowed opacity-75' 
+                                : 'cursor-pointer hover:bg-red-500'
+                            }`}
                             rowSpan={rowSpan}
-                            onClick={() => {
+                            onClick={isTodayOrPast ? undefined : () => {
                               // Show confirmation modal first
                               setClassToUnbook(overlappingClass as TicketClass);
                               setShowUnbookConfirm(true);
                             }}
-                            title="Click to unenroll from this class"
+                            title={isTodayOrPast 
+                              ? "Cannot cancel classes on the same day or classes that have already passed"
+                              : "Click to unenroll from this class"
+                            }
                           >
                             <div className="text-xs">
                               Enrolled
@@ -694,15 +752,44 @@ function RegisterOnlineContent() {
                         );
                       }
                       
-                      // User has pending request - show yellow slot with click to cancel
-                      if (hasPendingRequest) {
+                      // User has cancelled this class - show grey slot (not available for booking)
+                      if (userHasCancelled) {
                         return (
                           <td
                             key={date.toDateString()}
-                            className="border border-gray-300 p-1 cursor-pointer min-w-[80px] w-[80px] bg-yellow-100 hover:bg-yellow-200 text-black"
+                            className="border border-gray-300 p-1 min-w-[80px] w-[80px] bg-gray-300 text-gray-600"
                             rowSpan={rowSpan}
-                            title="Click to cancel your pending request"
-                            onClick={() => {
+                            title="You cancelled this class"
+                          >
+                            <div className="text-xs">
+                              Cancelled
+                            </div>
+                            <div className="text-xs font-bold">
+                              {overlappingClass.classInfo?.title || getClassTypeDisplay(overlappingClass.type)}
+                            </div>
+                          </td>
+                        );
+                      }
+                      
+                      // User has pending request - show yellow slot with click to cancel
+                      if (hasPendingRequest) {
+                        const classInCart = isClassInCart(overlappingClass as TicketClass);
+                        
+                        
+                        return (
+                          <td
+                            key={date.toDateString()}
+                            className={`border border-gray-300 p-1 min-w-[80px] w-[80px] text-black ${
+                              classInCart 
+                                ? 'bg-yellow-100 cursor-not-allowed opacity-75' 
+                                : 'bg-yellow-100 hover:bg-yellow-200 cursor-pointer'
+                            }`}
+                            rowSpan={rowSpan}
+                            title={classInCart 
+                              ? "This class is already in your cart" 
+                              : "Click to cancel your pending request"
+                            }
+                            onClick={classInCart ? undefined : () => {
                               if (!userId) {
                                 setShowLogin(true);
                                 return;
@@ -713,7 +800,7 @@ function RegisterOnlineContent() {
                             }}
                           >
                             <div className="text-xs">
-                              Pending
+                              {classInCart ? 'In Cart' : 'Pending'}
                             </div>
                             <div className="text-xs font-bold">
                               {overlappingClass.classInfo?.title || getClassTypeDisplay(overlappingClass.type)}
@@ -775,9 +862,8 @@ function RegisterOnlineContent() {
                                   setSelectedClassPrice(50); // Default price
                                 }
                                 
-                                // Open booking modal for payment selection
-                                setSelectedTicketClass(overlappingClass as TicketClass);
-                                setIsBookingModalOpen(true);
+                                // Load location first, then open modal
+                                await loadLocationAndOpenModal(overlappingClass as TicketClass);
                               }}
                           >
                             <div className="text-xs text-black">
@@ -940,6 +1026,7 @@ function RegisterOnlineContent() {
                 </div>
               </div>
               
+
               {/* Always show the schedule table - empty or with classes */}
               <div className="flex justify-center">
                 <div className="ml-16">
@@ -1132,12 +1219,12 @@ function RegisterOnlineContent() {
           }}
         >
           <div
-            className="relative bg-white text-black rounded-lg shadow-2xl border border-[#e0e0e0] flex flex-col"
+            className="relative bg-white text-black rounded-2xl shadow-2xl border border-gray-200 flex flex-col mx-4"
             style={{
-              minWidth: '420px',
-              maxWidth: '420px',
-              width: '420px',
-              minHeight: '350px'
+              minWidth: '350px',
+              maxWidth: '500px',
+              width: '90vw',
+              maxHeight: '90vh'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1147,12 +1234,12 @@ function RegisterOnlineContent() {
                 setShowUnbookConfirm(false);
                 setCancellationData(null);
               }}
-              className="absolute top-3 right-3 p-2 z-[9999] transition-all duration-300 bg-red-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="absolute top-4 right-4 p-2 z-[9999] transition-all duration-300 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Close modal"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-gray-600 hover:text-gray-900"
+                className="h-5 w-5 text-gray-500 hover:text-gray-700"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -1167,87 +1254,74 @@ function RegisterOnlineContent() {
             </button>
 
             <div className="p-6 text-black flex flex-col h-full">
-              <h2 className="text-xl font-bold mb-4 text-center text-red-600">Cancel Your Class</h2>
+              <div className="text-center mb-6">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-3">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-red-600">Cancel Your Class</h2>
+              </div>
 
               {/* Class Details */}
               {classToUnbook && (
-                <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                  <p className="text-sm mb-2"><strong>Class:</strong> {classToUnbook.classInfo?.title || getClassTypeDisplay(classToUnbook.type)}</p>
-                  <p className="text-sm mb-2"><strong>Date:</strong> {formatDateForDisplay(classToUnbook.date)}</p>
-                  <p className="text-sm"><strong>Time:</strong> {formatTime(classToUnbook.hour)} - {formatTime(classToUnbook.endHour)}</p>
+                <div className="bg-blue-50 p-5 rounded-xl mb-6 border border-blue-200">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-3">Class Details</h3>
+                  <div className="space-y-2">
+                    <p className="text-sm"><span className="font-semibold text-gray-700">Class:</span> <span className="text-gray-900">{classToUnbook.classInfo?.title || getClassTypeDisplay(classToUnbook.type)}</span></p>
+                    <p className="text-sm"><span className="font-semibold text-gray-700">Date:</span> <span className="text-gray-900">{formatDateForDisplay(classToUnbook.date)}</span></p>
+                    <p className="text-sm"><span className="font-semibold text-gray-700">Time:</span> <span className="text-gray-900">{formatTime(classToUnbook.hour)} - {formatTime(classToUnbook.endHour)}</span></p>
+                  </div>
                 </div>
               )}
 
               {/* Cancellation Policy Information */}
-              {cancellationData === null ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin h-8 w-8 border-4 border-red-500 border-t-transparent rounded-full"></div>
-                  <span className="ml-3 text-gray-600">Checking cancellation policy...</span>
-                </div>
-              ) : cancellationData.requiresPayment ? (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+              {cancellationData?.canCancel === false ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                   <div className="flex items-start">
-                    <svg className="h-6 w-6 text-orange-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-6 w-6 text-red-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <div className="w-full">
-                      <h3 className="text-orange-800 font-semibold mb-1">Cancellation Fee Required</h3>
-                      <p className="text-orange-700 text-sm mb-2">
-                        Cancellation within 48 hours requires a <strong className="text-orange-900">${cancellationData.cancellationFee}.00 USD</strong> fee
-                      </p>
-                      <p className="text-orange-600 text-xs">
-                        After payment, you'll receive credit to redeem for any future class.
+                      <h3 className="text-red-800 font-semibold mb-1">Cannot Cancel</h3>
+                      <p className="text-red-700 text-sm">
+                        You cannot cancel classes on the same day or classes that have already passed.
                       </p>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start">
-                    <svg className="h-6 w-6 text-green-600 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <h3 className="text-green-800 font-semibold mb-1">Free Cancellation</h3>
-                      <p className="text-green-700 text-sm">
-                        Your class is more than 48 hours away. You can cancel without any charges and receive credit for a future class.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              ) : null}
 
-              <p className="text-gray-600 text-sm text-center mb-4">
-                {cancellationData?.requiresPayment
-                  ? `You will be charged $${cancellationData.cancellationFee}.00 to cancel this class.`
-                  : 'Are you sure you want to cancel this class?'
-                }
-              </p>
+              <div className="text-center mb-6">
+                <p className="text-gray-700 text-base font-medium">
+                  {cancellationData?.canCancel === false 
+                    ? 'This class cannot be cancelled.'
+                    : 'Are you sure you want to cancel this ticket class?'
+                  }
+                </p>
+              </div>
 
               {/* Action Buttons */}
-              <div className="mt-auto flex justify-between gap-3">
+              <div className="flex justify-center gap-4 mt-auto">
                 <button
-                  className="flex-1 bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-all duration-200 font-medium text-sm"
+                  className="px-8 py-3 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-all duration-200 font-semibold text-base shadow-md"
                   onClick={() => {
                     setShowUnbookConfirm(false);
                     setCancellationData(null);
                   }}
-                  disabled={cancellationData === null}
                 >
                   Keep Class
                 </button>
                 <button
-                  className={`flex-1 px-6 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${
-                    cancellationData === null
+                  className={`px-8 py-3 rounded-xl transition-all duration-200 font-semibold text-base shadow-md ${
+                    cancellationData?.canCancel === false
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : cancellationData.requiresPayment
-                        ? 'bg-orange-500 text-white hover:bg-orange-600'
-                        : 'bg-red-500 text-white hover:bg-red-600'
+                      : 'bg-red-500 text-white hover:bg-red-600 hover:shadow-lg'
                   }`}
-                  disabled={cancellationData === null}
+                  disabled={cancellationData?.canCancel === false}
                   onClick={handleUnbookClass}
                 >
-                  {cancellationData?.requiresPayment ? 'Pay & Cancel' : 'Yes, Cancel Class'}
+                  {cancellationData?.canCancel === false ? 'Cannot Cancel' : 'Yes, Cancel Class'}
                 </button>
               </div>
             </div>

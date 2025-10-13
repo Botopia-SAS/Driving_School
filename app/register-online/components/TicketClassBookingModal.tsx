@@ -5,15 +5,10 @@ import Modal from "@/components/Modal";
 import { formatDateForDisplay } from "@/utils/dateFormat";
 import TermsCheckbox from "@/components/TermsCheckbox";
 
-interface CancelledTicketClass {
-  ticketClassId: string;
-  className: string;
-  locationId: string;
-  date: string;
-  hour: string;
-  duration: string;
-  cancelledAt: Date;
-  redeemed: boolean;
+interface Location {
+  _id: string;
+  title: string;
+  zone: string;
 }
 
 interface TicketClassBookingModalProps {
@@ -24,6 +19,12 @@ interface TicketClassBookingModalProps {
     date: string;
     hour: string;
     endHour: string;
+    locationId?: string;
+    locationData?: {
+      _id: string;
+      title: string;
+      zone: string;
+    };
     classInfo?: {
       _id: string;
       title: string;
@@ -34,8 +35,8 @@ interface TicketClassBookingModalProps {
     };
   } | null;
   classPrice: number | null;
-  paymentMethod: 'online' | 'instructor' | 'redeem';
-  setPaymentMethod: (method: 'online' | 'instructor' | 'redeem') => void;
+  paymentMethod: 'online' | 'instructor';
+  setPaymentMethod: (method: 'online' | 'instructor') => void;
   isOnlinePaymentLoading: boolean;
   isProcessingBooking: boolean;
   onConfirm: () => void;
@@ -55,40 +56,35 @@ export default function TicketClassBookingModal({
   userId
 }: TicketClassBookingModalProps) {
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [cancelledClasses, setCancelledClasses] = useState<CancelledTicketClass[]>([]);
-  const [loadingCancelled, setLoadingCancelled] = useState(false);
+  const [location, setLocation] = useState<Location | null>(null);
 
-  // Load cancelled classes when modal opens
+  // Reset terms when modal opens
   useEffect(() => {
-    if (isOpen && userId) {
+    if (isOpen) {
       setTermsAccepted(false);
-      loadCancelledClasses();
+      // Use precached location data if available
+      if (selectedTicketClass?.locationData) {
+        setLocation(selectedTicketClass.locationData);
+      } else if (selectedTicketClass?.locationId) {
+        // Fallback to loading location if not precached
+        loadLocation(selectedTicketClass.locationId);
+      }
     }
-  }, [isOpen, userId]);
+  }, [isOpen, selectedTicketClass?.locationId, selectedTicketClass?.locationData]);
 
-  const loadCancelledClasses = async () => {
-    if (!userId) return;
-
-    setLoadingCancelled(true);
+  const loadLocation = async (locationId: string) => {
     try {
-      const response = await fetch(`/api/users/${userId}`);
+      const response = await fetch(`/api/locations/${locationId}`);
       if (response.ok) {
-        const userData = await response.json();
-        const unredeemed = userData.user?.ticketclass_cancelled?.filter(
-          (tc: CancelledTicketClass) => !tc.redeemed
-        ) || [];
-        setCancelledClasses(unredeemed);
+        const locationData = await response.json();
+        setLocation(locationData);
       }
     } catch (error) {
-      console.error('Error loading cancelled classes:', error);
-    } finally {
-      setLoadingCancelled(false);
+      console.error('Error loading location:', error);
     }
   };
 
   if (!selectedTicketClass) return null;
-
-  const hasUnredeemedClasses = cancelledClasses.length > 0;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -100,9 +96,6 @@ export default function TicketClassBookingModal({
             <div>
               <p className="mb-2">
                 <strong>Class:</strong> {selectedTicketClass.classInfo?.title || 'Unknown Class'}
-              </p>
-              <p className="mb-2">
-                <strong>Instructor:</strong> {selectedTicketClass.instructorInfo?.name || 'TBD'}
               </p>
               <p className="mb-2">
                 <strong>Date:</strong> {formatDateForDisplay(selectedTicketClass.date)}
@@ -122,8 +115,14 @@ export default function TicketClassBookingModal({
                   'TBD'
                 }
               </p>
-              <p className="text-sm text-blue-600">
-                <strong>Class Type:</strong> Ticket Class
+              <p className="mb-2">
+                <strong>Class Type:</strong> <span className="text-blue-600">Ticket Class</span>
+              </p>
+              <p className="mb-2">
+                <strong>Status:</strong> <span className="text-green-600">Available</span>
+              </p>
+              <p className="mb-2">
+                <strong>Location:</strong> <span className="text-blue-600">{location?.zone || 'Loading...'}</span>
               </p>
             </div>
           </div>
@@ -139,7 +138,7 @@ export default function TicketClassBookingModal({
                 name="paymentMethod"
                 value="online"
                 checked={paymentMethod === 'online'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor')}
                 className="mr-2"
               />
               <span className="text-green-600 font-medium">Add to Cart</span>
@@ -151,29 +150,12 @@ export default function TicketClassBookingModal({
                 name="paymentMethod"
                 value="instructor"
                 checked={paymentMethod === 'instructor'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
+                onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor')}
                 className="mr-2"
               />
               <span className="text-blue-600 font-medium">Pay at Location</span>
               <span className="text-sm text-gray-500 ml-2">(Pay when you arrive)</span>
             </label>
-            {hasUnredeemedClasses && (
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="redeem"
-                  checked={paymentMethod === 'redeem'}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
-                  className="mr-2"
-                />
-                <span className="text-purple-600 font-medium">Redeem Cancelled Class</span>
-                <span className="text-sm text-gray-500 ml-2">({cancelledClasses.length} available)</span>
-              </label>
-            )}
-            {loadingCancelled && (
-              <p className="text-sm text-gray-500 italic">Loading cancelled classes...</p>
-            )}
           </div>
         </div>
 
@@ -201,8 +183,6 @@ export default function TicketClassBookingModal({
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : paymentMethod === 'online'
                 ? 'bg-green-500 hover:bg-green-600 text-white'
-                : paymentMethod === 'redeem'
-                ? 'bg-purple-500 hover:bg-purple-600 text-white'
                 : 'bg-blue-500 hover:bg-blue-600 text-white'
             }`}
             onClick={onConfirm}
@@ -220,8 +200,6 @@ export default function TicketClassBookingModal({
               </span>
             ) : paymentMethod === 'online' ? (
               'Add to Cart'
-            ) : paymentMethod === 'redeem' ? (
-              'Redeem & Book'
             ) : (
               'Reserve & Pay Later'
             )}

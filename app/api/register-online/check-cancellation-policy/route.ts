@@ -40,32 +40,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User is not enrolled in this class' }, { status: 400 });
     }
 
-    // Calculate time difference
+    // Calculate class date/time
     const classDate = ticketClass.date instanceof Date ? ticketClass.date : new Date(ticketClass.date);
     const dateStr = classDate.toISOString().split('T')[0];
     const timeStr = ticketClass.hour.includes(':') ? ticketClass.hour : `${ticketClass.hour}:00`;
     const classDateTime = new Date(`${dateStr}T${timeStr}:00`);
     const now = new Date();
-    const hoursDifference = (classDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    const isWithin48Hours = hoursDifference <= 48;
-
-    if (isWithin48Hours) {
-      // Payment required
+    
+    // Get today's date (without time)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get class date (without time)
+    const classDateOnly = new Date(classDate);
+    classDateOnly.setHours(0, 0, 0, 0);
+    
+    // Check if class is today or in the past
+    const isTodayOrPast = classDateOnly <= today;
+    
+    if (isTodayOrPast) {
       return NextResponse.json({
-        requiresPayment: true,
-        cancellationFee: 90,
-        message: 'Cancellation within 48 hours requires a $90 fee',
-        hoursDifference,
+        requiresPayment: false,
+        message: 'Cannot cancel classes on the same day or classes that have already passed',
+        canCancel: false,
         ticketClassId,
         userId
       });
     }
 
-    // Free cancellation
+    // TICKET CLASSES: Free cancellation for future classes
     return NextResponse.json({
       requiresPayment: false,
-      message: 'Free cancellation - more than 48 hours until class',
-      hoursDifference,
+      message: 'Free cancellation for ticket classes',
+      canCancel: true,
       ticketClassId,
       userId
     });

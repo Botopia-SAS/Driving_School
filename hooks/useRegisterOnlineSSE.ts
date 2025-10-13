@@ -13,8 +13,10 @@ interface TicketClass {
   enrolledStudents: number;
   totalSpots: number;
   students: unknown[];
+  students_cancelled?: unknown[];
   userHasPendingRequest?: boolean;
   userIsEnrolled?: boolean;
+  userHasCancelled?: boolean;
   classInfo?: {
     _id: string;
     title: string;

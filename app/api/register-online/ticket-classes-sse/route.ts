@@ -60,16 +60,23 @@ export async function GET(req: NextRequest) {
       // Filter by classId if specified (priority over everything else)
       if (classId && mongoose.Types.ObjectId.isValid(classId)) {
         query.classId = classId;
-        // If instructorId is also specified, add it to the filter
-        if (instructorId && mongoose.Types.ObjectId.isValid(instructorId)) {
-          query.instructorId = instructorId;
-        }
-      } else if (instructorId && mongoose.Types.ObjectId.isValid(instructorId)) {
-        // Original logic for instructor-based filtering
-        query.instructorId = instructorId;
-        
+        // Note: instructorId filtering removed as ticket classes no longer have instructorId field
+      } else if (instructorId && instructorId !== 'ALL') {
+        // For instructor filtering, we need to get instructor's classes first
+        // Since ticket classes don't have instructorId, we'll get all classes for the classType
         if (classType && classType !== 'ALL') {
           // Convert frontend format to database format
+          let dbClassType = classType.toLowerCase();
+          if (classType === 'A.D.I') dbClassType = 'adi';
+          if (classType === 'B.D.I') dbClassType = 'bdi';
+          if (classType === 'D.A.T.E') dbClassType = 'date';
+          
+          query.type = dbClassType;
+        }
+      } else if (instructorId === 'ALL') {
+        // Get all ticket classes when instructor is 'ALL'
+        // Apply classType filter if specified
+        if (classType && classType !== 'ALL') {
           let dbClassType = classType.toLowerCase();
           if (classType === 'A.D.I') dbClassType = 'adi';
           if (classType === 'B.D.I') dbClassType = 'bdi';
@@ -87,31 +94,11 @@ export async function GET(req: NextRequest) {
       // Populate class info for each ticket class
       const ticketClassesWithInfo = await Promise.all(
         ticketClasses.map(async (tc: Record<string, unknown>) => {
-          // Get instructor info to access their schedule
-          const instructor = await Instructor.findById(tc.instructorId).lean() as Record<string, unknown>;
-          
           // Get class info using classId
           const classInfo = await Classes.findById(tc.classId).lean() as Record<string, unknown>;
           
-          // Find the status by looking for this ticketClassId in instructor's schedule
-          let status = 'available';  // Default to available
-          
-          if (instructor?.schedule) {
-            // Search through instructor's schedule to find this ticket class
-            const schedule = instructor.schedule as Record<string, unknown>[];
-            for (const daySchedule of schedule) {
-              if (daySchedule.slots) {
-                const slots = daySchedule.slots as Record<string, unknown>[];
-                const slot = slots.find((slot: Record<string, unknown>) => 
-                  slot.ticketClassId && slot.ticketClassId.toString() === tc._id?.toString()
-                );
-                if (slot) {
-                  status = (slot.status as string) || 'available';
-                  break;
-                }
-              }
-            }
-          }
+          // Set default status to available since we can't check instructor schedule anymore
+          let status = 'available';
           
           // Calculate enrolled students and available spots
           const students = tc.students as unknown[] || [];
@@ -143,6 +130,20 @@ export async function GET(req: NextRequest) {
             }
           );
           
+          // Check if user has cancelled this class
+          const studentsCancelled = tc.students_cancelled as unknown[] || [];
+          const userHasCancelled = userId && studentsCancelled.some(
+            (cancelledStudent: unknown) => {
+              if (typeof cancelledStudent === 'string') {
+                return cancelledStudent === userId;
+              } else if (typeof cancelledStudent === 'object' && cancelledStudent !== null && 'studentId' in cancelledStudent) {
+                const cancelledStudentObj = cancelledStudent as { studentId: unknown };
+                return cancelledStudentObj.studentId?.toString() === userId;
+              }
+              return false;
+            }
+          );
+          
           // Force status to available if there are spots and no students
           if (availableSpots > 0 && enrolledStudents === 0) {
             status = 'available';
@@ -157,17 +158,13 @@ export async function GET(req: NextRequest) {
             endHour: tc.endHour,
             userHasPendingRequest,
             userIsEnrolled,
+            userHasCancelled,
             classInfo: classInfo ? {
               _id: classInfo._id,
               title: classInfo.title as string,
               overview: classInfo.overview as string
             } : null,
-            instructorInfo: instructor ? {
-              _id: instructor._id,
-              name: instructor.name as string,
-              email: instructor.email as string,
-              photo: instructor.photo as string
-            } : null
+            instructorInfo: null // Instructor info no longer available since instructorId was removed from ticket classes
           };
         })
       );
