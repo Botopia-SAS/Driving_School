@@ -8,7 +8,7 @@ export async function GET() {  // <-- Eliminamos el parámetro no utilizado
 
     const courses = await OnlineCourses.find(
       {},
-      "title description image hasPrice price type buttonLabel"
+      "title slug description image hasPrice price type buttonLabel"
     );
 
     if (!courses || courses.length === 0) {

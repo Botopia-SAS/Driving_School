@@ -19,6 +19,7 @@ export async function GET(req: Request) {
 
     // 🔹 Asegurar que se poblen bien los instructores y se convierta en JSON limpio
     const locations = await Locations.find(query)
+      .select("_id title slug description zone locationImage instructors")
       .populate({
         path: "instructors",
         model: Instructor,

@@ -7,7 +7,7 @@ export async function GET() {
     await connectDB();
     const classes = await Classes.find(
       {},
-      "title alsoKnownAs length price overview objectives contact image buttonLabel"
+      "title slug alsoKnownAs length price overview objectives contact image buttonLabel"
     );
 
     if (!classes || classes.length === 0) {
