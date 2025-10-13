@@ -13,25 +13,16 @@ interface SelectedInstructor {
   name?: string;
 }
 
-interface CancelledSlot {
-  slotId: string;
-  date: string;
-  start: string;
-  end: string;
-  amount: number;
-  instructorName: string;
-}
 
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedSlot: SelectedSlot | null;
   selectedInstructor: SelectedInstructor | null;
-  paymentMethod: 'online' | 'instructor' | 'redeem';
-  setPaymentMethod: (method: 'online' | 'instructor' | 'redeem') => void;
+  paymentMethod: 'online' | 'instructor';
+  setPaymentMethod: (method: 'online' | 'instructor') => void;
   isProcessingBooking: boolean;
   onConfirm: () => void;
-  cancelledSlots?: CancelledSlot[];
 }
 
 const BookingModal: React.FC<BookingModalProps> = ({
@@ -43,31 +34,9 @@ const BookingModal: React.FC<BookingModalProps> = ({
   setPaymentMethod,
   isProcessingBooking,
   onConfirm,
-  cancelledSlots = []
 }) => {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  // Helper function to calculate duration in hours
-  function calculateDuration(start: string, end: string): number {
-    const [startHour, startMin] = start.split(':').map(Number);
-    const [endHour, endMin] = end.split(':').map(Number);
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    return (endMinutes - startMinutes) / 60;
-  }
-
-  // Calculate duration of the slot being booked
-  const selectedSlotDuration = selectedSlot?.start && selectedSlot?.end
-    ? calculateDuration(selectedSlot.start, selectedSlot.end)
-    : 0;
-
-  // Check if user has cancelled slots that match the current slot duration
-  const matchingCancelledSlots = cancelledSlots.filter(slot => {
-    const duration = calculateDuration(slot.start, slot.end);
-    return duration === selectedSlotDuration;
-  });
-
-  const hasMatchingCancelledSlots = matchingCancelledSlots.length > 0;
 
   // Reset state when modal opens
   useEffect(() => {
@@ -147,7 +116,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                    type="radio"
                    value="online"
                    checked={paymentMethod === 'online'}
-                   onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
+                   onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor')}
                    className="mr-2"
                  />
                 <span className="font-medium text-sm">Pay Online (Add to Cart)</span>
@@ -157,25 +126,11 @@ const BookingModal: React.FC<BookingModalProps> = ({
                    type="radio"
                    value="instructor"
                    checked={paymentMethod === 'instructor'}
-                   onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
+                   onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor')}
                    className="mr-2"
                  />
                 <span className="font-medium text-sm">Pay at Location</span>
               </label>
-              {hasMatchingCancelledSlots && (
-                <label className="flex items-center justify-center p-2 border-2 border-green-500 bg-green-50 rounded-lg hover:bg-green-100 cursor-pointer transition-all duration-200">
-                  <input
-                    type="radio"
-                    value="redeem"
-                    checked={paymentMethod === 'redeem'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'online' | 'instructor' | 'redeem')}
-                    className="mr-2"
-                  />
-                  <span className="font-medium text-sm text-green-700">
-                    Redeem Cancelled Slot ({selectedSlotDuration} {selectedSlotDuration === 1 ? 'hour' : 'hours'}) - {matchingCancelledSlots.length} available
-                  </span>
-                </label>
-              )}
             </div>
           </div>
 

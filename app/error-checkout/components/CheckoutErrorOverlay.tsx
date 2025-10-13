@@ -11,6 +11,9 @@ export type CheckoutErrorOverlayProps = {
   testId?: string;
   locale?: string;
   triggerPosition?: { x: number; y: number };
+  isProcessingCancellation?: boolean;
+  cancellationMessage?: string;
+  showHomeButton?: boolean;
 };
 
 interface ErrorContentType {
@@ -26,14 +29,14 @@ const ERROR_CONTENT: Record<string, ErrorContentType> = {
     title: "Error en el Pago",
     subtitle: "Hubo un problema al procesar tu pago",
     description: "Por favor, verifica tu información de pago e inténtalo de nuevo.",
-    retryBtn: "Intentar de Nuevo",
+    retryBtn: "Volver a Home",
     contactSupport: "Si el problema persiste, contacta con soporte.",
   },
   en: {
     title: "Payment Error",
     subtitle: "There was a problem processing your payment",
     description: "Please verify your payment information and try again.",
-    retryBtn: "Try Again",
+    retryBtn: "Back to Home",
     contactSupport: "If the problem persists, please contact support.",
   },
 };
@@ -45,6 +48,9 @@ function CheckoutErrorOverlay({
   testId = "checkout-error-overlay",
   locale = "en",
   triggerPosition,
+  isProcessingCancellation = false,
+  cancellationMessage = "",
+  showHomeButton = false,
 }: CheckoutErrorOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -131,49 +137,73 @@ function CheckoutErrorOverlay({
               <circle cx="40" cy="54" r="3.5" fill="#d32f2f" />
             </svg>
           </div>
-          {/* Error message */}
-          <div className="text-center mb-4">
-            <h2
-              id={headingId}
-              tabIndex={-1}
-              className="text-white text-3xl md:text-4xl font-extrabold outline-none animate-riseFade drop-shadow-lg mb-2"
-              style={{ letterSpacing: "-1px" }}
-            >
-              {content.title}
-            </h2>
-            <p className="text-white/90 text-lg font-medium animate-riseFade">
-              {content.subtitle}
-            </p>
-          </div>
-
-          {/* Error details */}
-          <div className="w-full max-w-sm bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 animate-fadeInContent">
+          {/* Processing cancellation or error message */}
+          {isProcessingCancellation ? (
             <div className="text-center mb-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-full mb-3">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
+              <div className="flex justify-center w-full mb-6">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white"></div>
               </div>
-              <p className="text-white/90 text-sm mb-4">
-                {content.description}
-              </p>
-              <p className="text-white/70 text-xs">
-                {content.contactSupport}
+              <h2
+                id={headingId}
+                tabIndex={-1}
+                className="text-white text-3xl md:text-4xl font-extrabold outline-none animate-riseFade drop-shadow-lg mb-2"
+                style={{ letterSpacing: "-1px" }}
+              >
+                Processing...
+              </h2>
+              <p className="text-white/90 text-lg font-medium animate-riseFade">
+                {cancellationMessage || "Processing payment cancellation..."}
               </p>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Error message */}
+              <div className="text-center mb-4">
+                <h2
+                  id={headingId}
+                  tabIndex={-1}
+                  className="text-white text-3xl md:text-4xl font-extrabold outline-none animate-riseFade drop-shadow-lg mb-2"
+                  style={{ letterSpacing: "-1px" }}
+                >
+                  {cancellationMessage ? "Cancellation Complete" : content.title}
+                </h2>
+                <p className="text-white/90 text-lg font-medium animate-riseFade">
+                  {cancellationMessage || content.subtitle}
+                </p>
+              </div>
 
-          {/* Try again button */}
-          <button
-            ref={closeBtnRef}
-            type="button"
-            onClick={onClose}
-            className="mt-6 px-8 py-4 rounded-xl bg-white text-[#d32f2f] text-lg font-bold shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d32f2f] transition-all hover:bg-[#ffe6e6] hover:scale-105 transform"
-            data-testid="checkout-error-continue"
-            style={{ boxShadow: "0 4px 24px #d32f2f33" }}
-          >
-            {content.retryBtn}
-          </button>
+              {/* Error details */}
+              <div className="w-full max-w-sm bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 animate-fadeInContent">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-full mb-3">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <p className="text-white/90 text-sm mb-4">
+                    {cancellationMessage || content.description}
+                  </p>
+                  <p className="text-white/70 text-xs">
+                    {content.contactSupport}
+                  </p>
+                </div>
+              </div>
+
+              {/* Show button only after cancellation is complete */}
+              {showHomeButton && (
+                <button
+                  ref={closeBtnRef}
+                  type="button"
+                  onClick={onClose}
+                  className="mt-6 px-8 py-4 rounded-xl bg-white text-[#d32f2f] text-lg font-bold shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d32f2f] transition-all hover:bg-[#ffe6e6] hover:scale-105 transform"
+                  data-testid="checkout-error-continue"
+                  style={{ boxShadow: "0 4px 24px #d32f2f33" }}
+                >
+                  {content.retryBtn}
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
       {/* Animaciones Tailwind y SVG personalizadas */}
