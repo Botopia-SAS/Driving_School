@@ -17,12 +17,12 @@
  */
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/components/AuthContext";
 import CheckoutErrorOverlay from "./components/CheckoutErrorOverlay";
 
-export default function ErrorCheckoutPage() {
+function ErrorCheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clearCart, cart } = useCart();
@@ -226,5 +226,20 @@ export default function ErrorCheckoutPage() {
         showHomeButton={showOverlayAfterCancellation}
       />
     </div>
+  );
+}
+
+export default function ErrorCheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <ErrorCheckoutContent />
+    </Suspense>
   );
 }
