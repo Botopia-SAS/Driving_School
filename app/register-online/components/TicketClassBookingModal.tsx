@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Modal from "@/components/Modal";
 import { formatDateForDisplay } from "@/utils/dateFormat";
-import TermsCheckbox from "@/components/TermsCheckbox";
 
 interface Location {
   _id: string;
@@ -55,13 +54,11 @@ export default function TicketClassBookingModal({
   onConfirm,
   userId
 }: TicketClassBookingModalProps) {
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [location, setLocation] = useState<Location | null>(null);
 
-  // Reset terms when modal opens
+  // Load location when modal opens
   useEffect(() => {
     if (isOpen) {
-      setTermsAccepted(false);
       // Use precached location data if available
       if (selectedTicketClass?.locationData) {
         setLocation(selectedTicketClass.locationData);
@@ -159,14 +156,6 @@ export default function TicketClassBookingModal({
           </div>
         </div>
 
-        {/* Terms and Conditions Checkbox */}
-        <div className="mb-4">
-          <TermsCheckbox
-            isChecked={termsAccepted}
-            onChange={setTermsAccepted}
-            className="justify-center"
-          />
-        </div>
 
         <div className="mt-4 flex justify-center gap-3">
           <button
@@ -179,14 +168,14 @@ export default function TicketClassBookingModal({
           
           <button
             className={`px-6 py-2 rounded font-medium transition-all ${
-              !termsAccepted || isOnlinePaymentLoading || isProcessingBooking
+              isOnlinePaymentLoading || isProcessingBooking
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : paymentMethod === 'online'
                 ? 'bg-green-500 hover:bg-green-600 text-white'
                 : 'bg-blue-500 hover:bg-blue-600 text-white'
             }`}
             onClick={onConfirm}
-            disabled={!termsAccepted || isOnlinePaymentLoading || isProcessingBooking}
+            disabled={isOnlinePaymentLoading || isProcessingBooking}
           >
             {isOnlinePaymentLoading ? (
               <span className="flex items-center">
