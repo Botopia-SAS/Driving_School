@@ -38,7 +38,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [duration, setDuration] = useState<number>(1);
   const [pickupLocation, setPickupLocation] = useState('');
   const [dropoffLocation, setDropoffLocation] = useState('');
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState<string>('0');
   const [paid, setPaid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCreateStudent, setShowCreateStudent] = useState(false);
@@ -120,7 +120,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         start: selectedTime,
         end: endTime,
         classType,
-        amount: amount || 0,
+        amount: parseFloat(amount) || 0,
         paid,
         pickupLocation: pickupLocation || undefined,
         dropoffLocation: dropoffLocation || undefined,
@@ -161,7 +161,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     setDuration(1);
     setPickupLocation('');
     setDropoffLocation('');
-    setAmount(0);
+    setAmount('0');
     setPaid(false);
   };
 
@@ -287,11 +287,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         <div className="mb-4">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Amount ($)</label>
           <input
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={amount}
-            onChange={(e) => setAmount(parseFloat(e.target.value))}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow only numbers and one decimal point
+              if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                setAmount(value);
+              }
+            }}
+            onBlur={(e) => {
+              // Format on blur to ensure valid number
+              const num = parseFloat(e.target.value);
+              if (isNaN(num) || num < 0) {
+                setAmount('0');
+              } else {
+                setAmount(num.toFixed(2));
+              }
+            }}
+            placeholder="0.00"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-black"
           />
         </div>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -7,27 +7,46 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
+  // Prevenir scroll del body cuando el modal está abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-2 sm:p-4"
       onClick={onClose}
+      onTouchMove={(e) => e.stopPropagation()}
+      style={{ overflow: 'hidden' }}
     >
       <div
-        className="relative bg-white text-black rounded-2xl shadow-2xl border border-gray-200 max-h-[90vh] flex flex-col mx-4"
+        className="relative bg-white text-black rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200 flex flex-col w-full"
         style={{
-          minWidth: '350px',
-          maxWidth: '500px',
-          width: '90vw',
-          overflow: 'hidden'
+          minWidth: '300px',
+          maxWidth: '1200px',
+          width: '100%',
+          maxHeight: '95vh'
         }}
         onClick={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
       >
         {/* Botón de cierre mejorado */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 p-1.5 z-[9999] transition-all duration-300 bg-red-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="absolute top-2 right-2 p-1.5 z-[9999] transition-all duration-300 bg-red-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-red-300 active:scale-95"
           aria-label="Close modal"
         >
           <svg

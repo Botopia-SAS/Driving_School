@@ -2,6 +2,7 @@ import React from 'react';
 import LoadingSpinner from '../common/LoadingSpinner';
 import type { Class as CalendarClass } from './types';
 import { normalizeType, openNavigationLink } from './calendarUtils';
+import { SessionTabsContainer } from './SessionTabsContainer';
 
 interface CalendarModalContentProps {
   selectedBlock: CalendarClass | null;
@@ -11,6 +12,7 @@ interface CalendarModalContentProps {
   locationInfo: unknown;
   studentsInfo: unknown[];
   loadingExtra: boolean;
+  instructorId?: string;
 }
 
 export const CalendarModalContent: React.FC<CalendarModalContentProps> = ({
@@ -20,10 +22,28 @@ export const CalendarModalContent: React.FC<CalendarModalContentProps> = ({
   drivingClassInfo,
   locationInfo,
   studentsInfo,
-  loadingExtra
+  loadingExtra,
+  instructorId
 }) => {
   if (!selectedBlock) return null;
 
+  // For regular driving lessons/tests with a student, use the new tabbed interface
+  const isRegularLesson = selectedBlock.studentId &&
+    !['ticket class', 'D.A.T.E.', 'A.D.I.', 'B.D.I.'].includes(normalizeType(selectedBlock.classType ?? ''));
+
+  if (isRegularLesson) {
+    return (
+      <div className="w-full py-3 px-2 sm:py-4 sm:px-4" style={{ minWidth: '0' }}>
+        <SessionTabsContainer
+          selectedBlock={selectedBlock}
+          studentInfo={studentInfo}
+          instructorId={instructorId}
+        />
+      </div>
+    );
+  }
+
+  // For ticket classes and sessions without students, show the original view
   return (
     <div className="py-4 px-4 w-full" style={{ minWidth: '0', width: '100%' }}>
       <div className="text-center mb-4">

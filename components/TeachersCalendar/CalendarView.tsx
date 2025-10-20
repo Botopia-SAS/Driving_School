@@ -301,8 +301,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
       {/* Modales */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
-        <div className="flex flex-col h-full">
-          <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
             <CalendarModalContent
               selectedBlock={selectedBlock}
               studentInfo={studentInfo}
@@ -311,12 +312,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               locationInfo={locationInfo}
               studentsInfo={studentsInfo}
               loadingExtra={loadingExtra}
+              instructorId={instructorId}
             />
           </div>
-          <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50 flex gap-3">
+
+          <div className="flex-shrink-0 p-3 sm:p-4 border-t border-gray-200 bg-gray-50 flex gap-2 sm:gap-3">
             {instructorId && selectedBlock && (
               <button
-                className="bg-[#27ae60] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1e8449] transition-all flex-1 shadow text-sm"
+                className="bg-[#27ae60] text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-bold hover:bg-[#1e8449] transition-all flex-1 shadow text-xs sm:text-sm active:scale-95"
                 onClick={() => {
                   setShowEditModal(true);
                   setModalOpen(false);
@@ -326,7 +329,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               </button>
             )}
             <button
-              className="bg-[#0056b3] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#27ae60] transition-all flex-1 shadow text-sm"
+              className="bg-[#0056b3] text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-bold hover:bg-[#27ae60] transition-all flex-1 shadow text-xs sm:text-sm active:scale-95"
               onClick={() => setModalOpen(false)}
             >
               Close
