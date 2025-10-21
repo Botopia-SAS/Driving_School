@@ -4,6 +4,63 @@ import Instructor from '@/models/Instructor';
 import mongoose from 'mongoose';
 import { broadcastScheduleUpdate } from '@/lib/sse-driving-test-broadcast';
 
+// Helper para encontrar booking en los arrays
+const findBookingInArrays = (
+  arraysToCheck: Array<{ field: ScheduleField; array: ScheduleSlot[] }>,
+  bookingId: string | undefined,
+  date: string,
+  start: string,
+  end: string
+) => {
+  let slotIndex = -1;
+  let scheduleArray: ScheduleSlot[] | null = null;
+  let scheduleField: ScheduleField | null = null;
+
+  for (const { field, array } of arraysToCheck) {
+    if (bookingId) {
+      slotIndex = array.findIndex((slot) => 
+        slot._id?.toString() === bookingId
+      );
+      if (slotIndex !== -1) {
+        scheduleArray = array;
+        scheduleField = field;
+        console.log('🔍 Found by bookingId in:', field, 'at index:', slotIndex);
+        break;
+      }
+    }
+    
+    if (slotIndex === -1) {
+      slotIndex = array.findIndex((slot) => 
+        slot.date === date && slot.start === start && slot.end === end
+      );
+      if (slotIndex !== -1) {
+        scheduleArray = array;
+        scheduleField = field;
+        console.log('🔍 Found by date/time in:', field, 'at index:', slotIndex);
+        break;
+      }
+    }
+  }
+
+  return { slotIndex, scheduleArray, scheduleField };
+};
+
+type ScheduleField = 'schedule' | 'schedule_driving_lesson' | 'schedule_driving_test';
+interface ScheduleSlot {
+  _id?: { toString(): string };
+  date: string;
+  start: string;
+  end: string;
+  studentId?: mongoose.Types.ObjectId | null;
+  status?: string;
+  booked?: boolean;
+  classType?: string;
+  amount?: number;
+  paid?: boolean;
+  pickupLocation?: string;
+  dropoffLocation?: string;
+}
+
 export async function PUT(request: Request) {
   try {
     await connectDB();
@@ -41,43 +98,19 @@ export async function PUT(request: Request) {
     });
 
     // Buscar el slot a actualizar en los tres posibles arrays
-    let slotIndex = -1;
-    let scheduleArray: any[] | null = null;
-    let scheduleField: 'schedule' | 'schedule_driving_lesson' | 'schedule_driving_test' | null = null;
-    
-    // Intentar en los tres arrays
-    const arraysToCheck: Array<{ field: 'schedule' | 'schedule_driving_lesson' | 'schedule_driving_test', array: any[] }> = [
+    const arraysToCheck: Array<{ field: ScheduleField; array: ScheduleSlot[] }> = [
       { field: 'schedule', array: instructor.schedule || [] },
       { field: 'schedule_driving_lesson', array: instructor.schedule_driving_lesson || [] },
       { field: 'schedule_driving_test', array: instructor.schedule_driving_test || [] }
     ];
 
-    for (const { field, array } of arraysToCheck) {
-      if (bookingId) {
-        slotIndex = array.findIndex((slot: any) => 
-          slot._id?.toString() === bookingId
-        );
-        if (slotIndex !== -1) {
-          scheduleArray = array;
-          scheduleField = field;
-          console.log('🔍 Found by bookingId in:', field, 'at index:', slotIndex);
-          break;
-        }
-      }
-      
-      // Si no se encontró por _id, buscar por fecha/hora
-      if (slotIndex === -1) {
-        slotIndex = array.findIndex((slot: any) => 
-          slot.date === date && slot.start === start && slot.end === end
-        );
-        if (slotIndex !== -1) {
-          scheduleArray = array;
-          scheduleField = field;
-          console.log('🔍 Found by date/time in:', field, 'at index:', slotIndex);
-          break;
-        }
-      }
-    }
+    const { slotIndex, scheduleArray, scheduleField } = findBookingInArrays(
+      arraysToCheck, 
+      bookingId, 
+      date, 
+      start, 
+      end
+    );
 
     if (slotIndex === -1 || !scheduleArray || !scheduleField) {
       console.log('❌ Booking not found in any schedule array');
@@ -105,7 +138,7 @@ export async function PUT(request: Request) {
     
     // Solo actualizar studentId si se proporciona
     if (studentId) {
-      slot.studentId = new mongoose.Types.ObjectId(studentId);
+      slot.studentId = mongoose.Types.ObjectId.createFromHexString(studentId);
       slot.status = 'scheduled'; // Siempre 'scheduled' cuando hay estudiante
       slot.booked = true; // Marcar como booked también
       console.log('✅ Setting student and status to scheduled');
@@ -132,7 +165,7 @@ export async function PUT(request: Request) {
 
     // Recargar el instructor para verificar que se guardó correctamente
     const updatedInstructor = await Instructor.findById(instructorId);
-    const updatedSlot = (updatedInstructor[scheduleField] as any[])[slotIndex];
+    const updatedSlot = (updatedInstructor[scheduleField] as ScheduleSlot[])[slotIndex];
     console.log('✅ Verified saved slot:', JSON.stringify(updatedSlot));
 
     // Broadcast update

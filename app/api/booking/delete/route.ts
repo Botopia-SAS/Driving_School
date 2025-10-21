@@ -3,6 +3,52 @@ import { connectDB } from '@/lib/mongodb';
 import Instructor from '@/models/Instructor';
 import { broadcastScheduleUpdate } from '@/lib/sse-driving-test-broadcast';
 
+type ScheduleField = 'schedule' | 'schedule_driving_lesson' | 'schedule_driving_test';
+interface ScheduleArrayItem {
+  _id?: { toString(): string };
+  date: string;
+  start: string;
+  end: string;
+}
+
+// Helper para encontrar booking en los arrays
+const findBookingInArrays = (
+  arraysToCheck: Array<{ field: ScheduleField; array: ScheduleArrayItem[] }>,
+  bookingId: string | undefined,
+  date: string,
+  start: string,
+  end: string
+) => {
+  let slotIndex = -1;
+  let scheduleField: ScheduleField | null = null;
+
+  for (const { field, array } of arraysToCheck) {
+    if (bookingId) {
+      slotIndex = array.findIndex((slot) => 
+        slot._id?.toString() === bookingId
+      );
+      if (slotIndex !== -1) {
+        scheduleField = field;
+        console.log('🔍 Found by bookingId in:', field, 'at index:', slotIndex);
+        break;
+      }
+    }
+    
+    if (slotIndex === -1) {
+      slotIndex = array.findIndex((slot) => 
+        slot.date === date && slot.start === start && slot.end === end
+      );
+      if (slotIndex !== -1) {
+        scheduleField = field;
+        console.log('🔍 Found by date/time in:', field, 'at index:', slotIndex);
+        break;
+      }
+    }
+  }
+
+  return { slotIndex, scheduleField };
+};
+
 export async function DELETE(request: Request) {
   try {
     await connectDB();
@@ -21,38 +67,19 @@ export async function DELETE(request: Request) {
     }
 
     // Buscar el slot a eliminar en los tres posibles arrays
-    let slotIndex = -1;
-    let scheduleField: 'schedule' | 'schedule_driving_lesson' | 'schedule_driving_test' | null = null;
-    
-    const arraysToCheck: Array<{ field: 'schedule' | 'schedule_driving_lesson' | 'schedule_driving_test', array: any[] }> = [
+    const arraysToCheck: Array<{ field: ScheduleField; array: ScheduleArrayItem[] }> = [
       { field: 'schedule', array: instructor.schedule || [] },
       { field: 'schedule_driving_lesson', array: instructor.schedule_driving_lesson || [] },
       { field: 'schedule_driving_test', array: instructor.schedule_driving_test || [] }
     ];
 
-    for (const { field, array } of arraysToCheck) {
-      if (bookingId) {
-        slotIndex = array.findIndex((slot: any) => 
-          slot._id?.toString() === bookingId
-        );
-        if (slotIndex !== -1) {
-          scheduleField = field;
-          console.log('🔍 Found by bookingId in:', field, 'at index:', slotIndex);
-          break;
-        }
-      }
-      
-      if (slotIndex === -1) {
-        slotIndex = array.findIndex((slot: any) => 
-          slot.date === date && slot.start === start && slot.end === end
-        );
-        if (slotIndex !== -1) {
-          scheduleField = field;
-          console.log('🔍 Found by date/time in:', field, 'at index:', slotIndex);
-          break;
-        }
-      }
-    }
+    const { slotIndex, scheduleField } = findBookingInArrays(
+      arraysToCheck,
+      bookingId,
+      date,
+      start,
+      end
+    );
 
     if (slotIndex === -1 || !scheduleField) {
       console.log('❌ Booking not found in any schedule array');
@@ -60,7 +87,7 @@ export async function DELETE(request: Request) {
     }
 
     // Eliminar el slot del array correcto
-    (instructor[scheduleField] as any[]).splice(slotIndex, 1);
+    (instructor[scheduleField] as ScheduleArrayItem[]).splice(slotIndex, 1);
     instructor.markModified(scheduleField);
     await instructor.save();
 

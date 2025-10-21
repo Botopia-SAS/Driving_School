@@ -12,16 +12,31 @@ function adaptScheduleToClasses(schedule: Record<string, unknown>[]): Class[] {
     if (normalizedStatus === 'canceled') normalizedStatus = 'cancelled';
     if (normalizedStatus === 'booked') normalizedStatus = 'scheduled';
     
+    // Convertir _id a string de forma segura
+    const mongoId = slot._id;
+    let idString: string | undefined;
+    if (mongoId) {
+      if (typeof mongoId === 'string') {
+        idString = mongoId;
+      } else {
+        idString = (mongoId as { toString(): string }).toString();
+      }
+    }
+    
+    const slotId = idString || `${slot.date}_${slot.start}_${slot.end}_${idx}`;
+    const startTime = typeof slot.start === 'string' ? slot.start : '';
+    const startHour = startTime ? Number.parseInt(startTime.split(':')[0], 10) : 0;
+    
     return {
-      id: slot._id ? String(slot._id) : `${slot.date}_${slot.start}_${slot.end}_${idx}`,
-      _id: slot._id ? String(slot._id) : undefined, // Preservar el _id original
+      id: slotId,
+      _id: idString, // Preservar el _id original como string
       date: String(slot.date),
       dateObj: new Date(String(slot.date)),
-      hour: typeof slot.start === 'string' ? parseInt(slot.start.split(':')[0], 10) : 0,
+      hour: startHour,
       status: (normalizedStatus || 'available') as Class['status'],
       studentId: slot.studentId as string | undefined,
       instructorId: slot.instructorId as string | undefined,
-      start: typeof slot.start === 'string' ? slot.start.padStart(5, '0') : '',
+      start: startTime.padStart(5, '0'),
       end: typeof slot.end === 'string' ? slot.end.padStart(5, '0') : '',
       classType: slot.classType as string || 'driving lesson', // Default to driving lesson if not specified
       amount: typeof slot.amount === 'number' ? slot.amount : Number(slot.amount),
@@ -51,7 +66,7 @@ const InstructorCalendar: React.FC<{
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-[#0056b3] text-center text-lg font-semibold">
           Visualiza los espacios libres y agenda tu clase en uno de ellos.<br />No puedes editar ni cancelar reservas.
         </div>
-        <CalendarView classes={classes} onScheduleUpdate={onScheduleUpdate} onClassClick={(classData) => {}} />
+        <CalendarView classes={classes} onScheduleUpdate={onScheduleUpdate} onClassClick={() => {}} />
       </div>
     );
   }

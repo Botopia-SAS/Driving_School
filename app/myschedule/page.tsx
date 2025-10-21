@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import InstructorCalendar from '../../components/TeachersCalendar/InstructorCalendar';
 import AuthRedirector from "@/components/AuthRedirector";
 import { useRouter } from "next/navigation";
@@ -19,7 +19,7 @@ export default function TeachersPage() {
       router.replace("/");
       return;
     }
-    if ((user as any)?.type !== "instructor") {
+    if (user && 'type' in user && user.type !== "instructor") {
       router.replace("/");
     }
   }, [user, router]);
@@ -82,20 +82,6 @@ export default function TeachersPage() {
     };
   }, [instructorId, loading]);
 
-  // Forzar color de fondo en los <td> de la tabla de clases de instructor
-  /*
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.innerHTML = `
-      .instructor-calendar-table td[data-block-bg] {
-        background-color: var(--block-bg) !important;
-        border: 2px solid var(--block-border) !important;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
-  */
 
   if (user === null) {
     return null;

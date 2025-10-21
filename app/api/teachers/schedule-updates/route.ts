@@ -3,11 +3,6 @@ import { connectDB } from "@/lib/mongodb";
 import Instructor from "@/models/Instructor";
 import mongoose from "mongoose";
 
-interface InstructorWithSchedule {
-  schedule?: any[];
-  [key: string]: any;
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const instructorId = searchParams.get("id");
@@ -23,7 +18,7 @@ export async function GET(req: NextRequest) {
   const sendEvent = (data: object) => {
     try {
       writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-    } catch (e) {
+    } catch {
       console.warn("SSE stream for teachers closed prematurely.");
     }
   };
@@ -71,8 +66,8 @@ export async function GET(req: NextRequest) {
 
         sendEvent({ type: "update", schedule: combinedSchedule });
       }
-    } catch(err) {
-      console.error("Error fetching updated teacher schedule for broadcast:", err);
+    } catch {
+      console.error("Error fetching updated teacher schedule for broadcast");
     }
   });
 

@@ -95,54 +95,67 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
-  // Permitir click para mostrar info en cualquier status para D.A.T.E., A.D.I., B.D.I.
-  const handleTimeBlockClick = async (block: CalendarClass) => {
-    // Solo Driving Test: solo scheduled
-    if (block.classType === 'driving test') {
-      if (block.status === 'scheduled') {
-        setSelectedBlock(block);
-        setModalOpen(true);
-        if (block.studentId) {
-          setStudentInfo(null); // Muestra "Loading..." mientras busca
-          try {
-            const res = await fetch(`/api/users?id=${block.studentId}`);
-            const data = await res.json();
-            setStudentInfo(data); // La API devuelve el usuario directamente
-          } catch {
-            setStudentInfo({ firstName: 'Not found', lastName: '' });
-          }
-        } else {
-          setStudentInfo(null);
-        }
-      }
-      onClassClick(block);
-      return;
+  // Helper para cargar información del estudiante
+  const loadStudentInfo = async (studentId: string | { toString(): string }) => {
+    setStudentInfo(null);
+    const id = typeof studentId === 'string' 
+      ? studentId 
+      : (studentId as { toString(): string }).toString();
+    try {
+      const res = await fetch(`/api/users?id=${id}`);
+      const data = await res.json();
+      setStudentInfo(data);
+    } catch {
+      setStudentInfo({ firstName: 'Not found', lastName: '' });
     }
-    // Para ticket classes permite abrir el modal en cualquier status
-    const normalizedType = normalizeType(block.classType ?? '');
-    if (['ticket class', 'D.A.T.E.', 'A.D.I.', 'B.D.I.'].includes(normalizedType)) {
+  };
+
+  // Handler para driving test
+  const handleDrivingTestClick = async (block: CalendarClass) => {
+    if (block.status === 'scheduled') {
       setSelectedBlock(block);
       setModalOpen(true);
-      setStudentInfo(null); // No mostrar info de un solo estudiante
-      onClassClick(block);
-      return;
+      if (block.studentId) {
+        await loadStudentInfo(block.studentId);
+      } else {
+        setStudentInfo(null);
+      }
     }
-    // Por defecto, abrir modal para cualquier estado
+    onClassClick(block);
+  };
+
+  // Handler para ticket classes
+  const handleTicketClassClick = (block: CalendarClass) => {
+    setSelectedBlock(block);
+    setModalOpen(true);
+    setStudentInfo(null);
+    onClassClick(block);
+  };
+
+  // Handler genérico
+  const handleDefaultClick = async (block: CalendarClass) => {
     setSelectedBlock(block);
     setModalOpen(true);
     if (block.studentId) {
-      setStudentInfo(null);
-      try {
-        const res = await fetch(`/api/users?id=${block.studentId}`);
-        const data = await res.json();
-        setStudentInfo(data);
-      } catch {
-        setStudentInfo({ firstName: 'Not found', lastName: '' });
-      }
+      await loadStudentInfo(block.studentId);
     } else {
       setStudentInfo(null);
     }
     onClassClick(block);
+  };
+
+  // Permitir click para mostrar info en cualquier status para D.A.T.E., A.D.I., B.D.I.
+  const handleTimeBlockClick = async (block: CalendarClass) => {
+    if (block.classType === 'driving test') {
+      await handleDrivingTestClick(block);
+      return;
+    }
+    const normalizedType = normalizeType(block.classType ?? '');
+    if (['ticket class', 'D.A.T.E.', 'A.D.I.', 'B.D.I.'].includes(normalizedType)) {
+      handleTicketClassClick(block);
+      return;
+    }
+    await handleDefaultClick(block);
   };
 
   const handleAddClass = async (date: Date, hour: number) => {
@@ -160,7 +173,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       });
       if (res.ok) {
         setShowAddModal(false);
-        if (onScheduleUpdate) await onScheduleUpdate();
+        if (onScheduleUpdate) onScheduleUpdate();
       } else {
         alert('This slot is no longer available.');
       }
@@ -172,7 +185,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   // Fetch extra info SOLO para ticket classes
   useEffect(() => {
     const normalizedType = normalizeType(selectedBlock?.classType ?? '');
-    if (!selectedBlock || !selectedBlock.classType ||
+    if (!selectedBlock?.classType ||
         (selectedBlock.classType === 'driving test' || normalizedType === 'driving test') ||
         !selectedBlock.ticketClassId) {
       setTicketClassInfo(null);
@@ -188,7 +201,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setLocationInfo(null);
     setStudentsInfo([]);
     // 1. TicketClass
-    fetch(`/api/ticketclasses/${selectedBlock.ticketClassId}`)
+    const ticketClassId = typeof selectedBlock.ticketClassId === 'string'
+      ? selectedBlock.ticketClassId
+      : (selectedBlock.ticketClassId as { toString(): string }).toString();
+    fetch(`/api/ticketclasses/${ticketClassId}`)
       .then(res => res.json())
       .then(async (ticketClass) => {
         setTicketClassInfo(ticketClass);
@@ -266,20 +282,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               handleTimeBlockClick={handleTimeBlockClick}
             />
           ) : (
-            view === 'month' ? (
-              <CalendarMonthView
-                selectedDate={selectedDate}
-                classes={classes}
-                handleTimeBlockClick={handleTimeBlockClick}
-              />
-            ) : (
-              <CalendarWeekView
-                selectedDate={selectedDate}
-                classes={classes}
-                handleTimeBlockClick={handleTimeBlockClick}
-                handleEmptyCellClick={handleEmptyCellClick}
-              />
-            )
+            <>
+              {view === 'month' ? (
+                <CalendarMonthView
+                  selectedDate={selectedDate}
+                  classes={classes}
+                  handleTimeBlockClick={handleTimeBlockClick}
+                />
+              ) : (
+                <CalendarWeekView
+                  selectedDate={selectedDate}
+                  classes={classes}
+                  handleTimeBlockClick={handleTimeBlockClick}
+                  handleEmptyCellClick={handleEmptyCellClick}
+                />
+              )}
+            </>
           )}
         </main>
 
@@ -343,12 +361,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           <h2 className="text-xl font-bold mb-4">Schedule Class</h2>
           <div className="mb-2">Date: {selectedDate?.toLocaleDateString()}</div>
           <div className="mb-2">
-            <label className="mr-2">Start hour:</label>
-            <input type="number" min={6} max={17} value={selectedDate?.getHours() ?? ''} onChange={e => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), Number(e.target.value)))} className="border rounded p-1 w-16 text-black" />
+            <label htmlFor="start-hour" className="mr-2">Start hour:</label>
+            <input id="start-hour" type="number" min={6} max={17} value={selectedDate?.getHours() ?? ''} onChange={e => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), Number(e.target.value)))} className="border rounded p-1 w-16 text-black" />
           </div>
           <div className="mb-4">
-            <label className="mr-2">End hour:</label>
-            <input type="number" min={6} max={18} value={(selectedDate?.getHours() ?? 6) + 1} onChange={e => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), Number(e.target.value)))} className="border rounded p-1 w-16 text-black" />
+            <label htmlFor="end-hour" className="mr-2">End hour:</label>
+            <input id="end-hour" type="number" min={6} max={18} value={(selectedDate?.getHours() ?? 6) + 1} onChange={e => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), Number(e.target.value)))} className="border rounded p-1 w-16 text-black" />
           </div>
           <button className="bg-[#27ae60] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#0056b3]" onClick={() => handleAddClass(selectedDate, selectedDate.getHours())}>Confirm</button>
         </div>
