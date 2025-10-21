@@ -20,5 +20,8 @@ export async function GET(req: NextRequest) {
     schedule: instructor.schedule,
     certifications: instructor.certifications,
     experience: instructor.experience,
+    canTeachTicketClass: instructor.canTeachTicketClass,
+    canTeachDrivingTest: instructor.canTeachDrivingTest,
+    canTeachDrivingLesson: instructor.canTeachDrivingLesson,
   });
 } 

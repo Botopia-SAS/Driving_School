@@ -31,18 +31,33 @@ export async function POST(request: Request) {
     if (!studentId || !instructorId || !date || !start || !end) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
-    
+
     // Buscar al instructor
     const instructor = await Instructor.findById(instructorId);
     if (!instructor) {
       // console.log('❌ Instructor not found:', instructorId);
       return NextResponse.json({ error: 'Instructor not found' }, { status: 404 });
     }
-    
-    // console.log(`📊 Instructor ${instructorId} has ${instructor.schedule?.length || 0} schedule slots`);
-    
+
+    // Determinar el array correcto según el classType
+    let scheduleArray: Slot[] = instructor.schedule || [];
+    let scheduleField = 'schedule';
+
+    if (classType === 'driving lesson') {
+      scheduleArray = instructor.schedule_driving_lesson || [];
+      scheduleField = 'schedule_driving_lesson';
+    } else if (classType === 'driving test') {
+      scheduleArray = instructor.schedule_driving_test || [];
+      scheduleField = 'schedule_driving_test';
+    } else if (['ticket class', 'D.A.T.E.', 'A.D.I.', 'B.D.I.'].includes(classType)) {
+      scheduleArray = instructor.schedule || [];
+      scheduleField = 'schedule';
+    }
+
+    console.log(`📊 Instructor ${instructorId} has ${scheduleArray.length || 0} slots in ${scheduleField}`);
+
     // Buscar slots que se solapen con el horario solicitado
-    const overlappingSlot = instructor.schedule.find((slot: Slot) => {
+    const overlappingSlot = scheduleArray.find((slot: Slot) => {
       if (slot.date !== date) return false;
 
       // Verificar si hay solapamiento de horarios
@@ -67,8 +82,8 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
-    // Buscar si existe un slot exacto (libre o disponible)
-    let slot = instructor.schedule.find((slot: Slot) =>
+    // Buscar si existe un slot exacto (libre o disponible) en el array correcto
+    let slot = scheduleArray.find((slot: Slot) =>
       slot.date === date &&
       slot.start === start &&
       slot.end === end
@@ -97,7 +112,17 @@ export async function POST(request: Request) {
         if (pickupLocation) newSlot.pickupLocation = pickupLocation;
         if (dropoffLocation) newSlot.dropoffLocation = dropoffLocation;
 
-        instructor.schedule.push(newSlot);
+        // Agregar al array correcto
+        if (scheduleField === 'schedule_driving_lesson') {
+          if (!instructor.schedule_driving_lesson) instructor.schedule_driving_lesson = [];
+          instructor.schedule_driving_lesson.push(newSlot);
+        } else if (scheduleField === 'schedule_driving_test') {
+          if (!instructor.schedule_driving_test) instructor.schedule_driving_test = [];
+          instructor.schedule_driving_test.push(newSlot);
+        } else {
+          if (!instructor.schedule) instructor.schedule = [];
+          instructor.schedule.push(newSlot);
+        }
       } else {
         // Actualizar slot existente
         slot.status = 'scheduled';
@@ -111,7 +136,8 @@ export async function POST(request: Request) {
         if (dropoffLocation) (slot as any).dropoffLocation = dropoffLocation;
       }
 
-      instructor.markModified('schedule');
+      // Marcar el campo correcto como modificado
+      instructor.markModified(scheduleField);
       await instructor.save();
 
       // Broadcast real-time update
@@ -141,66 +167,6 @@ export async function POST(request: Request) {
       error: 'Slot is not available',
       details: { status: slot.status, booked: slot.booked }
     }, { status: 409 });
-    
-    // Marcar como reservado y agregar información adicional
-    slot.status = 'scheduled';
-    slot.booked = true;
-    slot.studentId = new mongoose.Types.ObjectId(studentId);
-
-    // Agregar campos adicionales si se proporcionan
-    if (amount !== undefined) {
-      (slot as any).amount = amount;
-    }
-    if (paid !== undefined) {
-      (slot as any).paid = paid;
-    }
-    if (pickupLocation) {
-      (slot as any).pickupLocation = pickupLocation;
-    }
-    if (dropoffLocation) {
-      (slot as any).dropoffLocation = dropoffLocation;
-    }
-
-    // Marcar el documento como modificado y guardar
-    instructor.markModified('schedule');
-    await instructor.save();
-
-    // Broadcast real-time update to SSE connections
-    try {
-      broadcastScheduleUpdate(instructorId);
-      console.log('✅ Schedule update broadcasted via SSE');
-    } catch (broadcastError) {
-      console.error('❌ Failed to broadcast schedule update:', broadcastError);
-    }
-
-    // Emit socket event for real-time updates (if socket.io is available)
-    try {
-      if (typeof globalThis !== 'undefined' && (globalThis as unknown as { io?: unknown }).io) {
-        ((globalThis as unknown as { io: { emit: (event: string, data: unknown) => void } }).io).emit('scheduleUpdate', {
-          instructorId,
-          date,
-          start,
-          end,
-          status: 'scheduled',
-          studentId
-        });
-      }
-    } catch {
-      // console.log('Socket emission failed:', socketError);
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Slot booked successfully',
-      booking: {
-        instructorId,
-        date,
-        start,
-        end,
-        classType: slot.classType || classType,
-        studentId
-      }
-    });
   } catch (error) {
     console.error('Booking error:', error);
     return NextResponse.json({ 

@@ -268,6 +268,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               setClassFilter={setClassFilter}
               summaryClasses={summaryClasses}
               sidebar="left"
+              instructorCapabilities={instructorCapabilities}
             />
           </div>
         )}
@@ -312,6 +313,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               setClassFilter={setClassFilter}
               summaryClasses={summaryClasses}
               sidebar="right"
+              instructorCapabilities={instructorCapabilities}
             />
           </div>
         )}

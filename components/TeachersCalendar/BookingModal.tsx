@@ -249,15 +249,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
         {/* Duration */}
         <div className="mb-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Duration (hours)</label>
-          <input
-            type="number"
-            min="0.5"
-            step="0.5"
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Duration</label>
+          <select
             value={duration}
             onChange={(e) => setDuration(parseFloat(e.target.value))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-black"
-          />
+          >
+            <option value="0.5">30 minutes</option>
+            <option value="1">1 hour</option>
+            <option value="1.5">1 hour 30 minutes</option>
+            <option value="2">2 hours</option>
+            <option value="2.5">2 hours 30 minutes</option>
+            <option value="3">3 hours</option>
+            <option value="3.5">3 hours 30 minutes</option>
+            <option value="4">4 hours</option>
+          </select>
         </div>
 
         {/* Locations - only for driving lessons and tests */}

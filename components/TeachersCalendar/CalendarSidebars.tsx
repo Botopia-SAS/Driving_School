@@ -12,6 +12,7 @@ interface CalendarSidebarsProps {
   setClassFilter: (filter: 'scheduled' | 'cancelled' | 'available' | 'pending') => void;
   summaryClasses: CalendarClass[];
   sidebar: 'left' | 'right';
+  instructorCapabilities?: string[];
 }
 
 export const CalendarSidebars: React.FC<CalendarSidebarsProps> = ({
@@ -21,24 +22,35 @@ export const CalendarSidebars: React.FC<CalendarSidebarsProps> = ({
   classFilter,
   setClassFilter,
   summaryClasses,
-  sidebar
+  sidebar,
+  instructorCapabilities = []
 }) => {
-  // Leyenda de colores para tipos de clase
+  // Leyenda de colores para tipos de clase - solo mostrar las que el instructor puede enseñar
   function renderClassTypeLegend() {
+    const canTeachTicketClass = instructorCapabilities.includes('canTeachTicketClass');
+    const canTeachDrivingLesson = instructorCapabilities.includes('canTeachDrivingLesson');
+    const canTeachDrivingTest = instructorCapabilities.includes('canTeachDrivingTest');
+
     return (
       <div className="w-full flex flex-col items-start justify-center gap-y-2 mt-2 mb-0 text-base font-bold tracking-wide">
-        <span className="flex flex-row items-center gap-x-2">
-          <span className="w-3 h-3 rounded-full bg-[#27ae60]"></span>
-          <span className="text-[#27ae60]">Ticket Classes</span>
-        </span>
-        <span className="flex flex-row items-center gap-x-2">
-          <span className="w-3 h-3 rounded-full bg-[#0056b3]"></span>
-          <span className="text-[#0056b3]">Driving Lessons</span>
-        </span>
-        <span className="flex flex-row items-center gap-x-2">
-          <span className="w-3 h-3 rounded-full bg-[#f39c12]"></span>
-          <span className="text-[#f39c12]">Driving Tests</span>
-        </span>
+        {canTeachTicketClass && (
+          <span className="flex flex-row items-center gap-x-2">
+            <span className="w-3 h-3 rounded-full bg-[#27ae60]"></span>
+            <span className="text-[#27ae60]">Ticket Classes</span>
+          </span>
+        )}
+        {canTeachDrivingLesson && (
+          <span className="flex flex-row items-center gap-x-2">
+            <span className="w-3 h-3 rounded-full bg-[#0056b3]"></span>
+            <span className="text-[#0056b3]">Driving Lessons</span>
+          </span>
+        )}
+        {canTeachDrivingTest && (
+          <span className="flex flex-row items-center gap-x-2">
+            <span className="w-3 h-3 rounded-full bg-[#f39c12]"></span>
+            <span className="text-[#f39c12]">Driving Tests</span>
+          </span>
+        )}
       </div>
     );
   }
