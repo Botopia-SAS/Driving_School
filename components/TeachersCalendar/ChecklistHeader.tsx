@@ -76,8 +76,8 @@ export const ChecklistHeader: React.FC<ChecklistHeaderProps> = ({
           />
         </svg>
         <span className="font-medium">
-          <span className="hidden sm:inline">Click on any row to add comments • Auto-saves every second</span>
-          <span className="sm:hidden">Tap row to add notes • Auto-save</span>
+          <span className="hidden sm:inline">Click on any row to add comments • Auto-saves after 3 seconds</span>
+          <span className="sm:hidden">Tap row to add notes • Auto-save 3s</span>
         </span>
       </div>
     </div>

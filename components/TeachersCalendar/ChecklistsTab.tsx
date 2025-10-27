@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ChecklistHeader } from "./ChecklistHeader";
 import { ChecklistItemRow } from "./ChecklistItemRow";
 
@@ -101,6 +101,16 @@ export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Use ref to track if a save is in progress without causing re-renders
+  const saveInProgressRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const itemsRef = useRef(items);
+
+  // Update itemsRef whenever items change
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
   // Load existing checklist data on mount
   useEffect(() => {
     const loadChecklist = async () => {
@@ -133,18 +143,7 @@ export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
     }
   }, [sessionId, checklistType]);
 
-  // Auto-save function with debounce
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const timeoutId = setTimeout(() => {
-      saveChecklist();
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [items, isInitialized]);
-
-  const saveChecklist = async () => {
+  const saveChecklist = useCallback(async () => {
     if (!sessionId || !studentId || !instructorId) {
       console.warn("Missing required IDs for saving checklist:", {
         sessionId,
@@ -154,66 +153,112 @@ export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
       return;
     }
 
-    setIsSaving(true);
-    try {
-      const payload = {
-        sessionId,
-        studentId,
-        instructorId,
-        checklistType: checklistType,
-        items,
-      };
-
-      const res = await fetch("/api/session-checklist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        setLastSaved(new Date());
-      } else {
-        console.error("Failed to save checklist.");
-      }
-    } catch (error) {
-      console.error("Error saving checklist:", error);
-    } finally {
-      setIsSaving(false);
+    // Skip if already saving to prevent concurrent saves
+    if (saveInProgressRef.current) {
+      console.log("Save already in progress, skipping...");
+      return;
     }
-  };
 
-  const handleRowClick = (itemName: string) => {
-    setExpandedItem(expandedItem === itemName ? null : itemName);
-  };
+    // Mark as saving using ref (doesn't cause re-render)
+    saveInProgressRef.current = true;
 
-  const handleRatingChange = (index: number, rating: number) => {
-    const updatedItems = [...items];
-    updatedItems[index].rating = rating;
-    setItems(updatedItems);
-  };
+    // Only update UI state after a small delay to avoid disrupting dropdowns
+    const savingIndicatorTimeout = setTimeout(() => {
+      setIsSaving(true);
+    }, 100);
 
-  const handleCommentsChange = (index: number, comments: string) => {
-    const updatedItems = [...items];
-    updatedItems[index].comments = comments;
-    setItems(updatedItems);
-  };
+    // Prepare payload using ref to get current items without triggering dependency
+    const payload = {
+      sessionId,
+      studentId,
+      instructorId,
+      checklistType: checklistType,
+      items: itemsRef.current,
+    };
 
-  const handleMarkComplete = (
+    // Save to server asynchronously without blocking
+    fetch("/api/session-checklist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => {
+        if (res.ok) {
+          setLastSaved(new Date());
+        } else {
+          console.error("Failed to save checklist. Status:", res.status);
+        }
+      })
+      .catch((error) => {
+        console.error("Error saving checklist:", error);
+      })
+      .finally(() => {
+        clearTimeout(savingIndicatorTimeout);
+        saveInProgressRef.current = false;
+        setIsSaving(false);
+      });
+  }, [sessionId, studentId, instructorId, checklistType]);
+
+  // Auto-save function with debounce - INCREASED to 3 seconds
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Set new timeout with LONGER delay to prevent rapid saves
+    saveTimeoutRef.current = setTimeout(() => {
+      saveChecklist();
+    }, 3000); // Increased from 1000ms to 3000ms
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [items, isInitialized, saveChecklist]);
+
+  const handleRowClick = useCallback((itemName: string) => {
+    setExpandedItem((prev) => prev === itemName ? null : itemName);
+  }, []);
+
+  const handleRatingChange = useCallback((index: number, rating: number) => {
+    // Use functional update to avoid stale closures
+    setItems((prevItems) => {
+      const updatedItems = [...prevItems];
+      updatedItems[index].rating = rating;
+      return updatedItems;
+    });
+  }, []);
+
+  const handleCommentsChange = useCallback((index: number, comments: string) => {
+    setItems((prevItems) => {
+      const updatedItems = [...prevItems];
+      updatedItems[index].comments = comments;
+      return updatedItems;
+    });
+  }, []);
+
+  const handleMarkComplete = useCallback((
     index: number,
     hasRating: boolean,
     hasComments: boolean
   ) => {
-    const updatedItems = [...items];
-    if (hasRating && hasComments) {
-      updatedItems[index].completed = true;
-      updatedItems[index].completedAt = new Date().toLocaleString();
-      updatedItems[index].tally += 1;
-    } else {
-      updatedItems[index].completed = false;
-      updatedItems[index].completedAt = undefined;
-    }
-    setItems(updatedItems);
-  };
+    setItems((prevItems) => {
+      const updatedItems = [...prevItems];
+      if (hasRating && hasComments) {
+        updatedItems[index].completed = true;
+        updatedItems[index].completedAt = new Date().toLocaleString();
+        updatedItems[index].tally += 1;
+      } else {
+        updatedItems[index].completed = false;
+        updatedItems[index].completedAt = undefined;
+      }
+      return updatedItems;
+    });
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -226,11 +271,11 @@ export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
       <div className="space-y-2">
         {/* Table Header - Desktop only */}
         <div className="hidden md:grid grid-cols-12 gap-2 px-3 py-2 bg-gray-100 rounded-t-lg font-semibold text-sm text-gray-700 sticky top-0 z-10">
-          <div className="col-span-4">Item Name</div>
+          <div className="col-span-3">Item Name</div>
           <div className="col-span-2 text-center">Rating</div>
           <div className="col-span-3 text-center">Last Completed</div>
           <div className="col-span-2 text-center">Tally</div>
-          <div className="col-span-1 text-center">Comments</div>
+          <div className="col-span-2 text-center">Comments</div>
         </div>
 
         {/* Checklist Items */}

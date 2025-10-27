@@ -20,7 +20,7 @@ interface ChecklistItemRowProps {
   onMarkComplete: (hasRating: boolean, hasComments: boolean) => void;
 }
 
-export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = ({
+export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = React.memo(({
   item,
   isExpanded,
   onRowClick,
@@ -29,9 +29,18 @@ export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = ({
   onMarkComplete,
 }) => {
   const handleRatingSelect = (value: string) => {
+    // Prevent if value hasn't changed
+    if (value === String(item.rating || '')) {
+      return;
+    }
+
     const rating = value ? parseInt(value) : 0;
     onRatingChange(rating);
-    onMarkComplete(!!value, !!item.comments);
+
+    // Use setTimeout to ensure state updates don't interfere with dropdown
+    setTimeout(() => {
+      onMarkComplete(!!value, !!item.comments);
+    }, 0);
   };
 
   const handleCommentsUpdate = (comments: string) => {
@@ -65,11 +74,14 @@ export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = ({
     </div>
   );
 
-  const RatingSelector = () => (
+  const RatingSelector = ({ onClick }: { onClick?: (e: React.MouseEvent) => void }) => (
     <select
       value={item.rating || ""}
       onChange={(e) => handleRatingSelect(e.target.value)}
-      className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+      onClick={onClick}
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 cursor-pointer"
     >
       <option value="">-</option>
       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -93,7 +105,7 @@ export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = ({
         className="hidden md:grid grid-cols-12 gap-2 p-3 items-center cursor-pointer"
         onClick={onRowClick}
       >
-        <div className="col-span-4 flex items-center gap-2">
+        <div className="col-span-3 flex items-center gap-2">
           <span
             className={`text-sm ${
               item.rating && item.comments
@@ -109,7 +121,7 @@ export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = ({
           className="col-span-2 flex justify-center"
           onClick={(e) => e.stopPropagation()}
         >
-          <RatingSelector />
+          <RatingSelector onClick={(e) => e.stopPropagation()} />
         </div>
 
         <div className="col-span-3 text-center text-xs text-gray-600">
@@ -122,7 +134,7 @@ export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = ({
           </span>
         </div>
 
-        <div className="col-span-1 flex items-center justify-center">
+        <div className="col-span-2 flex items-center justify-center">
           <ExpandIcon />
         </div>
       </div>
@@ -162,7 +174,10 @@ export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = ({
             <select
               value={item.rating || ""}
               onChange={(e) => handleRatingSelect(e.target.value)}
-              className="px-2 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="px-2 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 cursor-pointer"
             >
               <option value="">-</option>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -194,4 +209,6 @@ export const ChecklistItemRow: React.FC<ChecklistItemRowProps> = ({
       )}
     </div>
   );
-};
+});
+
+ChecklistItemRow.displayName = 'ChecklistItemRow';
