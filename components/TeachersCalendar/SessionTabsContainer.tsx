@@ -66,6 +66,7 @@ export const SessionTabsContainer: React.FC<SessionTabsContainerProps> = ({
               sessionId={String(selectedBlock._id || '')}
               studentId={String(selectedBlock.studentId || '')}
               instructorId={instructorId || ''}
+              classType={selectedBlock.classType}
             />
           )}
           {activeTab === 'checklists' && (
@@ -73,6 +74,7 @@ export const SessionTabsContainer: React.FC<SessionTabsContainerProps> = ({
               sessionId={String(selectedBlock._id || '')}
               studentId={String(selectedBlock.studentId || '')}
               instructorId={instructorId || ''}
+              classType={selectedBlock.classType}
             />
           )}
         </div>

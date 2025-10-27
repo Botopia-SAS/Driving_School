@@ -15,9 +15,11 @@ interface ChecklistsTabProps {
   sessionId: string;
   studentId: string;
   instructorId: string;
+  classType?: string;
 }
 
-const DEFAULT_CHECKLIST_ITEMS = [
+// Checklist for Driving Lessons
+const DRIVING_LESSON_CHECKLIST_ITEMS = [
   "Seat & Headrest Adjustment",
   "Starting Car",
   "Mirror Adjustment",
@@ -31,19 +33,62 @@ const DEFAULT_CHECKLIST_ITEMS = [
   "Hand Over Hand Steering",
   "Merging",
   "Traffic Driving",
-  "motorway driving",
+  "Motorway Driving",
   "U Turns",
   "Hill Starts",
-  "Turn Around Manouvre",
+  "Turn Around Manoeuvre",
+  "Reversing along Curb",
+  "Reverse Parallel Parking",
+  "Car Park Parking",
+  "Pedestrian Crossing",
+  "Angle Parking",
+  "Cornering",
+  "Dirt Roads",
+  "Driving in Bad Weather",
+  "Refuelling",
+  "Basic Vehicle Checks",
+  "Areas",
+  "SOVC",
+  "Turning Left – On One Way Street",
+  "Straight Line Backing",
+  "Merging in Traffic",
+  "Turns on Small Streets",
 ];
+
+// Checklist for Driving Tests
+const DRIVING_TEST_CHECKLIST_ITEMS = ["Seat Belt"];
 
 export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
   sessionId,
   studentId,
   instructorId,
+  classType = "driving lesson",
 }) => {
+  // Determine which checklist to use based on classType
+  const getChecklistItems = () => {
+    const normalizedClassType =
+      classType?.toLowerCase().trim() || "driving lesson";
+    if (normalizedClassType === "driving test") {
+      return DRIVING_TEST_CHECKLIST_ITEMS;
+    }
+    return DRIVING_LESSON_CHECKLIST_ITEMS;
+  };
+
+  // Determine checklistType for API
+  const getChecklistType = () => {
+    const normalizedClassType =
+      classType?.toLowerCase().trim() || "driving lesson";
+    if (normalizedClassType === "driving test") {
+      return "Driving Test Skills";
+    }
+    return "Driving Skills Basics";
+  };
+
+  const checklistItems = getChecklistItems();
+  const checklistType = getChecklistType();
+
   const [items, setItems] = useState<ChecklistItem[]>(
-    DEFAULT_CHECKLIST_ITEMS.map((name) => ({
+    checklistItems.map((name) => ({
       name,
       completed: false,
       tally: 0,
@@ -61,7 +106,9 @@ export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
     const loadChecklist = async () => {
       try {
         const res = await fetch(
-          `/api/session-checklist?sessionId=${sessionId}`
+          `/api/session-checklist?sessionId=${sessionId}&checklistType=${encodeURIComponent(
+            checklistType
+          )}`
         );
         const data = await res.json();
 
@@ -84,7 +131,7 @@ export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
     } else {
       setIsInitialized(true);
     }
-  }, [sessionId]);
+  }, [sessionId, checklistType]);
 
   // Auto-save function with debounce
   useEffect(() => {
@@ -113,7 +160,7 @@ export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
         sessionId,
         studentId,
         instructorId,
-        checklistType: "Driving Skills Basics",
+        checklistType: checklistType,
         items,
       };
 
@@ -170,7 +217,11 @@ export const ChecklistsTab: React.FC<ChecklistsTabProps> = ({
 
   return (
     <div className="space-y-4">
-      <ChecklistHeader isSaving={isSaving} lastSaved={lastSaved} />
+      <ChecklistHeader
+        isSaving={isSaving}
+        lastSaved={lastSaved}
+        title={checklistType}
+      />
 
       <div className="space-y-2">
         {/* Table Header - Desktop only */}

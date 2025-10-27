@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
-    const studentId = searchParams.get("studentId");
+    const checklistType = searchParams.get("checklistType") || "Driving Skills Basics";
 
     if (!sessionId) {
       return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     // Buscar por sessionId y checklistType
     const checklist = await SessionChecklist.findOne({
       sessionId,
-      checklistType: "Driving Skills Basics"
+      checklistType
     });
 
     if (!checklist) {

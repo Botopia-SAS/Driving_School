@@ -3,18 +3,20 @@ import React from "react";
 interface ChecklistHeaderProps {
   isSaving: boolean;
   lastSaved: Date | null;
+  title?: string;
 }
 
 export const ChecklistHeader: React.FC<ChecklistHeaderProps> = ({
   isSaving,
   lastSaved,
+  title = "Driving Skills Basics",
 }) => {
   return (
     <div className="bg-gradient-to-r from-blue-50 to-green-50 p-3 sm:p-4 rounded-lg border border-gray-200">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
         <div>
           <h3 className="text-base sm:text-lg font-bold text-[#0056b3]">
-            Driving Skills Basics
+            {title}
           </h3>
           <p className="text-xs sm:text-sm text-gray-600 mt-1">
             Track progress and add notes for each skill

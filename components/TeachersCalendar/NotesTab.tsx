@@ -9,9 +9,20 @@ interface NotesTabProps {
   sessionId: string;
   studentId: string;
   instructorId: string;
+  classType?: string;
 }
 
-export const NotesTab: React.FC<NotesTabProps> = ({ sessionId, studentId, instructorId }) => {
+export const NotesTab: React.FC<NotesTabProps> = ({ sessionId, studentId, instructorId, classType = 'driving lesson' }) => {
+  // Determine checklistType for API
+  const getChecklistType = () => {
+    const normalizedClassType = classType?.toLowerCase().trim() || 'driving lesson';
+    if (normalizedClassType === 'driving test') {
+      return 'Driving Test Skills';
+    }
+    return 'Driving Skills Basics';
+  };
+
+  const checklistType = getChecklistType();
   const [notes, setNotes] = useState<Note[]>([]);
   const [newNote, setNewNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -22,7 +33,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ sessionId, studentId, instru
     const loadNotes = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/session-checklist?sessionId=${sessionId}`);
+        const res = await fetch(`/api/session-checklist?sessionId=${sessionId}&checklistType=${encodeURIComponent(checklistType)}`);
         const data = await res.json();
 
         if (data.checklist && data.checklist.notes && Array.isArray(data.checklist.notes)) {
@@ -38,7 +49,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ sessionId, studentId, instru
     if (sessionId) {
       loadNotes();
     }
-  }, [sessionId]);
+  }, [sessionId, checklistType]);
 
   // Function to save notes to backend
   const saveNotes = async (updatedNotes: Note[]) => {
@@ -53,7 +64,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ sessionId, studentId, instru
           sessionId,
           studentId,
           instructorId,
-          checklistType: 'Driving Skills Basics',
+          checklistType: checklistType,
           notes: updatedNotes
         })
       });
