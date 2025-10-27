@@ -447,7 +447,7 @@ const ContactPage = () => {
         <div className="bg-blue-600 text-white rounded-2xl p-8 shadow-2xl">
           <div className="text-center mb-8">
             <Image
-              src="/DV-removebg-preview.png"
+              src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1759504366/xbcid5pce9ozoyd2mvka.webp"
               alt="Logo"
               width={120}
               height={120}

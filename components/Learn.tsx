@@ -10,37 +10,37 @@ import "swiper/css/navigation";
 const Learn = () => {
   const features = [
     {
-      image: "/profe.jpg",
+      image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583538/rcz2hje8xk4w3vatlc9f.jpg",
       title: "Experienced Instructors",
       description:
         "Our instructors are certified and have over 25 years of teaching experience in Palm Beach County. They stay up-to-date with the latest driving techniques.",
     },
     {
-      image: "/L8jpg.jpg",
+      image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583587/ml4qh1qd9yeqw6jm51xs.jpg",
       title: "Affordable Prices",
       description:
         "We offer competitive rates for our driving lessons, and our multi-lesson driving test offer discounts. Save up to $330!",
     },
     {
-      image: "/L3.jpg",
+      image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583615/gi7kw8zmkwyobglrinc2.jpg",
       title: "Easy Bookings",
       description:
         "Booking and payment are quick and stress-free with our online booking system. Choose your instructor, date, and service, and you're ready to go!",
     },
     {
-      image: "/certif.jpg",
+      image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583339/fuecggpioplxcelatams.jpg",
       title: "Certified Traffic Courses",
       description:
         "We offer accredited Florida Traffic Courses, including the required First-Time Driver course and various Ticket and Driving Improvement Courses.",
     },
     {
-      image: "/L5.jpg",
+      image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583429/lmvmde9qakdjskyspl89.jpg",
       title: "Personalized Driving Lessons",
       description:
         "We tailor lessons for beginners, teenagers, and experienced drivers. Each lesson is customized for the student's experience.",
     },
     {
-      image: "/linea.jpg",
+      image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583461/nwcxb2pol2i4fkhijo6o.jpg",
       title: "Online Learning Options",
       description:
         "We offer flexible learning options, including online Traffic Courses and DVD versions of our 4hr Basic Driving Improvement Course.",

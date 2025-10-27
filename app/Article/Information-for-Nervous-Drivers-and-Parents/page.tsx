@@ -45,7 +45,7 @@ function Page() {
           <div className="flex-1 flex justify-center">
             <div className="relative bg-white rounded-xl p-2 shadow-lg border border-slate-200">
               <Image
-                src="/profe.jpg"
+                src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761589248/nybtazut3rdqgcelejpt.jpg"
                 alt="Professional Driving Instructor"
                 width={350}
                 height={260}
@@ -208,7 +208,7 @@ function Page() {
         <motion.div className="mb-12" {...fadeInUp(0.3)}>
           <div className="relative bg-white rounded-2xl p-2 shadow-xl border border-slate-200">
             <Image
-              src="/carretera.jpg"
+              src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761589248/zv4bnfmtxug29qvksgj5.jpg"
               alt="Safe Driving on the Road"
               width={800}
               height={400}
@@ -248,7 +248,7 @@ function Page() {
           {/* Imagen del carro */}
           <div className="flex-1 flex justify-center items-center relative min-w-[220px] mt-6 lg:mt-0">
             <Image
-              src="/car_ds.png"
+              src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761589249/wmuglez1yl7efjsarfha.png"
               alt="Driving School Car"
               width={340}
               height={180}

@@ -40,7 +40,7 @@ const TrafficCourses = () => {
   return (
     <section
       className="bg-cover bg-center py-12 relative"
-      style={{ backgroundImage: "url('/C1.jpg')" }}
+      style={{ backgroundImage: "url('https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583725/lobuiox0sri4ujsdmgaf.jpg')" }}
     >
       {/* Capa oscura para mejorar contraste */}
       <div className="absolute inset-0 bg-black bg-opacity-35 z-0"></div>

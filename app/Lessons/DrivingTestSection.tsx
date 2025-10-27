@@ -74,7 +74,7 @@ const DrivingTestSection = () => {
           <div className="relative flex justify-center items-end">
             <div className="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 group hover:brightness-105">
               <Image
-                src="/DT.jpg"
+                src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761584688/esawuypoy3jxaiwov6bj.jpg"
                 alt="Driving Test"
                 width={430}
                 height={320}

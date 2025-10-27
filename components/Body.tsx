@@ -37,9 +37,9 @@ const Body = () => {
           transition={{ duration: 0.8, ease: "easeOut" }}
           viewport={{ once: true, amount: 0.4 }}
         >
-          <Image
-            src="/10.jpg"
-            alt="Driving School"
+                    <Image
+            src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583171/kl2purqpuosna2pmkwbo.jpg"
+            alt="BBB Accredited"
             width={900}
             height={400}
             className="w-full h-[260px] sm:h-[320px] md:h-[340px] lg:h-[360px] xl:h-[400px] object-cover rounded-lg shadow-md transition-all duration-500"

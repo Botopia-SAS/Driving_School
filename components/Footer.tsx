@@ -28,7 +28,7 @@ const Footer = () => {
           <div className="relative flex items-center justify-center mb-4" style={{height: '130px'}}>
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[130px] h-[130px] rounded-full bg-white/80 shadow-lg z-0" style={{filter: 'blur(2px)'}}></div>
             <Image
-              src="/DV-removebg-preview.png"
+              src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1759504366/xbcid5pce9ozoyd2mvka.webp"
               alt="Logo"
               width={120}
               height={120}
@@ -82,19 +82,19 @@ const Footer = () => {
           </h3>
           <ul className="space-y-3 text-lg font-bold">
             <li>
-              <a href="/locations" className="hover:text-[#27ae60] transition-all duration-300">
-              West Palm Beach, FL
-              </a>
-              </li>
-            <li>
-              <a href="/contact" className="hover:text-[#27ae60] transition-all duration-300">
-                drivingtrafficschool@gmail.com
-              </a>
+              <Link href="/locations" className="hover:text-[#27ae60] transition-all duration-300">
+                West Palm Beach, FL
+              </Link>
             </li>
             <li>
-              <a href="/contact" className="hover:text-[#27ae60] transition-all duration-300">
+              <Link href="/contact" className="hover:text-[#27ae60] transition-all duration-300">
+                drivingtrafficschool@gmail.com
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:text-[#27ae60] transition-all duration-300">
                 📞 {phoneNumber}
-              </a>
+              </Link>
             </li>
           </ul>
 

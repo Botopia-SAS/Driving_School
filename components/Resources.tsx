@@ -17,14 +17,14 @@ const Resources = () => {
   const [touchEnd, setTouchEnd] = useState(0);
   
   const resources: ResourceItem[] = [
-    { title: "FAQ", image: "/pregunta.png", href: "/FAQ" },
-    { title: "FL Drivers License Check", image: "/lupa.jpg", href: "https://services.flhsmv.gov/DLCheck/" },
-    { title: "License & ID Requirements", image: "/licenciajpg.jpg" },
-    { title: "Florida DMV", image: "/bucle.jpg", href: "https://www.flhsmv.gov/" },
-    { title: "DMV Appointment", image: "/conojpg.jpg", href: "https://www.flhsmv.gov/locations/" },
-    { title: "FL Drivers License Handbook (ENG)", image: "/manual1.1jpg.jpg" },
-    { title: "FL Manual De Manejo (ESP)", image: "/manual2.1.jpg" },
-    { title: "Forms", image: "/forms1.jpg", href: "https://www.flhsmv.gov/forms/" },
+    { title: "FAQ", image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583791/izq0ey04l6fjdacb6fa2.png", href: "/FAQ" },
+    { title: "FL Drivers License Check", image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583880/xujgbmcz6mdn75n1metx.jpg", href: "https://services.flhsmv.gov/DLCheck/" },
+    { title: "License & ID Requirements", image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583926/k77vvyf6y31eswv8p3fq.jpg" },
+    { title: "Florida DMV", image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583962/aiftfbsg3x0k3dhojz1j.jpg", href: "https://www.flhsmv.gov/" },
+    { title: "DMV Appointment", image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761583993/s7zpckvnonkg7e4xhe8l.jpg", href: "https://www.flhsmv.gov/locations/" },
+    { title: "FL Drivers License Handbook (ENG)", image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761584045/ynxr2fjk7nmfz569vys7.jpg" },
+    { title: "FL Manual De Manejo (ESP)", image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761584074/qqgidrtqyphs0sreytky.jpg" },
+    { title: "Forms", image: "https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761584106/zsiuw6xvhg0ldmxk7or9.jpg", href: "https://www.flhsmv.gov/forms/" },
   ];
 
   // Detectar si es móvil

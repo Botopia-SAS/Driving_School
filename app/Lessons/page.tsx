@@ -178,7 +178,7 @@ const LessonsPage = () => {
               style={{ width: 480, height: 685, maxWidth: '100%' }}
             >
               <Image
-                src="/TPB.jpg"
+                src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761584376/cdrrr2qzprxa4mbo2nw8.jpg"
                 alt="Traffic in Palm Beach"
                 width={480}
                 height={685}

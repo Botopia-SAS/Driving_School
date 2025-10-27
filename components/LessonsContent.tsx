@@ -76,11 +76,11 @@ const LessonsContent = () => {
           <div className="relative flex justify-center items-start mt-20">
             <div className="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all">
               <Image
-                src="/TPB.jpg"
-                alt="Traffic in Palm Beach"
-                width={400}
-                height={320}
-                className="rounded-2xl object-cover transition-all group-hover:scale-110"
+                src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761584376/cdrrr2qzprxa4mbo2nw8.jpg"
+                alt="Professional driving instruction"
+                width={800}
+                height={600}
+                className="rounded-2xl"
               />
             </div>
           </div>

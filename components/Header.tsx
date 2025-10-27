@@ -171,7 +171,7 @@ const Header = () => {
         <div className="flex-shrink-0">
           <Link href="/">
             <Image
-              src="/DV-removebg-preview.png"
+              src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1759504366/xbcid5pce9ozoyd2mvka.webp"
               alt="Logo"
               width={70}
               height={70}

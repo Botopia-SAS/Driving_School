@@ -96,7 +96,7 @@ const CorporatePrograms = () => {
           viewport={{ once: true }}
         >
           <Image
-            src="/CP.jpg" // Asegúrate de que la imagen esté en /public
+            src="https://res.cloudinary.com/dzi2p0pqa/image/upload/v1761584468/a62hzjcvgv3pdltss2ii.jpg"
             alt="Corporate Training"
             width={900}
             height={567}
