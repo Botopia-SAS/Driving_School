@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SkipToContent from "@/components/accessibility/SkipToContent";
 
 interface LayoutWrapperProps {
   children: React.ReactNode;
@@ -20,8 +21,14 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
 
   return (
     <>
+      <SkipToContent />
       {!hideHeaderFooter && <Header />}
-      <main className={`relative ${hideHeaderFooter ? 'min-h-screen' : 'min-h-screen'}`}>
+      <main
+        id="main-content"
+        className={`relative ${hideHeaderFooter ? 'min-h-screen' : 'min-h-screen'}`}
+        role="main"
+        tabIndex={-1}
+      >
         {children}
       </main>
       {!hideHeaderFooter && <Footer />}

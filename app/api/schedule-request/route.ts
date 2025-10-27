@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
     console.log('📋 Schedule request received:', {
       userId,
       productId,
-      selectedSlots,
+      selectedSlots: Array.from(selectedSlots),
+      selectedSlotsType: typeof selectedSlots,
+      selectedSlotsIsArray: Array.isArray(selectedSlots),
       selectedHours,
       pickupLocation,
       dropoffLocation,
@@ -66,7 +68,12 @@ export async function POST(request: NextRequest) {
       }
       
       const [, parsedDate, parsedStart, parsedEnd] = match;
-      console.log('🔍 Looking for slot:', { date: parsedDate, start: parsedStart, end: parsedEnd });
+      console.log('🔍 Looking for slot:', {
+        originalSlotKey: slotKey,
+        date: parsedDate,
+        start: parsedStart,
+        end: parsedEnd
+      });
       
       // Find instructor with this specific slot in schedule_driving_lesson
       const instructor = await Instructor.findOne({
@@ -80,9 +87,11 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      console.log('🔍 Found instructor for slot:', instructor ? instructor.name : 'None');
-
       if (instructor) {
+        console.log('✅ Found instructor for slot:', {
+          instructorName: instructor.name,
+          instructorId: instructor._id.toString()
+        });
         instructorsToUpdate.push({
           instructorId: instructor._id.toString(),
           instructorName: instructor.name,
@@ -90,14 +99,28 @@ export async function POST(request: NextRequest) {
           start: parsedStart,
           end: parsedEnd
         });
+      } else {
+        console.error('❌ NO instructor found for slot:', {
+          date: parsedDate,
+          start: parsedStart,
+          end: parsedEnd,
+          slotKey: slotKey
+        });
       }
     }
 
-    console.log('📝 Instructors to update:', instructorsToUpdate);
+    console.log('📝 Instructors to update:', {
+      count: instructorsToUpdate.length,
+      instructors: instructorsToUpdate
+    });
 
     if (instructorsToUpdate.length === 0) {
+      console.error('❌ CRITICAL: No available slots found after checking all selectedSlots:', {
+        totalSlotsRequested: selectedSlots.length,
+        slotsChecked: selectedSlots
+      });
       return NextResponse.json(
-        { error: 'No available slots found' },
+        { error: 'No available slots found. The selected time slots may have been booked by another user.' },
         { status: 404 }
       );
     }
