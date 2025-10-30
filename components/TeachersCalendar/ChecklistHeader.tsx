@@ -45,11 +45,7 @@ export const ChecklistHeader: React.FC<ChecklistHeaderProps> = ({
             </span>
           ) : lastSaved ? (
             <span className="text-green-600 flex items-center gap-1">
-              <svg
-                className="w-4 h-4"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -76,7 +72,9 @@ export const ChecklistHeader: React.FC<ChecklistHeaderProps> = ({
           />
         </svg>
         <span className="font-medium">
-          <span className="hidden sm:inline">Click on any row to add comments • Auto-saves after 3 seconds</span>
+          <span className="hidden sm:inline">
+            Click on any row to add comments • Auto-saves after 3 seconds
+          </span>
           <span className="sm:hidden">Tap row to add notes • Auto-save 3s</span>
         </span>
       </div>

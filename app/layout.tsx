@@ -10,6 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import GlobalErrorHandler from "@/components/GlobalErrorHandler";
 import LayoutWrapper from "@/components/LayoutWrapper";
 import { poppins } from "./fonts";
+import ClarityAnalytics from "@/components/ClarityAnalytics";
 
 // ✅ Viewport configuration (Next.js 15+)
 export const viewport: Viewport = {
@@ -113,6 +114,7 @@ export default function RootLayout({
           <AuthProvider>
             <BodyWithDynamicBg>
               <Providers>
+                <ClarityAnalytics />
                 <ConditionalTrackingProvider />
                 <LayoutWrapper>
                   {children}
