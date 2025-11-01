@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Locations from "@/models/Locations";
 import Instructor from "@/models/Instructor";
+import { SEO } from "@/models/SEO";
 
 export async function GET(req: Request) {
   try {
@@ -17,23 +18,42 @@ export async function GET(req: Request) {
       query = { zone: decodeURIComponent(zone) };
     }
 
-    // 🔹 Asegurar que se poblen bien los instructores y se convierta en JSON limpio
+    // Obtener locations
     const locations = await Locations.find(query)
-      .select("_id title slug description zone locationImage instructors")
+      .select("_id title description zone locationImage instructors")
       .populate({
         path: "instructors",
         model: Instructor,
-        select: "_id name photo certifications experience" // 👈 Solo seleccionamos lo necesario
+        select: "_id name photo certifications experience"
       })
-      .lean(); 
+      .lean();
 
     if (!locations || locations.length === 0) {
-      // console.warn("⚠️ No locations found.");
       return NextResponse.json({ message: "No locations found." }, { status: 404 });
     }
 
-    // console.log("✅ Locations fetched successfully.");
-    return NextResponse.json(locations);
+    // Obtener los SEOs de las locations para agregar los slugs
+    const locationIds = locations.map((loc: any) => loc._id);
+    const seos = await SEO.find({
+      entityId: { $in: locationIds },
+      entityType: "Location"
+    }).select("entityId slug").lean();
+
+    // Crear un mapa de entityId -> slug
+    const slugMap = new Map();
+    seos.forEach((seo: any) => {
+      if (seo.slug) {
+        slugMap.set(seo.entityId.toString(), seo.slug);
+      }
+    });
+
+    // Agregar el slug a cada location
+    const locationsWithSlugs = locations.map((location: any) => ({
+      ...location,
+      slug: slugMap.get(location._id.toString()) || null
+    }));
+
+    return NextResponse.json(locationsWithSlugs);
   } catch (error) {
     // console.error("❌ Error fetching locations:", error);
     return NextResponse.json(

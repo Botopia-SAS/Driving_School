@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Location from "@/models/Locations";
+import { SEO } from "@/models/SEO";
 import mongoose from "mongoose";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -12,16 +13,19 @@ export async function GET(
 
     const { id } = await params;
 
-    let location;
+    let location: any = null;
 
     // Primero intentar buscar por ObjectId si es válido
     if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
       location = await Location.findById(id).populate('instructors').lean();
     }
 
-    // Si no se encuentra por ID, intentar buscar por slug
+    // Si no se encuentra por ID, buscar por slug en la colección SEO
     if (!location) {
-      location = await Location.findOne({ slug: id }).populate('instructors').lean();
+      const seo: any = await SEO.findOne({ slug: id, entityType: "Location" }).lean();
+      if (seo && seo.entityId) {
+        location = await Location.findById(seo.entityId).populate('instructors').lean();
+      }
     }
 
     if (!location) {

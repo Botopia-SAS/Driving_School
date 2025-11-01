@@ -195,7 +195,7 @@ const LocationPage: React.FC = () => {
                 </h3>
                 <p className="text-gray-600 max-w-3xl mx-auto">
                   While our main office is located in West Palm Beach, we provide driving lessons 
-                  and services throughout the following areas. Our certified instructors will meet 
+                  throughout the following areas. Our certified instructors will meet 
                   you at convenient locations within these zones.
                 </p>
               </div>
