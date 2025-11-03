@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "@/globals.css";
@@ -12,7 +12,6 @@ import { useAuth } from "@/components/AuthContext";
 import { useCart } from "@/app/context/CartContext";
 import LoginModal from "@/components/LoginModal";
 import { useDrivingTestSSE } from "@/hooks/useDrivingTestSSE";
-import { useRouter } from "next/navigation";
 
 // Google Maps configuration - removed as not needed for driving test
 
@@ -55,93 +54,15 @@ interface Schedule {
   slots: Slot[];
 }
 
-interface Location {
-  _id?: string;
-  title: string;
-  zone: string;
-  instructors: Instructor[];
-}
-
-interface AvailableClass {
-  instructorId: string;
-  instructorName: string;
-  instructorPhoto: string;
-  date: string;
-  start: string;
-  end: string;
-  status: string;
-  classType: string;
-  slotId: string;
-  amount?: number;
-  pickupLocation?: string;
-  dropoffLocation?: string;
-}
-
-import { useSearchParams } from "next/navigation";
-import { buildLegalHref } from "../utils/buildLegalHref";
-
 export default function BookNowPage() {
-  // --- Restauración de modal y scroll al volver de Terms/Privacy ---
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const modalParam = sp.get("modal");
-    // 1) Reabrir modal si viene marcado
-    if (modalParam) {
-      if (modalParam === "tos" || modalParam === "terms") {
-        setIsModalOpen(true);
-      }
-      // Si tienes otros modales, agrega lógica aquí
-    } else if ((window.history.state as any)?.modalOpen) {
-      if (
-        window.history.state.modalOpen === "tos" ||
-        window.history.state.modalOpen === "terms"
-      ) {
-        setIsModalOpen(true);
-      }
-    }
-    // 2) Restaurar scroll
-    const s = Number(sp.get("scroll") || 0);
-    if (!Number.isNaN(s) && s > 0) {
-      requestAnimationFrame(() =>
-        window.scrollTo({ top: s, behavior: "instant" as ScrollBehavior })
-      );
-    } else {
-      // try sessionStorage
-      try {
-        const ctx = JSON.parse(
-          sessionStorage.getItem("legal:context") || "null"
-        );
-        if (ctx?.scroll >= 0) {
-          requestAnimationFrame(() =>
-            window.scrollTo({
-              top: Number(ctx.scroll) || 0,
-              behavior: "instant" as ScrollBehavior,
-            })
-          );
-        }
-      } catch {}
-    }
-  }, []);
-  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(true);
 
   const [selectedInstructorId, setSelectedInstructorId] = useState<
     string | null
   >(null);
   const [selectedInstructor, setSelectedInstructor] =
     useState<InstructorWithSchedule | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [availableClasses, setAvailableClasses] = useState<AvailableClass[]>(
-    []
-  ); // Used for API data management
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    null
-  );
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isLoadingClasses, setIsLoadingClasses] = useState(false); // Used in location selection flow
   const [instructors, setInstructors] = useState<Instructor[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
 
   const { user, setUser } = useAuth();
@@ -235,24 +156,25 @@ export default function BookNowPage() {
     forceRefresh,
   } = useDrivingTestSSE(selectedInstructorId);
 
+  // Cargar todos los instructores que pueden enseñar driving test
   useEffect(() => {
-    async function fetchLocations() {
+    async function fetchInstructors() {
       try {
-        const res = await fetch("/api/locations");
+        const res = await fetch("/api/instructors?canTeachDrivingTest=true");
         if (!res.ok) {
           throw new Error(
-            `Error fetching locations: ${res.statusText} (${res.status})`
+            `Error fetching instructors: ${res.statusText} (${res.status})`
           );
         }
         const data = await res.json();
-        setLocations(data);
+        setInstructors(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.error("❌ Error loading locations:", error);
+        console.error("❌ Error loading instructors:", error);
       } finally {
         setInitialLoading(false);
       }
     }
-    fetchLocations();
+    fetchInstructors();
   }, []);
 
   // Fetch user's cancelled slots for redemption
@@ -338,81 +260,6 @@ export default function BookNowPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedInstructor]);
 
-  // Función para actualizar clases disponibles cuando cambie la semana
-  const updateAvailableClasses = useCallback(async () => {
-    if (selectedLocation?._id) {
-      setIsLoadingClasses(true);
-      try {
-        const response = await fetch(
-          `/api/driving-test/available-classes?locationId=${selectedLocation._id}&weekOffset=${weekOffset}`
-        );
-        const data = await response.json();
-
-        if (data.success) {
-          setAvailableClasses(data.availableClasses);
-        } else {
-          setAvailableClasses([]);
-        }
-      } catch {
-        setAvailableClasses([]);
-      }
-      setIsLoadingClasses(false);
-    }
-  }, [selectedLocation, weekOffset]);
-
-  // useEffect para actualizar clases cuando cambie weekOffset
-  useEffect(() => {
-    updateAvailableClasses();
-  }, [updateAvailableClasses]);
-
-  const handleSelectLocation = async (location: Location) => {
-    setIsLoadingClasses(true);
-    setSelectedLocation(location);
-    setInstructors(location.instructors);
-    setSelectedInstructor(null);
-    setSelectedInstructorId(null);
-    setIsLoadingSchedule(false);
-    setIsModalOpen(false);
-
-    // Obtener clases disponibles para esta ubicación
-    if (location._id) {
-      try {
-        const response = await fetch(
-          `/api/driving-test/available-classes?locationId=${location._id}&weekOffset=${weekOffset}`
-        );
-        const data = await response.json();
-
-        if (data.success) {
-          setAvailableClasses(data.availableClasses);
-          setInstructors(data.instructors);
-
-          // Seleccionar automáticamente el primer instructor
-          if (data.instructors && data.instructors.length > 0) {
-            const firstInstructor = data.instructors[0];
-            setIsLoadingSchedule(true);
-
-            // Small delay to prevent rapid connection changes
-            setTimeout(() => {
-              setSelectedInstructorId(firstInstructor._id);
-              setSelectedInstructor(null);
-              setSelectedDate(null);
-            }, 100);
-          }
-        } else {
-          setAvailableClasses([]);
-        }
-      } catch {
-        setAvailableClasses([]);
-      }
-    }
-
-    setIsLoadingClasses(false);
-
-    // Navigate to Book-Now page if not already there
-    if (window.location.pathname !== "/Book-Now") {
-      router.push("/Book-Now");
-    }
-  };
 
   const handleDateChange = (value: Date | Date[] | null) => {
     if (!value || Array.isArray(value)) return;
@@ -1077,37 +924,8 @@ export default function BookNowPage() {
 
   return (
     <section className="bg-white pt-32 pb-8 px-2 sm:px-6 flex flex-col items-center w-full">
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          router.push("/driving_test");
-        }}
-      >
-        <div className="p-6">
-          <h2 className="text-2xl font-bold mb-4 text-center">
-            Choose a Location for Driving Test
-          </h2>
-          <div className="flex flex-col space-y-2">
-            {locations.length > 0 ? (
-              locations.map((location, index) => (
-                <button
-                  key={location.zone || index}
-                  onClick={() => handleSelectLocation(location)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-md transition-all font-medium"
-                >
-                  Book in {location.zone}
-                </button>
-              ))
-            ) : (
-              <p className="text-center text-gray-500">Loading locations...</p>
-            )}
-          </div>
-        </div>
-      </Modal>
-
       {/* Initial Layout - Calendar and Instructors */}
-      {!selectedInstructorId && selectedLocation && (
+      {!selectedInstructorId && (
         <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-start">
           {/* Calendar and instructors column */}
           <div className="w-full lg:w-1/3 flex flex-col items-center mt-8 sm:mt-12">
